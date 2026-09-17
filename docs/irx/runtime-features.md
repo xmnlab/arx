@@ -28,6 +28,8 @@ Registered features:
 | `libm`         | math symbols and the platform math linker flag       |
 | `assertions`   | fatal assertion helper and machine-readable reports  |
 | `errors`       | fatal checked-runtime diagnostics and stable records |
+| `core`         | Arrow ABI versions, statuses, and owned errors       |
+| `lifecycle`    | module-local class and generator retain/release      |
 | `buffer`       | buffer-owner and view lifetime helpers               |
 | `list`         | minimal dynamic list creation, growth, and indexing  |
 | `array`        | one-dimensional Apache Arrow array runtime           |
@@ -207,3 +209,10 @@ IRx currently does not provide:
 
 See [Native Apache Arrow Support](../apache-arrow.md) for the cross-project view
 and [Buffer View Model](buffer-view-model.md) for the low-level descriptor.
+
+## Recursive schema feature contract
+
+The `array` feature contract is 1.1.0 for recursive schema copy/export support;
+the overall C ABI remains 1.0.0 and earlier feature consumers remain compatible.
+See [Logical types and schemas](../arrow-type-schemas.md) for the descriptor
+model and its explicit limitations.

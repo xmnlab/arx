@@ -184,6 +184,10 @@ jobs:
       - name: Run Arrow ABI conformance
         run: makim irx.check-arrow-abi-conformance
 
+      - name: Run Arrow ownership sanitizers
+        if: matrix.toolchain == 'clang'
+        run: makim irx.check-arrow-ownership-sanitizers
+
   wheel-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 20

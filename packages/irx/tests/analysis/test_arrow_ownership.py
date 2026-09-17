@@ -9,10 +9,12 @@ import json
 from pathlib import Path
 from typing import cast
 
+import astx
 import pytest
 
 from irx.analysis import (
     ARROW_RESOURCE_CONTRACTS,
+    BUFFER_VIEW_RESOURCE_CONTRACT,
     LIST_RESOURCE_CONTRACT,
     STRING_RESOURCE_CONTRACT,
     OwnershipEscapeKind,
@@ -24,8 +26,10 @@ from irx.analysis import (
     arrow_resource_contract,
     arrow_resource_ownership,
     list_resource_ownership,
+    resource_contract_for_type,
     string_resource_ownership,
     transfer_resource_ownership,
+    typed_resource_ownership,
 )
 from typeguard import TypeCheckError
 
@@ -180,6 +184,39 @@ def test_existing_resource_helpers_populate_complete_contracts() -> None:
     assert string_ownership.mutability is ResourceMutability.IMMUTABLE
     assert LIST_RESOURCE_CONTRACT.resource_kind is ResourceKind.LIST
     assert STRING_RESOURCE_CONTRACT.resource_kind is ResourceKind.STRING
+
+
+@pytest.mark.parametrize(
+    ("type_", "expected_kind"),
+    (
+        (astx.BufferViewType(astx.Int32()), ResourceKind.BUFFER_VIEW),
+        (astx.TensorType(astx.Int32()), ResourceKind.BUFFER_VIEW),
+        (astx.SeriesType(astx.Int32()), ResourceKind.CHUNKED_ARRAY),
+        (astx.DataFrameType(), ResourceKind.TABLE),
+        (astx.ClassType("Box"), ResourceKind.CLASS_INSTANCE),
+        (astx.GeneratorType(astx.Int32()), ResourceKind.GENERATOR_FRAME),
+    ),
+)
+def test_runtime_managed_types_map_to_semantic_resource_contracts(
+    type_: astx.DataType,
+    expected_kind: ResourceKind,
+) -> None:
+    """
+    title: Modeled runtime-managed types should map to one ownership contract.
+    parameters:
+      type_:
+        type: astx.DataType
+      expected_kind:
+        type: ResourceKind
+    """
+    contract = resource_contract_for_type(type_)
+    ownership = typed_resource_ownership(type_, OwnershipKind.OWNED)
+
+    assert contract is not None
+    assert contract.resource_kind is expected_kind
+    assert ownership.resource_kind is expected_kind
+    if expected_kind is ResourceKind.BUFFER_VIEW:
+        assert contract is BUFFER_VIEW_RESOURCE_CONTRACT
 
 
 def test_non_arrow_resource_kind_is_rejected() -> None:

@@ -26,16 +26,21 @@ from irx.analysis.module_interfaces import (
 )
 from irx.analysis.ownership import (
     ARROW_RESOURCE_CONTRACTS,
+    BUFFER_VIEW_RESOURCE_CONTRACT,
+    CLASS_INSTANCE_RESOURCE_CONTRACT,
+    GENERATOR_FRAME_RESOURCE_CONTRACT,
     LIST_RESOURCE_CONTRACT,
     STRING_RESOURCE_CONTRACT,
     arrow_resource_contract,
     arrow_resource_ownership,
     build_resource_ownership,
     list_resource_ownership,
+    resource_contract_for_type,
     resource_ownership,
     string_resource_ownership,
     symbol_resource_ownership,
     transfer_resource_ownership,
+    typed_resource_ownership,
 )
 from irx.analysis.resolved_nodes import (
     ClassHeaderFieldKind,
@@ -71,6 +76,7 @@ from irx.analysis.resolved_nodes import (
     ResourceMutability,
     ResourceOwnership,
     ResourceSharingKind,
+    ResourceViewKind,
     SemanticBinding,
     SemanticClass,
     SemanticClassFieldInitializer,
@@ -97,6 +103,9 @@ from irx.diagnostics import Diagnostic, DiagnosticBag, SemanticError
 
 __all__ = [
     "ARROW_RESOURCE_CONTRACTS",
+    "BUFFER_VIEW_RESOURCE_CONTRACT",
+    "CLASS_INSTANCE_RESOURCE_CONTRACT",
+    "GENERATOR_FRAME_RESOURCE_CONTRACT",
     "LIST_RESOURCE_CONTRACT",
     "STRING_RESOURCE_CONTRACT",
     "ClassHeaderFieldKind",
@@ -140,6 +149,7 @@ __all__ = [
     "ResourceMutability",
     "ResourceOwnership",
     "ResourceSharingKind",
+    "ResourceViewKind",
     "SemanticAnalyzer",
     "SemanticBinding",
     "SemanticClass",
@@ -173,8 +183,10 @@ __all__ = [
     "get_semantic_contract",
     "list_resource_ownership",
     "resolve_iteration_capability",
+    "resource_contract_for_type",
     "resource_ownership",
     "string_resource_ownership",
     "symbol_resource_ownership",
     "transfer_resource_ownership",
+    "typed_resource_ownership",
 ]

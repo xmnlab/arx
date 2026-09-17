@@ -23,10 +23,12 @@ from irx.analysis.handlers.base import (
 from irx.analysis.iterables import resolve_iteration_capability
 from irx.analysis.ownership import (
     list_resource_ownership,
+    resource_contract_for_type,
     resource_ownership,
     string_resource_ownership,
     symbol_resource_ownership,
     transfer_resource_ownership,
+    typed_resource_ownership,
 )
 from irx.analysis.resolved_nodes import (
     ImplicitConversion,
@@ -38,6 +40,7 @@ from irx.analysis.resolved_nodes import (
     ResolvedGeneratorFunction,
     ResolvedMethodCall,
     ResolvedYield,
+    ResourceSharingKind,
     SemanticClass,
     SemanticSymbol,
 )
@@ -76,6 +79,11 @@ class ControlFlowVisitorMixin(SemanticVisitorMixinBase):
             self._resolve_string_return_resource_ownership(node)
             return
         if not isinstance(return_type, astx.ListType):
+            if resource_contract_for_type(return_type) is not None:
+                self._resolve_arrow_return_resource_ownership(
+                    node,
+                    return_type,
+                )
             return
 
         value_ownership = resource_ownership(node.value)
@@ -145,6 +153,93 @@ class ControlFlowVisitorMixin(SemanticVisitorMixinBase):
                 source_symbol_id=source_symbol_id,
                 transfer_kind=OwnershipTransferKind.MOVE,
                 escape_kind=OwnershipEscapeKind.RETURN,
+            ),
+        )
+
+    def _resolve_arrow_return_resource_ownership(
+        self,
+        node: astx.FunctionReturn,
+        return_type: astx.DataType,
+    ) -> None:
+        """
+        title: Resolve one Arrow-backed return transfer.
+        parameters:
+          node:
+            type: astx.FunctionReturn
+          return_type:
+            type: astx.DataType
+        """
+        if node.value is None:
+            return
+        value_ownership = resource_ownership(node.value)
+        contract = resource_contract_for_type(return_type)
+        if value_ownership is None or contract is None:
+            self.context.diagnostics.add(
+                "resource return expression is missing ownership metadata",
+                node=node.value,
+                code=DiagnosticCodes.SEMANTIC_INVALID_OWNERSHIP,
+            )
+            return
+        if value_ownership.kind is OwnershipKind.MOVED:
+            self.context.diagnostics.add(
+                "cannot return a resource that was already moved",
+                node=node.value,
+                code=DiagnosticCodes.SEMANTIC_INVALID_OWNERSHIP,
+            )
+            return
+
+        source_symbol = getattr(
+            getattr(node.value, "semantic", None),
+            "resolved_symbol",
+            None,
+        )
+        source_symbol_id = (
+            source_symbol.symbol_id
+            if isinstance(source_symbol, SemanticSymbol)
+            else value_ownership.source_symbol_id
+        )
+        transfer_kind = OwnershipTransferKind.MOVE
+        source_ownership = (
+            symbol_resource_ownership(source_symbol)
+            if isinstance(source_symbol, SemanticSymbol)
+            else None
+        )
+        borrowed_owned_local = (
+            value_ownership.kind is OwnershipKind.BORROWED
+            and source_ownership is not None
+            and source_ownership.kind is OwnershipKind.OWNED
+        )
+        if (
+            value_ownership.kind
+            in (OwnershipKind.BORROWED, OwnershipKind.STATIC)
+            and not borrowed_owned_local
+        ):
+            if contract.sharing_kind is not ResourceSharingKind.SHARED:
+                self.context.diagnostics.add(
+                    "cannot return a borrowed unique resource",
+                    node=node.value,
+                    code=DiagnosticCodes.SEMANTIC_INVALID_OWNERSHIP,
+                )
+                return
+            transfer_kind = OwnershipTransferKind.COPY
+
+        moved = transfer_resource_ownership(
+            value_ownership,
+            transfer_kind=transfer_kind,
+            escape_kind=OwnershipEscapeKind.RETURN,
+        )
+        self._set_resource_ownership(node.value, moved)
+        self._set_resource_ownership(
+            node,
+            typed_resource_ownership(
+                return_type,
+                OwnershipKind.OWNED,
+                owner_root_symbol_id=value_ownership.owner_root_symbol_id,
+                source_symbol_id=source_symbol_id,
+                transfer_kind=transfer_kind,
+                escape_kind=OwnershipEscapeKind.RETURN,
+                view_kind=value_ownership.view_kind,
+                view_parent_symbol_id=(value_ownership.view_parent_symbol_id),
             ),
         )
 
@@ -338,6 +433,55 @@ class ControlFlowVisitorMixin(SemanticVisitorMixinBase):
             implicit_conversion=conversion,
         )
         self._set_yield(node, resolved)
+        if value is not None:
+            contract = resource_contract_for_type(generator.yield_type)
+            value_ownership = resource_ownership(value)
+            if contract is not None and value_ownership is None:
+                self.context.diagnostics.add(
+                    "yielded resource is missing ownership metadata",
+                    node=value,
+                    code=DiagnosticCodes.SEMANTIC_INVALID_OWNERSHIP,
+                )
+            elif (
+                contract is not None
+                and contract.sharing_kind is ResourceSharingKind.UNIQUE
+            ):
+                self.context.diagnostics.add(
+                    "generators cannot yield unique resources without an "
+                    "explicit consuming iteration contract",
+                    node=value,
+                    code=DiagnosticCodes.SEMANTIC_INVALID_OWNERSHIP,
+                )
+            elif contract is not None and value_ownership is not None:
+                transfer_kind = OwnershipTransferKind.MOVE
+                if value_ownership.kind in (
+                    OwnershipKind.BORROWED,
+                    OwnershipKind.STATIC,
+                ):
+                    transfer_kind = OwnershipTransferKind.COPY
+                yielded = transfer_resource_ownership(
+                    value_ownership,
+                    transfer_kind=transfer_kind,
+                    escape_kind=OwnershipEscapeKind.YIELD,
+                )
+                self._set_resource_ownership(value, yielded)
+                self._set_resource_ownership(
+                    node,
+                    typed_resource_ownership(
+                        generator.yield_type,
+                        OwnershipKind.OWNED,
+                        owner_root_symbol_id=(
+                            value_ownership.owner_root_symbol_id
+                        ),
+                        source_symbol_id=value_ownership.source_symbol_id,
+                        transfer_kind=transfer_kind,
+                        escape_kind=OwnershipEscapeKind.YIELD,
+                        view_kind=value_ownership.view_kind,
+                        view_parent_symbol_id=(
+                            value_ownership.view_parent_symbol_id
+                        ),
+                    ),
+                )
         return resolved
 
     def _resolve_context_method(

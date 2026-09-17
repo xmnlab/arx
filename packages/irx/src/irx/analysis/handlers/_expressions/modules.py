@@ -21,11 +21,11 @@ from irx.analysis.handlers.base import (
     SemanticVisitorMixinBase,
 )
 from irx.analysis.ownership import (
-    list_resource_ownership,
+    resource_contract_for_type,
     resource_ownership,
-    string_resource_ownership,
     symbol_resource_ownership,
     transfer_resource_ownership,
+    typed_resource_ownership,
 )
 from irx.analysis.resolved_nodes import (
     OwnershipEscapeKind,
@@ -33,6 +33,7 @@ from irx.analysis.resolved_nodes import (
     OwnershipTransferKind,
     ResolvedModuleMemberAccess,
     ResourceKind,
+    ResourceViewKind,
     SemanticBinding,
     SemanticModule,
 )
@@ -90,12 +91,10 @@ class ExpressionModuleVisitorMixin(SemanticVisitorMixinBase):
                     escape_kind=OwnershipEscapeKind.CALL,
                 ),
             )
-        if isinstance(result_type, astx.ListType):
-            self._set_resource_ownership(
-                node,
-                list_resource_ownership(OwnershipKind.OWNED),
-            )
-        elif is_string_type(result_type):
+        result_contract = resource_contract_for_type(result_type)
+        if result_contract is None:
+            return
+        if is_string_type(result_type):
             call = getattr(self._semantic(node), "resolved_call", None)
             callee = getattr(getattr(call, "callee", None), "function", None)
             if callee is not None and callee.definition is None:
@@ -106,9 +105,10 @@ class ExpressionModuleVisitorMixin(SemanticVisitorMixinBase):
                     code=DiagnosticCodes.SEMANTIC_INVALID_OWNERSHIP,
                 )
                 return
+        if result_type is not None:
             self._set_resource_ownership(
                 node,
-                string_resource_ownership(OwnershipKind.OWNED),
+                typed_resource_ownership(result_type, OwnershipKind.OWNED),
             )
 
     def _module_namespace_type(
@@ -372,11 +372,12 @@ class ExpressionModuleVisitorMixin(SemanticVisitorMixinBase):
         if symbol is not None:
             self._set_symbol(node, symbol)
             self._set_type(node, symbol.type_)
-            if isinstance(symbol.type_, astx.ListType):
+            if resource_contract_for_type(symbol.type_) is not None:
                 declaration_ownership = symbol_resource_ownership(symbol)
                 self._set_resource_ownership(
                     node,
-                    list_resource_ownership(
+                    typed_resource_ownership(
+                        symbol.type_,
                         OwnershipKind.BORROWED,
                         owner_symbol_id=(
                             declaration_ownership.owner_symbol_id
@@ -385,21 +386,16 @@ class ExpressionModuleVisitorMixin(SemanticVisitorMixinBase):
                         ),
                         source_symbol_id=symbol.symbol_id,
                         transfer_kind=OwnershipTransferKind.BORROW,
-                    ),
-                )
-            elif is_string_type(symbol.type_):
-                declaration_ownership = symbol_resource_ownership(symbol)
-                self._set_resource_ownership(
-                    node,
-                    string_resource_ownership(
-                        OwnershipKind.BORROWED,
-                        owner_symbol_id=(
-                            declaration_ownership.owner_symbol_id
+                        view_kind=(
+                            declaration_ownership.view_kind
+                            if declaration_ownership is not None
+                            else ResourceViewKind.NONE
+                        ),
+                        view_parent_symbol_id=(
+                            declaration_ownership.view_parent_symbol_id
                             if declaration_ownership is not None
                             else None
                         ),
-                        source_symbol_id=symbol.symbol_id,
-                        transfer_kind=OwnershipTransferKind.BORROW,
                     ),
                 )
             module = self._module_namespace_from_type(symbol.type_)

@@ -39,7 +39,9 @@ from irx.analysis.resolved_nodes import (
     OwnershipEscapeKind,
     OwnershipKind,
     OwnershipTransferKind,
+    ResolvedGeneratorFunction,
     ResourceKind,
+    ResourceOwnership,
 )
 from irx.analysis.types import (
     bit_width,
@@ -387,6 +389,7 @@ class VisitorCore(BuilderVisitor):
     _current_generator_frame_slots: dict[str, int]
     _current_generator_out_ptr: ir.Value | None
     _current_generator_next_state: int | None
+    _current_generator_metadata: ResolvedGeneratorFunction | None
     target: llvm.TargetRef
     target_machine: llvm.TargetMachine
 
@@ -429,6 +432,7 @@ class VisitorCore(BuilderVisitor):
         self._current_generator_frame_slots = {}
         self._current_generator_out_ptr = None
         self._current_generator_next_state = None
+        self._current_generator_metadata = None
 
         self.initialize()
         self.target = llvm.Target.from_default_triple()
@@ -525,13 +529,6 @@ class VisitorCore(BuilderVisitor):
             or ownership.escape_kind is OwnershipEscapeKind.RETURN
         ):
             return
-        if self._current_generator_frame_ptr is not None:
-            raise_lowering_internal_error(
-                "owned list temporaries in generator frames require "
-                "generator lifecycle cleanup",
-                node=node,
-            )
-
         destroy_fn = self.require_runtime_symbol(
             LIST_RUNTIME_FEATURE,
             LIST_DESTROY_SYMBOL,
@@ -570,13 +567,6 @@ class VisitorCore(BuilderVisitor):
             or ownership.escape_kind is OwnershipEscapeKind.RETURN
         ):
             return
-        if self._current_generator_frame_ptr is not None:
-            raise_lowering_internal_error(
-                "owned string temporaries in generator frames require "
-                "generator lifecycle cleanup",
-                node=node,
-            )
-
         free_fn = self.require_runtime_symbol("libc", "free")
 
         def destroy_string() -> None:
@@ -586,6 +576,269 @@ class VisitorCore(BuilderVisitor):
             self._llvm.ir_builder.call(free_fn, [pointer])
 
         self.cleanup_stack.append(CleanupAction(destroy_string))
+
+    def _register_resource_slot_cleanup(
+        self,
+        ownership: ResourceOwnership,
+        slot: ir.Value,
+        *,
+        owner_symbol_id: str | None = None,
+    ) -> None:
+        """
+        title: Register cleanup for one native resource slot.
+        parameters:
+          ownership:
+            type: ResourceOwnership
+          slot:
+            type: ir.Value
+          owner_symbol_id:
+            type: str | None
+        """
+        release_fn = self.require_runtime_symbol_by_name(
+            ownership.cleanup_intrinsic
+        )
+
+        def release_resource() -> None:
+            """
+            title: Release the captured native resource slot.
+            """
+            if self._llvm.ir_builder.block.is_terminated:
+                return
+            if ownership.resource_kind is ResourceKind.BUFFER_VIEW:
+                self._llvm.ir_builder.call(release_fn, [slot])
+                return
+            error_slot = self._llvm.ir_builder.alloca(
+                self._llvm.OPAQUE_POINTER_TYPE,
+                name="resource_cleanup_error_slot",
+            )
+            self._llvm.ir_builder.store(
+                ir.Constant(self._llvm.OPAQUE_POINTER_TYPE, None),
+                error_slot,
+            )
+            release_slot = slot
+            if ownership.resource_kind is ResourceKind.CLASS_INSTANCE:
+                release_slot = self._llvm.ir_builder.bitcast(
+                    slot,
+                    self._llvm.OPAQUE_POINTER_TYPE.as_pointer(),
+                    name="class_release_slot",
+                )
+            self._llvm.ir_builder.call(
+                release_fn,
+                [release_slot, error_slot],
+            )
+
+        self.cleanup_stack.append(
+            CleanupAction(
+                release_resource,
+                owner_symbol_id=owner_symbol_id,
+            )
+        )
+
+    def _register_owned_resource_temporary(
+        self,
+        node: astx.AST,
+        value: ir.Value,
+    ) -> None:
+        """
+        title: Register cleanup for one untransferred owned resource value.
+        parameters:
+          node:
+            type: astx.AST
+          value:
+            type: ir.Value
+        """
+        ownership = resource_ownership(node)
+        if ownership is None or ownership.kind is not OwnershipKind.OWNED:
+            return
+        if (
+            ownership.transfer_kind is OwnershipTransferKind.MOVE
+            or ownership.escape_kind is OwnershipEscapeKind.RETURN
+        ):
+            return
+        if ownership.resource_kind is ResourceKind.LIST:
+            self._register_owned_list_temporary(node, value)
+            return
+        if ownership.resource_kind is ResourceKind.STRING:
+            self._register_owned_string_temporary(node, value)
+            return
+        current_block = self._llvm.ir_builder.block
+        slot = self.create_entry_block_alloca(
+            f"owned_{ownership.resource_kind.value}_temporary",
+            value.type,
+        )
+        entry_builder = ir.IRBuilder(
+            self._llvm.ir_builder.function.entry_basic_block
+        )
+        entry_builder.position_after(slot)
+        entry_builder.store(ir.Constant(value.type, None), slot)
+        self._llvm.ir_builder.position_at_end(current_block)
+        self._llvm.ir_builder.store(value, slot)
+        self._register_resource_slot_cleanup(ownership, slot)
+
+    def _retain_copied_resource_value(
+        self,
+        node: astx.AST,
+        value: ir.Value,
+    ) -> ir.Value:
+        """
+        title: Materialize the retained token required by a semantic copy.
+        parameters:
+          node:
+            type: astx.AST
+          value:
+            type: ir.Value
+        returns:
+          type: ir.Value
+        """
+        ownership = resource_ownership(node)
+        if (
+            ownership is None
+            or ownership.transfer_kind is not OwnershipTransferKind.COPY
+        ):
+            return value
+        return self._retain_resource_value(node, value, ownership)
+
+    def _retain_resource_value(
+        self,
+        node: astx.AST,
+        value: ir.Value,
+        ownership: ResourceOwnership,
+    ) -> ir.Value:
+        """
+        title: Materialize a retained token from explicit semantic metadata.
+        parameters:
+          node:
+            type: astx.AST
+          value:
+            type: ir.Value
+          ownership:
+            type: ResourceOwnership
+        returns:
+          type: ir.Value
+        """
+        if ownership.resource_kind in (
+            ResourceKind.LIST,
+            ResourceKind.STRING,
+        ):
+            return value
+        if ownership.retain_intrinsic is None:
+            raise_lowering_internal_error(
+                "semantic copy requires a retainable resource contract",
+                node=node,
+            )
+        retain_fn = self.require_runtime_symbol_by_name(
+            ownership.retain_intrinsic
+        )
+        if ownership.resource_kind is ResourceKind.BUFFER_VIEW:
+            value_slot = self._llvm.ir_builder.alloca(
+                value.type,
+                name="copied_buffer_view",
+            )
+            self._llvm.ir_builder.store(value, value_slot)
+            status = self._llvm.ir_builder.call(retain_fn, [value_slot])
+            ok = self._llvm.ir_builder.icmp_signed(
+                "==",
+                status,
+                ir.Constant(self._llvm.INT32_TYPE, 0),
+                name="buffer_view_retain_ok",
+            )
+            self._guard_runtime_condition(
+                node,
+                ok,
+                code="ARX-RUNTIME-RESOURCE-001",
+                message="failed to retain a copied buffer view",
+                block_name="resource.buffer_view.retain",
+            )
+            return value
+
+        if ownership.resource_kind is ResourceKind.CLASS_INSTANCE:
+            output_slot = self._llvm.ir_builder.alloca(
+                self._llvm.OPAQUE_POINTER_TYPE,
+                name="copied_class_instance_slot",
+            )
+            self._llvm.ir_builder.store(
+                ir.Constant(self._llvm.OPAQUE_POINTER_TYPE, None),
+                output_slot,
+            )
+            error_slot = self._llvm.ir_builder.alloca(
+                self._llvm.OPAQUE_POINTER_TYPE,
+                name="class_retain_error_slot",
+            )
+            self._llvm.ir_builder.store(
+                ir.Constant(self._llvm.OPAQUE_POINTER_TYPE, None),
+                error_slot,
+            )
+            raw_value = self._llvm.ir_builder.bitcast(
+                value,
+                self._llvm.OPAQUE_POINTER_TYPE,
+                name="class_retain_input",
+            )
+            status = self._llvm.ir_builder.call(
+                retain_fn,
+                [raw_value, output_slot, error_slot],
+                name="class_instance_retain_status",
+            )
+            ok = self._llvm.ir_builder.icmp_signed(
+                "==",
+                status,
+                ir.Constant(self._llvm.INT32_TYPE, 0),
+                name="class_instance_retain_ok",
+            )
+            self._guard_runtime_condition(
+                node,
+                ok,
+                code="ARX-RUNTIME-RESOURCE-002",
+                message="failed to retain copied class instance",
+                block_name="resource.class_instance.retain",
+            )
+            retained = self._llvm.ir_builder.load(
+                output_slot,
+                name="copied_class_instance",
+            )
+            return self._llvm.ir_builder.bitcast(
+                retained,
+                value.type,
+                name="copied_class_instance_typed",
+            )
+
+        output_slot = self._llvm.ir_builder.alloca(
+            value.type,
+            name=f"copied_{ownership.resource_kind.value}_slot",
+        )
+        self._llvm.ir_builder.store(ir.Constant(value.type, None), output_slot)
+        error_slot = self._llvm.ir_builder.alloca(
+            self._llvm.OPAQUE_POINTER_TYPE,
+            name="resource_retain_error_slot",
+        )
+        self._llvm.ir_builder.store(
+            ir.Constant(self._llvm.OPAQUE_POINTER_TYPE, None),
+            error_slot,
+        )
+        status = self._llvm.ir_builder.call(
+            retain_fn,
+            [value, output_slot, error_slot],
+            name=f"{ownership.resource_kind.value}_retain_status",
+        )
+        ok = self._llvm.ir_builder.icmp_signed(
+            "==",
+            status,
+            ir.Constant(self._llvm.INT32_TYPE, 0),
+            name=f"{ownership.resource_kind.value}_retain_ok",
+        )
+        self._guard_runtime_condition(
+            node,
+            ok,
+            code="ARX-RUNTIME-RESOURCE-002",
+            message=(
+                "failed to retain copied "
+                f"{ownership.resource_kind.value} resource"
+            ),
+            block_name=f"resource.{ownership.resource_kind.value}.retain",
+        )
+        return self._llvm.ir_builder.load(
+            output_slot,
+            name=f"copied_{ownership.resource_kind.value}",
+        )
 
     def _guard_runtime_condition(
         self,
@@ -617,6 +870,7 @@ class VisitorCore(BuilderVisitor):
         self._llvm.ir_builder.cbranch(condition, pass_block, fail_block)
 
         self._llvm.ir_builder.position_at_start(fail_block)
+        self._emit_active_cleanups()
         string_pointer = cast(Any, self)._constant_c_string_pointer
         failure = self.require_runtime_symbol(
             RUNTIME_FAILURE_FEATURE_NAME,
@@ -938,6 +1192,20 @@ class VisitorCore(BuilderVisitor):
           type: ir.Function
         """
         return self.runtime_features.require_symbol(feature_name, symbol_name)
+
+    def require_runtime_symbol_by_name(
+        self,
+        symbol_name: str,
+    ) -> ir.Function:
+        """
+        title: Require a runtime symbol selected by its semantic ABI name.
+        parameters:
+          symbol_name:
+            type: str
+        returns:
+          type: ir.Function
+        """
+        return self.runtime_features.require_symbol_by_name(symbol_name)
 
     def _init_native_size_types(self) -> None:
         """
@@ -1305,6 +1573,7 @@ class VisitorCore(BuilderVisitor):
         if isinstance(type_, astx.GeneratorType):
             return ir.LiteralStructType(
                 [
+                    self._llvm.OPAQUE_POINTER_TYPE,
                     self._llvm.OPAQUE_POINTER_TYPE,
                     self._llvm.OPAQUE_POINTER_TYPE,
                 ]

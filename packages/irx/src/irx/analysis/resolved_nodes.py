@@ -69,6 +69,9 @@ class ResourceKind(str, Enum):
 
     LIST = "list"
     STRING = "string"
+    BUFFER_VIEW = "buffer_view"
+    CLASS_INSTANCE = "class_instance"
+    GENERATOR_FRAME = "generator_frame"
     ERROR = "error"
     TYPE = "type"
     SCHEMA = "schema"
@@ -175,6 +178,22 @@ class OwnershipEscapeKind(str, Enum):
     NONE = "none"
     CALL = "call"
     RETURN = "return"
+    YIELD = "yield"
+
+
+@public
+@typechecked
+class ResourceViewKind(str, Enum):
+    """
+    title: Relationship between a resource value and parent storage.
+    summary: >-
+      Distinguish ordinary values from compiler-proven borrowed views and
+      escaping views whose native token retains the storage it references.
+    """
+
+    NONE = "none"
+    BORROWED = "borrowed"
+    RETAINED = "retained"
 
 
 @public
@@ -206,6 +225,10 @@ class ResourceOwnership:
         type: OwnershipTransferKind
       escape_kind:
         type: OwnershipEscapeKind
+      view_kind:
+        type: ResourceViewKind
+      view_parent_symbol_id:
+        type: str | None
     """
 
     resource_kind: ResourceKind
@@ -219,6 +242,8 @@ class ResourceOwnership:
     source_symbol_id: str | None = None
     transfer_kind: OwnershipTransferKind = OwnershipTransferKind.NONE
     escape_kind: OwnershipEscapeKind = OwnershipEscapeKind.NONE
+    view_kind: ResourceViewKind = ResourceViewKind.NONE
+    view_parent_symbol_id: str | None = None
 
 
 @public
@@ -642,6 +667,8 @@ class ClassHeaderFieldKind(str, Enum):
 
     TYPE_DESCRIPTOR = "type_descriptor"
     DISPATCH_TABLE = "dispatch_table"
+    DESTRUCTOR = "destructor"
+    REFERENCE_COUNT = "reference_count"
 
 
 @public
@@ -862,6 +889,8 @@ class SemanticClassLayout:
         type: str
       dispatch_global_name:
         type: str
+      destructor_name:
+        type: str
       header_fields:
         type: tuple[SemanticClassHeaderField, Ellipsis]
       instance_fields:
@@ -890,6 +919,7 @@ class SemanticClassLayout:
     object_representation: ClassObjectRepresentationKind
     descriptor_global_name: str
     dispatch_global_name: str
+    destructor_name: str
     header_fields: tuple[SemanticClassHeaderField, ...] = ()
     instance_fields: tuple[SemanticClassLayoutField, ...] = ()
     field_slots: dict[str, SemanticClassLayoutField] = field(
@@ -1216,6 +1246,23 @@ class ReturnResolution:
 @public
 @typechecked
 @dataclass(frozen=True)
+class ResolvedGeneratorCapture:
+    """
+    title: One owned resource capture stored in a generator frame.
+    attributes:
+      symbol:
+        type: SemanticSymbol
+      ownership:
+        type: ResourceOwnership
+    """
+
+    symbol: SemanticSymbol
+    ownership: ResourceOwnership
+
+
+@public
+@typechecked
+@dataclass(frozen=True)
 class ResolvedGeneratorFunction:
     """
     title: Resolved generator-function semantics.
@@ -1229,11 +1276,14 @@ class ResolvedGeneratorFunction:
         type: astx.DataType
       yield_nodes:
         type: tuple[astx.AST, Ellipsis]
+      resource_captures:
+        type: tuple[ResolvedGeneratorCapture, Ellipsis]
     """
 
     function: "SemanticFunction"
     yield_type: astx.DataType
     yield_nodes: tuple[astx.AST, ...] = ()
+    resource_captures: tuple[ResolvedGeneratorCapture, ...] = ()
 
 
 @public

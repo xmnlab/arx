@@ -15,14 +15,14 @@ RUNTIME_FEATURE_IDS = {
 }
 RUNTIME_FEATURE_VERSIONS = {
     "core": (1, 0, 0),
-    "array": (1, 0, 0),
+    "array": (1, 1, 0),
     "tensor": (1, 0, 0),
     "dataframe": (1, 0, 0),
     "record_batch": (1, 0, 0),
 }
 RUNTIME_FEATURE_PACKED_VERSIONS = {
     "core": 65536,
-    "array": 65536,
+    "array": 65792,
     "tensor": 65536,
     "dataframe": 65536,
     "record_batch": 65536,

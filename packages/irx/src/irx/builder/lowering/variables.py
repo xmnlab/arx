@@ -72,13 +72,6 @@ class VariableVisitorMixin(VisitorMixinBase):
                 "semantic owner id",
                 node=node,
             )
-        if self._current_generator_frame_ptr is not None:
-            raise_lowering_internal_error(
-                "owned list locals in generator frames require generator "
-                "lifecycle cleanup",
-                node=node,
-            )
-
         destroy_fn = self.require_runtime_symbol(
             LIST_RUNTIME_FEATURE,
             LIST_DESTROY_SYMBOL,
@@ -149,7 +142,7 @@ class VariableVisitorMixin(VisitorMixinBase):
                 "metadata",
                 node=node,
             )
-        if ownership.kind is OwnershipKind.STATIC:
+        if ownership.kind in (OwnershipKind.BORROWED, OwnershipKind.STATIC):
             return
         if (
             ownership.resource_kind is not ResourceKind.STRING
@@ -161,13 +154,6 @@ class VariableVisitorMixin(VisitorMixinBase):
                 "an invalid ownership contract",
                 node=node,
             )
-        if self._current_generator_frame_ptr is not None:
-            raise_lowering_internal_error(
-                "owned string locals in generator frames require generator "
-                "lifecycle cleanup",
-                node=node,
-            )
-
         free_fn = self.require_runtime_symbol("libc", "free")
 
         def destroy_string() -> None:
@@ -179,6 +165,10 @@ class VariableVisitorMixin(VisitorMixinBase):
                 name=f"{node.name}_string_cleanup",
             )
             self._llvm.ir_builder.call(free_fn, [pointer])
+            self._llvm.ir_builder.store(
+                ir.Constant(pointer.type, None),
+                string_ptr,
+            )
 
         self.cleanup_stack.append(
             CleanupAction(
@@ -229,6 +219,120 @@ class VariableVisitorMixin(VisitorMixinBase):
         free_fn = self.require_runtime_symbol("libc", "free")
         self._llvm.ir_builder.call(free_fn, [old_pointer])
 
+    def _register_owned_native_resource_cleanup(
+        self,
+        node: astx.VariableDeclaration | astx.InlineVariableDeclaration,
+        slot: ir.Value,
+    ) -> None:
+        """
+        title: Register lexical cleanup for one native resource local.
+        parameters:
+          node:
+            type: astx.VariableDeclaration | astx.InlineVariableDeclaration
+          slot:
+            type: ir.Value
+        """
+        ownership = resource_ownership(node)
+        if ownership is None or ownership.resource_kind in (
+            ResourceKind.LIST,
+            ResourceKind.STRING,
+        ):
+            return
+        if ownership.kind in (OwnershipKind.BORROWED, OwnershipKind.STATIC):
+            return
+        if (
+            ownership.kind is not OwnershipKind.OWNED
+            or ownership.owner_symbol_id is None
+        ):
+            raise_lowering_internal_error(
+                f"resource declaration '{node.name}' reached lowering with "
+                "an invalid ownership contract",
+                node=node,
+            )
+        cast(Any, self)._register_resource_slot_cleanup(
+            ownership,
+            slot,
+            owner_symbol_id=ownership.owner_symbol_id,
+        )
+
+    def _destroy_replaced_native_resource(
+        self,
+        node: astx.AST,
+        slot: ir.Value,
+        *,
+        target_name: str,
+    ) -> None:
+        """
+        title: Release an owned native token immediately before replacement.
+        parameters:
+          node:
+            type: astx.AST
+          slot:
+            type: ir.Value
+          target_name:
+            type: str
+        """
+        ownership = resource_ownership(node)
+        if ownership is None or ownership.kind is not OwnershipKind.OWNED:
+            raise_lowering_internal_error(
+                f"resource assignment to '{target_name}' is missing a "
+                "validated ownership transfer",
+                node=node,
+            )
+        release_fn = cast(Any, self).require_runtime_symbol_by_name(
+            ownership.cleanup_intrinsic
+        )
+        if ownership.resource_kind is ResourceKind.BUFFER_VIEW:
+            status = self._llvm.ir_builder.call(release_fn, [slot])
+            ok = self._llvm.ir_builder.icmp_signed(
+                "==",
+                status,
+                ir.Constant(self._llvm.INT32_TYPE, 0),
+                name=f"{target_name}_replacement_release_ok",
+            )
+            cast(Any, self)._guard_runtime_condition(
+                node,
+                ok,
+                code="ARX-RUNTIME-RESOURCE-003",
+                message=(
+                    f"failed to release replaced resource '{target_name}'"
+                ),
+                block_name=f"resource.{target_name}.replace",
+            )
+            return
+        error_slot = self._llvm.ir_builder.alloca(
+            self._llvm.OPAQUE_POINTER_TYPE,
+            name=f"{target_name}_replacement_error_slot",
+        )
+        self._llvm.ir_builder.store(
+            ir.Constant(self._llvm.OPAQUE_POINTER_TYPE, None),
+            error_slot,
+        )
+        release_slot = slot
+        if ownership.resource_kind is ResourceKind.CLASS_INSTANCE:
+            release_slot = self._llvm.ir_builder.bitcast(
+                slot,
+                self._llvm.OPAQUE_POINTER_TYPE.as_pointer(),
+                name=f"{target_name}_class_release_slot",
+            )
+        status = self._llvm.ir_builder.call(
+            release_fn,
+            [release_slot, error_slot],
+        )
+        ok = self._llvm.ir_builder.icmp_signed(
+            "==",
+            status,
+            ir.Constant(self._llvm.INT32_TYPE, 0),
+            name=f"{target_name}_replacement_release_ok",
+        )
+        cast(Any, self)._guard_runtime_condition(
+            node,
+            ok,
+            code="ARX-RUNTIME-RESOURCE-003",
+            message=f"failed to release replaced resource '{target_name}'",
+            block_name=f"resource.{target_name}.replace",
+        )
+
     @VisitorCore.visit.dispatch
     def visit(self, expr: astx.VariableAssignment) -> None:
         """
@@ -254,6 +358,10 @@ class VariableVisitorMixin(VisitorMixinBase):
             source_type=self._resolved_ast_type(expr.value),
             target_type=self._resolved_ast_type(expr),
         )
+        llvm_value = cast(Any, self)._retain_copied_resource_value(
+            expr.value,
+            llvm_value,
+        )
 
         llvm_var = self.named_values.get(var_key)
         if not llvm_var:
@@ -261,6 +369,15 @@ class VariableVisitorMixin(VisitorMixinBase):
                 f"Identifier '{var_name}' not found in the named values."
             )
 
+        ownership = resource_ownership(expr)
+        native_ownership = (
+            ownership
+            if ownership is not None
+            and ownership.resource_kind
+            not in (ResourceKind.LIST, ResourceKind.STRING)
+            else None
+        )
+        incoming_slot: ir.Value | None = None
         if isinstance(self._resolved_ast_type(expr), astx.ListType):
             self._destroy_replaced_list(
                 expr,
@@ -273,7 +390,27 @@ class VariableVisitorMixin(VisitorMixinBase):
                 llvm_var,
                 target_name=expr.name,
             )
+        elif native_ownership is not None:
+            incoming_slot = self._llvm.ir_builder.alloca(
+                llvm_value.type,
+                name=f"{expr.name}_replacement_incoming_slot",
+            )
+            self._llvm.ir_builder.store(llvm_value, incoming_slot)
+            cast(Any, self)._register_resource_slot_cleanup(
+                native_ownership,
+                incoming_slot,
+            )
+            self._destroy_replaced_native_resource(
+                expr,
+                llvm_var,
+                target_name=expr.name,
+            )
         self._llvm.ir_builder.store(llvm_value, llvm_var)
+        if incoming_slot is not None:
+            self._llvm.ir_builder.store(
+                ir.Constant(llvm_value.type, None),
+                incoming_slot,
+            )
         self.result_stack.append(llvm_value)
 
     @VisitorCore.visit.dispatch
@@ -411,6 +548,10 @@ class VariableVisitorMixin(VisitorMixinBase):
                 source_type=self._resolved_ast_type(node.value),
                 target_type=node.type_,
             )
+            init_val = cast(Any, self)._retain_copied_resource_value(
+                node.value,
+                init_val,
+            )
 
             if type_str == "string":
                 alloca = self.create_entry_block_alloca(
@@ -480,7 +621,15 @@ class VariableVisitorMixin(VisitorMixinBase):
                     if existing_storage is not None
                     else self.create_entry_block_alloca(node.name, llvm_type)
                 )
-            elif isinstance(node.type_, astx.DataFrameType | astx.SeriesType):
+            elif isinstance(
+                node.type_,
+                (
+                    astx.BufferViewType,
+                    astx.DataFrameType,
+                    astx.SeriesType,
+                    astx.TensorType,
+                ),
+            ):
                 init_val = ir.Constant(llvm_type, None)
                 alloca = (
                     existing_storage
@@ -509,6 +658,7 @@ class VariableVisitorMixin(VisitorMixinBase):
         self.named_values[symbol_key] = alloca
         self._register_owned_list_cleanup(node, alloca)
         self._register_owned_string_cleanup(node, alloca)
+        self._register_owned_native_resource_cleanup(node, alloca)
 
     @VisitorCore.visit.dispatch
     def visit(self, node: astx.InlineVariableDeclaration) -> None:
@@ -540,6 +690,10 @@ class VariableVisitorMixin(VisitorMixinBase):
                 source_type=self._resolved_ast_type(node.value),
                 target_type=node.type_,
             )
+            init_val = cast(Any, self)._retain_copied_resource_value(
+                node.value,
+                init_val,
+            )
         elif isinstance(node.type_, astx.StructType):
             init_val = ir.Constant(llvm_type, None)
         elif isinstance(node.type_, astx.ListType):
@@ -551,7 +705,15 @@ class VariableVisitorMixin(VisitorMixinBase):
             init_val = ir.Constant(llvm_type, None)
         elif isinstance(node.type_, astx.GeneratorType):
             init_val = ir.Constant(llvm_type, None)
-        elif isinstance(node.type_, astx.DataFrameType | astx.SeriesType):
+        elif isinstance(
+            node.type_,
+            (
+                astx.BufferViewType,
+                astx.DataFrameType,
+                astx.SeriesType,
+                astx.TensorType,
+            ),
+        ):
             init_val = ir.Constant(llvm_type, None)
         elif "float" in type_str:
             init_val = ir.Constant(self._llvm.get_data_type(type_str), 0.0)
@@ -571,4 +733,5 @@ class VariableVisitorMixin(VisitorMixinBase):
         self.named_values[symbol_key] = alloca
         self._register_owned_list_cleanup(node, alloca)
         self._register_owned_string_cleanup(node, alloca)
+        self._register_owned_native_resource_cleanup(node, alloca)
         self.result_stack.append(init_val)

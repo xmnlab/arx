@@ -1146,7 +1146,7 @@ def test_list_field_assignment_fails_without_object_cleanup_contract() -> None:
 
     with pytest.raises(
         SemanticError,
-        match="object-field ownership and destruction are not supported",
+        match="struct destruction is not supported",
     ):
         analyze(module)
 

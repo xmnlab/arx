@@ -14,7 +14,7 @@ LLVM_RUNTIME_FEATURE_IDS = {
 }
 LLVM_RUNTIME_FEATURE_VERSIONS = {
     "core": 65536,
-    "array": 65536,
+    "array": 65792,
     "tensor": 65536,
     "dataframe": 65536,
     "record_batch": 65536,

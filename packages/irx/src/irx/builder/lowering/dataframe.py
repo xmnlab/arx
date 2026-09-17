@@ -12,8 +12,10 @@ import astx
 
 from llvmlite import ir
 
+from irx.analysis.ownership import arrow_resource_ownership
+from irx.analysis.resolved_nodes import OwnershipKind, ResourceKind
 from irx.analysis.types import is_float_type, is_unsigned_type
-from irx.builder.core import VisitorCore
+from irx.builder.core import VisitorCore, semantic_symbol_key
 from irx.builder.protocols import VisitorMixinBase
 from irx.builder.runtime import safe_pop
 from irx.builder.runtime.arrow.lowering import call_arrow_runtime
@@ -69,6 +71,7 @@ class DataFrameVisitorMixin(VisitorMixinBase):
         self._llvm.ir_builder.cbranch(is_ok, pass_block, fail_block)
 
         self._llvm.ir_builder.position_at_start(fail_block)
+        self._emit_active_cleanups()
         error_message = self.require_runtime_symbol(
             "core",
             "irx_arrow_error_message",
@@ -122,6 +125,37 @@ class DataFrameVisitorMixin(VisitorMixinBase):
         self._llvm.ir_builder.unreachable()
 
         self._llvm.ir_builder.position_at_start(pass_block)
+
+    def _resource_release_slot(
+        self,
+        base: astx.AST,
+        value: ir.Value,
+        *,
+        name: str,
+    ) -> ir.Value:
+        """
+        title: Return mutable storage for an explicit resource release.
+        summary: >-
+          Reuse named local storage so the automatic lexical cleanup observes
+          the null token written by the release ABI.
+        parameters:
+          base:
+            type: astx.AST
+          value:
+            type: ir.Value
+          name:
+            type: str
+        returns:
+          type: ir.Value
+        """
+        if isinstance(base, astx.Identifier):
+            symbol_key = semantic_symbol_key(base, base.name)
+            storage = self.named_values.get(symbol_key)
+            if isinstance(storage, ir.Value):
+                return storage
+        slot = self._llvm.ir_builder.alloca(value.type, name=name)
+        self._llvm.ir_builder.store(value, slot)
+        return slot
 
     def _append_dataframe_value(
         self,
@@ -248,6 +282,10 @@ class DataFrameVisitorMixin(VisitorMixinBase):
             self._llvm.ARRAY_BUILDER_HANDLE_TYPE,
             name=f"{column_name}_array_builder_slot",
         )
+        self._llvm.ir_builder.store(
+            ir.Constant(self._llvm.ARRAY_BUILDER_HANDLE_TYPE, None),
+            builder_slot,
+        )
         status, error_slot = call_arrow_runtime(
             self,
             builder_new,
@@ -262,6 +300,13 @@ class DataFrameVisitorMixin(VisitorMixinBase):
             error_slot,
             "dataframe_array_builder_new",
         )
+        cast(Any, self)._register_resource_slot_cleanup(
+            arrow_resource_ownership(
+                ResourceKind.ARRAY_BUILDER,
+                OwnershipKind.OWNED,
+            ),
+            builder_slot,
+        )
         builder_handle = self._llvm.ir_builder.load(
             builder_slot,
             f"{column_name}_array_builder",
@@ -274,6 +319,10 @@ class DataFrameVisitorMixin(VisitorMixinBase):
             self._llvm.ARRAY_HANDLE_TYPE,
             name=f"{column_name}_array_slot",
         )
+        self._llvm.ir_builder.store(
+            ir.Constant(self._llvm.ARRAY_HANDLE_TYPE, None),
+            array_slot,
+        )
         status, error_slot = call_arrow_runtime(
             self,
             finish_builder,
@@ -284,6 +333,13 @@ class DataFrameVisitorMixin(VisitorMixinBase):
             status,
             error_slot,
             "dataframe_array_builder_finish",
+        )
+        cast(Any, self)._register_resource_slot_cleanup(
+            arrow_resource_ownership(
+                ResourceKind.ARRAY,
+                OwnershipKind.OWNED,
+            ),
+            array_slot,
         )
         return self._llvm.ir_builder.load(
             array_slot,
@@ -322,6 +378,10 @@ class DataFrameVisitorMixin(VisitorMixinBase):
         column_slot = self._llvm.ir_builder.alloca(
             self._llvm.CHUNKED_ARRAY_HANDLE_TYPE,
             name="dataframe_column_slot",
+        )
+        self._llvm.ir_builder.store(
+            ir.Constant(self._llvm.CHUNKED_ARRAY_HANDLE_TYPE, None),
+            column_slot,
         )
         index = self._column_index(node)
         if index is not None:
@@ -369,6 +429,10 @@ class DataFrameVisitorMixin(VisitorMixinBase):
             column_slot,
             "dataframe_column",
         )
+        cast(Any, self)._register_owned_resource_temporary(
+            node,
+            column_handle,
+        )
         self.result_stack.append(column_handle)
 
     @VisitorCore.visit.dispatch
@@ -383,10 +447,6 @@ class DataFrameVisitorMixin(VisitorMixinBase):
             raise Exception("dataframe literal lowering requires a schema")
 
         literal_by_name = {column.name: column for column in node.columns}
-        release_array = self.require_runtime_symbol(
-            "array",
-            "irx_arrow_array_release",
-        )
         table_new = self.require_runtime_symbol(
             "dataframe",
             "irx_arrow_table_new_from_arrays",
@@ -460,6 +520,10 @@ class DataFrameVisitorMixin(VisitorMixinBase):
             self._llvm.TABLE_HANDLE_TYPE,
             name="dataframe_table_slot",
         )
+        self._llvm.ir_builder.store(
+            ir.Constant(self._llvm.TABLE_HANDLE_TYPE, None),
+            table_slot,
+        )
         status, error_slot = call_arrow_runtime(
             self,
             table_new,
@@ -481,26 +545,10 @@ class DataFrameVisitorMixin(VisitorMixinBase):
             "dataframe_table",
         )
 
-        for index in range(column_count):
-            array_slot = self._llvm.ir_builder.gep(
-                arrays_array,
-                [
-                    ir.Constant(self._llvm.INT32_TYPE, 0),
-                    ir.Constant(self._llvm.INT32_TYPE, index),
-                ],
-            )
-            release_status, release_error_slot = call_arrow_runtime(
-                self,
-                release_array,
-                [array_slot],
-                "dataframe_array_release",
-            )
-            self._check_arrow_status(
-                release_status,
-                release_error_slot,
-                "dataframe_array_release",
-            )
-
+        cast(Any, self)._register_owned_resource_temporary(
+            node,
+            table_handle,
+        )
         self.result_stack.append(table_handle)
 
     @VisitorCore.visit.dispatch
@@ -630,11 +678,11 @@ class DataFrameVisitorMixin(VisitorMixinBase):
             "dataframe",
             "irx_arrow_table_release",
         )
-        table_slot = self._llvm.ir_builder.alloca(
-            self._llvm.TABLE_HANDLE_TYPE,
+        table_slot = self._resource_release_slot(
+            node.base,
+            table_handle,
             name="released_dataframe_slot",
         )
-        self._llvm.ir_builder.store(table_handle, table_slot)
         status, error_slot = call_arrow_runtime(
             self,
             release,
@@ -693,11 +741,11 @@ class DataFrameVisitorMixin(VisitorMixinBase):
             "dataframe",
             "irx_arrow_chunked_array_release",
         )
-        column_slot = self._llvm.ir_builder.alloca(
-            self._llvm.CHUNKED_ARRAY_HANDLE_TYPE,
+        column_slot = self._resource_release_slot(
+            node.base,
+            column_handle,
             name="released_series_slot",
         )
-        self._llvm.ir_builder.store(column_handle, column_slot)
         status, error_slot = call_arrow_runtime(
             self,
             release,

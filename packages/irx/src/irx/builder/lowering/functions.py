@@ -70,10 +70,8 @@ class FunctionVisitorMixin(VisitorMixinBase):
             self._register_owned_string_temporary(node, result)
             return
         if ownership.resource_kind is not ResourceKind.LIST:
-            raise_lowering_internal_error(
-                "call result has an unsupported owned resource kind",
-                node=node,
-            )
+            cast(Any, self)._register_owned_resource_temporary(node, result)
+            return
         current_block = self._llvm.ir_builder.block
         result_ptr = self.create_entry_block_alloca(
             "owned_list_call_result",
@@ -1041,6 +1039,10 @@ class FunctionVisitorMixin(VisitorMixinBase):
             retval,
             source_type=self._resolved_ast_type(node.value),
             target_type=return_resolution.expected_type,
+        )
+        retval = cast(Any, self)._retain_copied_resource_value(
+            node.value if node.value is not None else node,
+            retval,
         )
         return_ownership = resource_ownership(node)
         if (

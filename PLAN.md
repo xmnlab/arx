@@ -4,7 +4,7 @@ NOTE: DON'T TRACK THIS BY GIT, IT SHOULD BE KEPT IGNORED BY .gitignore
 
 **Status:** active implementation roadmap
 
-**Repository snapshot:** 2026-09-03
+**Repository snapshot:** 2026-09-16
 
 **Target:** make Apache Arrow C++ a complete, native, first-class data runtime
 for the Arx language.
@@ -28,19 +28,19 @@ re-scoped; do not defer status updates until the end of a milestone.
 
 ### Milestone status
 
-| Milestone                               | Status          | Gate or dependency |
-| --------------------------------------- | --------------- | ------------------ |
-| M0 — contracts and design decisions     | **DONE**        | None               |
-| M1 — one native Arrow runtime and ABI   | **DONE**        | M0, Gate A         |
-| M2 — semantic ownership and cleanup     | **IN PROGRESS** | M1, Gates A-B      |
-| M3 — complete logical types and schemas | **NOT STARTED** | M1-M2, Gate B      |
-| M4 — first-class containers             | **NOT STARTED** | M1-M3, Gate B      |
-| M5 — tensors and multidimensional data  | **NOT STARTED** | M1-M4              |
-| M6 — compute                            | **NOT STARTED** | M1-M4, Gate C      |
-| M7 — streaming, IPC, and file formats   | **NOT STARTED** | M1-M4, Gate D      |
-| M8 — datasets and Acero                 | **NOT STARTED** | M6-M7, Gate D      |
-| M9 — packaging and distribution         | **NOT STARTED** | M0-M8, Gate E      |
-| M10 — hardening and support declaration | **NOT STARTED** | M0-M9, Gate E      |
+| Milestone                               | Status          | Gate or dependency                   |
+| --------------------------------------- | --------------- | ------------------------------------ |
+| M0 — contracts and design decisions     | **DONE**        | None                                 |
+| M1 — one native Arrow runtime and ABI   | **DONE**        | M0, Gate A                           |
+| M2 — semantic ownership and cleanup     | **PARTIAL**     | M1 and current managed-value surface |
+| M3 — complete logical types and schemas | **PARTIAL**     | M1-M2, Gate B                        |
+| M4 — first-class containers             | **NOT STARTED** | M1-M3, Gate B                        |
+| M5 — tensors and multidimensional data  | **NOT STARTED** | M1-M4                                |
+| M6 — compute                            | **NOT STARTED** | M1-M4, Gate C                        |
+| M7 — streaming, IPC, and file formats   | **NOT STARTED** | M1-M4, Gate D                        |
+| M8 — datasets and Acero                 | **NOT STARTED** | M6-M7, Gate D                        |
+| M9 — packaging and distribution         | **NOT STARTED** | M0-M8, Gate E                        |
+| M10 — hardening and support declaration | **NOT STARTED** | M0-M9, Gate E                        |
 
 ### Milestone 0 work items
 
@@ -61,48 +61,128 @@ re-scoped; do not defer status updates until the end of a milestone.
 
 ### Progress log
 
-| Date       | Item   | Transition                 | Evidence                                                       |
-| ---------- | ------ | -------------------------- | -------------------------------------------------------------- |
-| 2026-09-03 | M0-001 | NOT STARTED -> DONE        | Plan is no longer ignored and now carries tracked states.      |
-| 2026-09-03 | M0-002 | NOT STARTED -> IN PROGRESS | Capability manifest and generated matrix started.              |
-| 2026-09-03 | M0-002 | IN PROGRESS -> DONE        | `makim irx.check-arrow-capabilities`; two tests pass.          |
-| 2026-09-03 | M0-003 | NOT STARTED -> IN PROGRESS | Validated foundation readiness rows started.                   |
-| 2026-09-03 | M0-003 | IN PROGRESS -> DONE        | 18 owners, states, test targets, and blockers validate.        |
-| 2026-09-03 | M0-004 | NOT STARTED -> DONE        | Builtin-first, unqualified naming is fixed in Section 2.1.     |
-| 2026-09-03 | M0-005 | NOT STARTED -> IN PROGRESS | Public operation placement catalog started.                    |
-| 2026-09-03 | M0-005 | IN PROGRESS -> DONE        | 52 families cover every capability and approved layer.         |
-| 2026-09-03 | M0-006 | NOT STARTED -> IN PROGRESS | Existing `T \| none` syntax selected for the null contract.    |
-| 2026-09-03 | M0-006 | IN PROGRESS -> DONE        | Type, flow, operator, container, and ABI rules recorded.       |
-| 2026-09-03 | M0-007 | NOT STARTED -> IN PROGRESS | Static and runtime schema contract started.                    |
-| 2026-09-03 | M0-007 | IN PROGRESS -> DONE        | Static identity and checked dynamic access rules recorded.     |
-| 2026-09-03 | M0-008 | NOT STARTED -> IN PROGRESS | Native handle ownership and value semantics started.           |
-| 2026-09-03 | M0-008 | IN PROGRESS -> DONE        | Share, move, borrow, view, and cleanup rules recorded.         |
-| 2026-09-03 | M0-009 | NOT STARTED -> IN PROGRESS | Unified status and language error policy started.              |
-| 2026-09-03 | M0-009 | IN PROGRESS -> DONE        | ABI status and recoverable/fatal policies recorded.            |
-| 2026-09-03 | M0-010 | NOT STARTED -> IN PROGRESS | Native runtime wheel strategy started.                         |
-| 2026-09-03 | M0-010 | IN PROGRESS -> DONE        | Dedicated core and optional runtime artifacts fixed.           |
-| 2026-09-03 | M0-011 | NOT STARTED -> IN PROGRESS | Unified C ABI v1 compatibility policy started.                 |
-| 2026-09-03 | M0-011 | IN PROGRESS -> DONE        | ABI 1.0.0 layout and compatibility rules recorded.             |
-| 2026-09-03 | M0-012 | NOT STARTED -> IN PROGRESS | Local Arrow 24 module tree classification started.             |
-| 2026-09-03 | M0-012 | IN PROGRESS -> DONE        | 29 groups cover all seven declared product scopes.             |
-| 2026-09-03 | M0     | IN PROGRESS -> DONE        | All 12 contract items and 11 focused checks complete.          |
-| 2026-09-03 | M1-001 | NOT STARTED -> IN PROGRESS | Packed Arrow ABI version query implementation started.         |
-| 2026-09-03 | M1-001 | IN PROGRESS -> DONE        | C harness and ctypes verify the native ABI 1.0.0 query.        |
-| 2026-09-03 | M1-002 | NOT STARTED -> IN PROGRESS | Stable status categories and error codes started.              |
-| 2026-09-03 | M1-002 | IN PROGRESS -> DONE        | Native ABI and 44 runtime tests use stable Arx statuses.       |
-| 2026-09-03 | M1-003 | NOT STARTED -> IN PROGRESS | Owned, thread-safe error detail implementation started.        |
-| 2026-09-03 | M1-003 | IN PROGRESS -> DONE        | Owned snapshots pass isolation, lifetime, and 64 regressions.  |
-| 2026-09-03 | M1-004 | NOT STARTED -> IN PROGRESS | Unified opaque-handle ownership implementation started.        |
-| 2026-09-03 | M1-004 | IN PROGRESS -> DONE        | ABI manifest and 50 Arrow ABI/runtime tests pass.              |
-| 2026-09-03 | M1-005 | NOT STARTED -> IN PROGRESS | Cross-language ABI declaration generation started.             |
-| 2026-09-03 | M1-005 | IN PROGRESS -> DONE        | 67 generated symbols have C/Python/LLVM parity; 55 tests pass. |
-| 2026-09-04 | M1-009 | NOT STARTED -> IN PROGRESS | Capability-specific native artifact split started.             |
-| 2026-09-04 | M1-009 | IN PROGRESS -> DONE        | 21 feature tests and all 983 IRx tests pass.                   |
-| 2026-09-04 | M1-010 | NOT STARTED -> IN PROGRESS | Installed ABI conformance gates started.                       |
-| 2026-09-04 | M1-010 | IN PROGRESS -> DONE        | GCC/Clang, wheel, symbol, and all 995 IRx tests pass.          |
-| 2026-09-04 | M1     | IN PROGRESS -> DONE        | All ten native runtime and ABI work items are complete.        |
-| 2026-09-04 | M2-001 | NOT STARTED -> IN PROGRESS | Arrow semantic resource descriptors started.                   |
-| 2026-09-04 | M2-001 | IN PROGRESS -> DONE        | Nine ownership tests and all 1,004 IRx tests pass.             |
+| Date       | Item           | Transition                 | Evidence                                                                                                                         |
+| ---------- | -------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-03 | M0-001         | NOT STARTED -> DONE        | Plan is no longer ignored and now carries tracked states.                                                                        |
+| 2026-09-03 | M0-002         | NOT STARTED -> IN PROGRESS | Capability manifest and generated matrix started.                                                                                |
+| 2026-09-03 | M0-002         | IN PROGRESS -> DONE        | `makim irx.check-arrow-capabilities`; two tests pass.                                                                            |
+| 2026-09-03 | M0-003         | NOT STARTED -> IN PROGRESS | Validated foundation readiness rows started.                                                                                     |
+| 2026-09-03 | M0-003         | IN PROGRESS -> DONE        | 18 owners, states, test targets, and blockers validate.                                                                          |
+| 2026-09-03 | M0-004         | NOT STARTED -> DONE        | Builtin-first, unqualified naming is fixed in Section 2.1.                                                                       |
+| 2026-09-03 | M0-005         | NOT STARTED -> IN PROGRESS | Public operation placement catalog started.                                                                                      |
+| 2026-09-03 | M0-005         | IN PROGRESS -> DONE        | 52 families cover every capability and approved layer.                                                                           |
+| 2026-09-03 | M0-006         | NOT STARTED -> IN PROGRESS | Existing `T \| none` syntax selected for the null contract.                                                                      |
+| 2026-09-03 | M0-006         | IN PROGRESS -> DONE        | Type, flow, operator, container, and ABI rules recorded.                                                                         |
+| 2026-09-03 | M0-007         | NOT STARTED -> IN PROGRESS | Static and runtime schema contract started.                                                                                      |
+| 2026-09-03 | M0-007         | IN PROGRESS -> DONE        | Static identity and checked dynamic access rules recorded.                                                                       |
+| 2026-09-03 | M0-008         | NOT STARTED -> IN PROGRESS | Native handle ownership and value semantics started.                                                                             |
+| 2026-09-03 | M0-008         | IN PROGRESS -> DONE        | Share, move, borrow, view, and cleanup rules recorded.                                                                           |
+| 2026-09-03 | M0-009         | NOT STARTED -> IN PROGRESS | Unified status and language error policy started.                                                                                |
+| 2026-09-03 | M0-009         | IN PROGRESS -> DONE        | ABI status and recoverable/fatal policies recorded.                                                                              |
+| 2026-09-03 | M0-010         | NOT STARTED -> IN PROGRESS | Native runtime wheel strategy started.                                                                                           |
+| 2026-09-03 | M0-010         | IN PROGRESS -> DONE        | Dedicated core and optional runtime artifacts fixed.                                                                             |
+| 2026-09-03 | M0-011         | NOT STARTED -> IN PROGRESS | Unified C ABI v1 compatibility policy started.                                                                                   |
+| 2026-09-03 | M0-011         | IN PROGRESS -> DONE        | ABI 1.0.0 layout and compatibility rules recorded.                                                                               |
+| 2026-09-03 | M0-012         | NOT STARTED -> IN PROGRESS | Local Arrow 24 module tree classification started.                                                                               |
+| 2026-09-03 | M0-012         | IN PROGRESS -> DONE        | 29 groups cover all seven declared product scopes.                                                                               |
+| 2026-09-03 | M0             | IN PROGRESS -> DONE        | All 12 contract items and 11 focused checks complete.                                                                            |
+| 2026-09-03 | M1-001         | NOT STARTED -> IN PROGRESS | Packed Arrow ABI version query implementation started.                                                                           |
+| 2026-09-03 | M1-001         | IN PROGRESS -> DONE        | C harness and ctypes verify the native ABI 1.0.0 query.                                                                          |
+| 2026-09-03 | M1-002         | NOT STARTED -> IN PROGRESS | Stable status categories and error codes started.                                                                                |
+| 2026-09-03 | M1-002         | IN PROGRESS -> DONE        | Native ABI and 44 runtime tests use stable Arx statuses.                                                                         |
+| 2026-09-03 | M1-003         | NOT STARTED -> IN PROGRESS | Owned, thread-safe error detail implementation started.                                                                          |
+| 2026-09-03 | M1-003         | IN PROGRESS -> DONE        | Owned snapshots pass isolation, lifetime, and 64 regressions.                                                                    |
+| 2026-09-03 | M1-004         | NOT STARTED -> IN PROGRESS | Unified opaque-handle ownership implementation started.                                                                          |
+| 2026-09-03 | M1-004         | IN PROGRESS -> DONE        | ABI manifest and 50 Arrow ABI/runtime tests pass.                                                                                |
+| 2026-09-03 | M1-005         | NOT STARTED -> IN PROGRESS | Cross-language ABI declaration generation started.                                                                               |
+| 2026-09-03 | M1-005         | IN PROGRESS -> DONE        | 67 generated symbols have C/Python/LLVM parity; 55 tests pass.                                                                   |
+| 2026-09-04 | M1-009         | NOT STARTED -> IN PROGRESS | Capability-specific native artifact split started.                                                                               |
+| 2026-09-04 | M1-009         | IN PROGRESS -> DONE        | 21 feature tests and all 983 IRx tests pass.                                                                                     |
+| 2026-09-04 | M1-010         | NOT STARTED -> IN PROGRESS | Installed ABI conformance gates started.                                                                                         |
+| 2026-09-04 | M1-010         | IN PROGRESS -> DONE        | GCC/Clang, wheel, symbol, and all 995 IRx tests pass.                                                                            |
+| 2026-09-04 | M1             | IN PROGRESS -> DONE        | All ten native runtime and ABI work items are complete.                                                                          |
+| 2026-09-04 | M2-001         | NOT STARTED -> IN PROGRESS | Arrow semantic resource descriptors started.                                                                                     |
+| 2026-09-04 | M2-001         | IN PROGRESS -> DONE        | Nine ownership tests and all 1,004 IRx tests pass.                                                                               |
+| 2026-09-05 | M2-002         | NOT STARTED -> IN PROGRESS | Current Arrow expression and binding ownership flow started.                                                                     |
+| 2026-09-05 | M2-002         | IN PROGRESS -> PARTIAL     | Current types carry ownership; future M3-M7 types remain.                                                                        |
+| 2026-09-05 | M2-003         | NOT STARTED -> IN PROGRESS | Retained table-column projection contract started.                                                                               |
+| 2026-09-05 | M2-003         | IN PROGRESS -> DONE        | Parent-first and child-first native release tests pass.                                                                          |
+| 2026-09-05 | M2-004         | NOT STARTED -> IN PROGRESS | Generic semantic cleanup lowering started.                                                                                       |
+| 2026-09-05 | M2-004         | IN PROGRESS -> DONE        | All current exit and partial-build paths use slot cleanup.                                                                       |
+| 2026-09-05 | M2-005         | NOT STARTED -> IN PROGRESS | Move-safe, terminator-safe cleanup hardening started.                                                                            |
+| 2026-09-05 | M2-005         | IN PROGRESS -> DONE        | Releases null slots; generated LLVM has no late cleanup.                                                                         |
+| 2026-09-05 | M2-006         | NOT STARTED -> IN PROGRESS | Aggregate and suspended-frame ownership audit started.                                                                           |
+| 2026-09-05 | M2-006         | IN PROGRESS -> PARTIAL     | Owners fail closed until aggregate destruction exists.                                                                           |
+| 2026-09-05 | M2-007         | NOT STARTED -> IN PROGRESS | Borrowed and retained view ownership started.                                                                                    |
+| 2026-09-05 | M2-007         | IN PROGRESS -> PARTIAL     | Buffer, tensor, and table-column views are explicit.                                                                             |
+| 2026-09-05 | M2-008         | NOT STARTED -> IN PROGRESS | Deterministic Python wrapper lifecycle hardening started.                                                                        |
+| 2026-09-05 | M2-008         | IN PROGRESS -> DONE        | Core and stream wrappers close and fail closed.                                                                                  |
+| 2026-09-05 | M2-009         | NOT STARTED -> IN PROGRESS | Native ownership sanitizer gate started.                                                                                         |
+| 2026-09-05 | M2-009         | IN PROGRESS -> PARTIAL     | ASan/UBSan pass; local ptrace blocks LSan execution.                                                                             |
+| 2026-09-05 | M2-010         | NOT STARTED -> IN PROGRESS | Test-only native handle allocation failpoint started.                                                                            |
+| 2026-09-05 | M2-010         | IN PROGRESS -> PARTIAL     | Current creation/finish/projection OOM paths pass.                                                                               |
+| 2026-09-05 | M2-011         | NOT STARTED -> IN PROGRESS | Bounded lifecycle and release-order checks started.                                                                              |
+| 2026-09-05 | M2-011         | IN PROGRESS -> DONE        | 256 iterations and both parent/child orders pass.                                                                                |
+| 2026-09-05 | M2             | IN PROGRESS -> PARTIAL     | 1,014-test suite and 13-test ownership rerun pass.                                                                               |
+| 2026-09-05 | M2-002         | PARTIAL -> DONE            | All modeled expression and binding sites carry ownership.                                                                        |
+| 2026-09-05 | M2-006         | PARTIAL -> DONE            | Class destructors and generator-frame close cleanup pass.                                                                        |
+| 2026-09-05 | M2-007         | PARTIAL -> DONE            | Borrowed and retained views preserve parent/root ownership.                                                                      |
+| 2026-09-05 | M2-009         | PARTIAL -> DONE            | Sanitizer CI gate added; local ASan/UBSan harness passes.                                                                        |
+| 2026-09-05 | M2-010         | PARTIAL -> DONE            | Allocation failures leave current inputs retry-safe.                                                                             |
+| 2026-09-05 | M2             | PARTIAL -> DONE            | All 11 work items meet current-surface acceptance criteria.                                                                      |
+| 2026-09-16 | M2-009/010/011 | DONE -> PARTIAL            | Reopened: configured CI is not a passing LSan run; entry failpoints and iteration counts are not full allocator/memory evidence. |
+| 2026-09-16 | M2-012         | NOT STARTED -> DONE        | Allocation guards, MCJIT runtime loading, isolated resume cleanup; real malloc-failure regressions pass.                         |
+| 2026-09-16 | M2-013         | NOT STARTED -> PARTIAL     | Reject unsafe heap-string field initialization; remaining storage policies tracked explicitly.                                   |
+| 2026-09-16 | M3-001/002     | NOT STARTED -> DONE        | Immutable descriptors, canonical validation, structural type identity and conservative conversions; focused ASTx/IRx tests pass. |
+| 2026-09-16 | M3-004         | NOT STARTED -> DONE        | Every modeled logical family passes host C Data, IPC schema and native recursive-field round trips.                              |
+| 2026-09-16 | M3-003/006     | NOT STARTED -> PARTIAL     | Shared scalar/physical mapping and recursive native schema copying; source operations and dedicated descriptor handles remain.   |
+| 2026-09-16 | M2-011         | PARTIAL -> DONE            | Live Arrow-pool accounting over 256 iterations and wrapped malloc/free accounting in a generated owning-local loop pass.         |
+| 2026-09-16 | M1-006         | DONE (updated)             | Array feature contract 1.1.0 advertises recursive schema support; C ABI 1.0.0 remains baseline-compatible.                       |
+
+### Verification — 2026-09-16
+
+Local checks on Python 3.14.3, against the working tree (not a remote branch):
+
+| Check                                                                                                                  | Result                                                                          |
+| ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `pytest -q packages/irx/tests packages/astx/tests`                                                                     | **1,758 passed** in 381.82 seconds                                              |
+| `pytest -q packages/arx/tests/python/test_codegen_ast_output.py packages/arx/tests/python/test_codegen_file_object.py` | **26 passed**                                                                   |
+| `makim arx.test-compiled`                                                                                              | **30 passed**, zero failures                                                    |
+| `mypy src` from `packages/astx` and `packages/irx`                                                                     | Success: 54 and 141 source files respectively                                   |
+| `ruff check --no-fix` and `ruff format --check` on all 66 changed Python files                                         | Passed; separate checks of all scripts and the full IRx source tree also passed |
+| `douki sync` on all 66 changed Python files                                                                            | Idempotent: zero updates                                                        |
+| `python scripts/gen_arrow_abi.py --check`                                                                              | Passed                                                                          |
+| `python scripts/gen_arrow_capability_matrix.py --check`                                                                | Passed                                                                          |
+| `python scripts/check_arrow_abi_compatibility.py`                                                                      | ABI 1.0.0 satisfies the recorded baseline                                       |
+| `python scripts/gen_api_docs.py`                                                                                       | Passed                                                                          |
+| `git diff --check`                                                                                                     | Passed                                                                          |
+
+The earlier
+`pytest -q -n 2 packages/irx/tests packages/astx/tests --durations=5` run had
+1,757 passes and one 60-second subprocess timeout in
+`test_record_batch_build_lock_recovers_after_owner_exits`. An isolated retry
+passed (19.16 seconds), followed by the clean full serial run above. The test's
+timeout was not relaxed.
+
+The native ownership harness passes ASan/UBSan with
+`python scripts/check_arrow_ownership_sanitizers.py --skip-leak-detection`.
+Running without that flag failed because LeakSanitizer cannot run under this
+sandbox's ptrace environment; this is not a passing leak check. CI keeps LSan
+enabled but its result has not been observed here. Arrow-pool accounting and the
+generated generator-loop malloc/free accounting cover bounded cases, not all
+possible class graphs or allocator failures.
+
+The four new IRx schema/interop modules also passed Bandit (`-iii -lll`) and
+Vulture (`--min-confidence 80`). McCabe (`--min 10`) reports complexities 21 and
+17 in the parameter/nested validators; it is not a zero-warning result. The full
+pre-commit/Prettier stack, Quarto `docs.build`, installed-wheel checks, and the
+Python 3.10–3.13 matrix were not run in this slice.
+
+**Scope remaining:** M3-003/005/006 still require source operations, focused
+ASTx expression nodes, semantic sidecars consumed by native lowering, and
+dedicated descriptor handles. M2-009/010/013 retain sanitizer breadth,
+post-mutation allocator-failure, and aggregate storage/cycle work. Passing the
+checks above does not close either milestone or Gate B.
 
 ## 1. Objective
 
@@ -410,26 +490,26 @@ milestones. The `irx.check-arrow-capabilities` task rejects missing fields,
 nonexistent test targets, invalid milestones, duplicate IDs, and stale generated
 output. The table below retains the design baseline and completion contract.
 
-| Foundation                              | Current baseline                                                                              | Required completion                                                                                                                     |
-| --------------------------------------- | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Scalar numerics and Boolean             | Core signed/unsigned integers, floats, casts, and Boolean rules exist                         | Define exact Arrow cast, overflow, comparison, NaN, and non-finite behavior                                                             |
-| Null values                             | `none` and finite unions exist; Arrow arrays expose validity metadata                         | Define first-class nullable scalar semantics, validity propagation, equality, ordering, casts, and pattern/branch behavior              |
-| Strings and bytes                       | UTF-8 strings exist; Arrow RecordBatch supports UTF-8 internally                              | Add owned/borrowed binary values, large offsets, Unicode conversion, view lifetimes, and zero-copy rules                                |
-| Decimal values                          | ASTx reserves decimal data-type kinds                                                         | Add Arx literals/types, precision and scale checking, 32/64/128/256-bit representation, arithmetic, casts, and ABI rules                |
-| Temporal values                         | Date, time, timestamp, and datetime types/literals exist                                      | Add Arrow units, duration/interval types, timezone metadata, range checking, and conversion policy                                      |
-| Parametric and structural types         | Templates, tensors, DataFrames, structs, and unions provide partial foundations               | Support recursive schema parameters, fixed sizes, dictionary/index types, union codes, field nullability, and canonical equality        |
-| Compile-time values                     | Tensor dimensions and DataFrame fields carry selected static metadata                         | Provide checked type parameters for dimensions, decimal precision/scale, time units, fixed sizes, and schema fields                     |
-| Ownership and destruction               | Strings and scalar dynamic lists have semantic ownership; Arrow handles expose retain/release | Generalize ownership to native handles, views, fields, calls, returns, temporaries, errors, classes, and generators                     |
-| Buffer and bitmap model                 | `irx_buffer_view` models data, owner, dtype, shape, strides, offset, and flags                | Add checked dynamic bounds, validity bitmap operations, variable-width offsets, alignment, endianness, and large-buffer overflow checks |
-| Collection sizes and indices            | Existing APIs mix static metadata and integer result widths                                   | Standardize Arrow lengths, row counts, offsets, and indices on checked `i64` semantics and narrow only explicitly                       |
-| Methods, overloads, and intrinsics      | Typed calls and semantic sidecars exist                                                       | Add one typed builtin/intrinsic registry for container methods and kernels; lowering consumes only resolved entries                     |
-| Error handling                          | Structured compile/link/runtime diagnostics and integer native statuses exist                 | Define one recoverable/fatal operation contract, error propagation, cleanup during failure, and stable user-visible categories          |
-| Iteration and streaming                 | List iteration and initial generators exist                                                   | Define Array/Series iteration, batch-stream EOF, early close, cancellation, backpressure, and deterministic stream cleanup              |
-| Classes and aggregate storage           | Struct/class support exists; general class destruction is incomplete                          | Add field destruction/move rules before Arrow owners may be stored in classes or other owning aggregates                                |
-| FFI and opaque handles                  | C externs and opaque handles exist                                                            | Add nullability, ownership annotations, C Data/C Stream contracts, callbacks only where required, and ABI conformance checks            |
-| Modules, builtins, and standard library | Ambient builtins, bundled builtin modules, and a small stdlib exist                           | Define stable intrinsic registration and public facades without exposing an `arrow` import or internal module paths                     |
-| Execution context                       | Runtime features can add native artifacts and linker flags                                    | Add memory pool, allocator, thread count, cancellation, resource limits, and optional device selection                                  |
-| Native packaging                        | Runtime sources build on demand from Arrow/PyArrow metadata                                   | Provide matched headers/libraries, platform discovery, clean-wheel execution, and cross-platform CI                                     |
+| Foundation                              | Current baseline                                                                                                           | Required completion                                                                                                                     |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Scalar numerics and Boolean             | Core signed/unsigned integers, floats, casts, and Boolean rules exist                                                      | Define exact Arrow cast, overflow, comparison, NaN, and non-finite behavior                                                             |
+| Null values                             | `none` and finite unions exist; Arrow arrays expose validity metadata                                                      | Define first-class nullable scalar semantics, validity propagation, equality, ordering, casts, and pattern/branch behavior              |
+| Strings and bytes                       | UTF-8 strings exist; Arrow RecordBatch supports UTF-8 internally                                                           | Add owned/borrowed binary values, large offsets, Unicode conversion, view lifetimes, and zero-copy rules                                |
+| Decimal values                          | ASTx reserves decimal data-type kinds                                                                                      | Add Arx literals/types, precision and scale checking, 32/64/128/256-bit representation, arithmetic, casts, and ABI rules                |
+| Temporal values                         | Date, time, timestamp, and datetime types/literals exist                                                                   | Add Arrow units, duration/interval types, timezone metadata, range checking, and conversion policy                                      |
+| Parametric and structural types         | Templates, tensors, DataFrames, structs, and unions provide partial foundations                                            | Support recursive schema parameters, fixed sizes, dictionary/index types, union codes, field nullability, and canonical equality        |
+| Compile-time values                     | Tensor dimensions and DataFrame fields carry selected static metadata                                                      | Provide checked type parameters for dimensions, decimal precision/scale, time units, fixed sizes, and schema fields                     |
+| Ownership and destruction               | Managed values have semantic ownership across handles, views, fields, calls, returns, temporaries, classes, and generators | Extend the same mandatory contract with each later container, compute, stream, dataset, and file operation                              |
+| Buffer and bitmap model                 | `irx_buffer_view` models data, owner, dtype, shape, strides, offset, and flags                                             | Add checked dynamic bounds, validity bitmap operations, variable-width offsets, alignment, endianness, and large-buffer overflow checks |
+| Collection sizes and indices            | Existing APIs mix static metadata and integer result widths                                                                | Standardize Arrow lengths, row counts, offsets, and indices on checked `i64` semantics and narrow only explicitly                       |
+| Methods, overloads, and intrinsics      | Typed calls and semantic sidecars exist                                                                                    | Add one typed builtin/intrinsic registry for container methods and kernels; lowering consumes only resolved entries                     |
+| Error handling                          | Structured compile/link/runtime diagnostics and integer native statuses exist                                              | Define one recoverable/fatal operation contract, error propagation, cleanup during failure, and stable user-visible categories          |
+| Iteration and streaming                 | List iteration and initial generators exist                                                                                | Define Array/Series iteration, batch-stream EOF, early close, cancellation, backpressure, and deterministic stream cleanup              |
+| Classes and aggregate storage           | Classes have shared references and reverse-order managed-field destruction                                                 | Reuse aggregate ownership rules for future owning structs and schema-defined container records                                          |
+| FFI and opaque handles                  | C externs and opaque handles exist                                                                                         | Add nullability, ownership annotations, C Data/C Stream contracts, callbacks only where required, and ABI conformance checks            |
+| Modules, builtins, and standard library | Ambient builtins, bundled builtin modules, and a small stdlib exist                                                        | Define stable intrinsic registration and public facades without exposing an `arrow` import or internal module paths                     |
+| Execution context                       | Runtime features can add native artifacts and linker flags                                                                 | Add memory pool, allocator, thread count, cancellation, resource limits, and optional device selection                                  |
+| Native packaging                        | Runtime sources build on demand from Arrow/PyArrow metadata                                                                | Provide matched headers/libraries, platform discovery, clean-wheel execution, and cross-platform CI                                     |
 
 The ledger is a tracked implementation artifact, not only prose. Each row must
 have an owner, status, tests, and the first Arrow milestone it blocks.
@@ -1073,10 +1153,11 @@ lowering.
 
 The canonical ABI manifest assigns append-only 32-bit feature IDs to `core` (1),
 `array` (2), `tensor` (3), `dataframe` (4), and `record_batch` (5). Each feature
-has an independent contract version packed as `0xMMMMmmpp`; all five current
-contracts are 1.0.0. The generator emits the IDs and versions into the installed
-C header, Python ctypes metadata, LLVM metadata, and the native lookup table so
-those surfaces cannot silently disagree.
+has an independent contract version packed as `0xMMMMmmpp`. The `array` contract
+is now 1.1.0 for recursive schema copying; the other contracts remain 1.0.0. The
+C ABI itself remains 1.0.0. The generator emits the IDs and versions into the
+installed C header, Python ctypes metadata, LLVM metadata, and the native lookup
+table so those surfaces cannot silently disagree.
 
 `irx_arrow_runtime_has_feature()` accepts a stable feature ID and a required
 contract version, then returns both an availability flag and the runtime's
@@ -1343,19 +1424,21 @@ of semantic analysis.
 
 ### Milestone 2 work items
 
-| ID     | Item                                                               | Status          | Evidence or blocker                    |
-| ------ | ------------------------------------------------------------------ | --------------- | -------------------------------------- |
-| M2-001 | Extend semantic resource descriptors for every Arrow handle        | **DONE**        | 14 handle contracts; nine tests pass   |
-| M2-002 | Attach ownership metadata at every expression and binding site     | **NOT STARTED** | Depends on M2-001                      |
-| M2-003 | Define table-column ownership and parent/child release ordering    | **NOT STARTED** | Depends on M2-001 and M2-002           |
-| M2-004 | Emit cleanup across every non-terminating control-flow exit        | **NOT STARTED** | Depends on M2-002                      |
-| M2-005 | Prevent post-terminator cleanup and double release after moves     | **NOT STARTED** | Depends on M2-002 and M2-004           |
-| M2-006 | Add class-field and generator-frame ownership cleanup              | **NOT STARTED** | Depends on M2-004 and aggregate models |
-| M2-007 | Model retained and borrowed view owners explicitly                 | **NOT STARTED** | Depends on M2-002 and M2-003           |
-| M2-008 | Harden Python wrappers for deterministic close and use-after-close | **NOT STARTED** | Native handle lifecycle                |
-| M2-009 | Run ownership programs under ASan, LSan, and UBSan                 | **NOT STARTED** | Depends on M2-004 through M2-008       |
-| M2-010 | Add allocator-fault injection across native Arrow operations       | **NOT STARTED** | Depends on operation implementation    |
-| M2-011 | Add bounded-memory loops and release-order property tests          | **NOT STARTED** | Depends on M2-003 through M2-010       |
+| ID     | Item                                                               | Status      | Evidence or blocker                                                                                                                                                                                    |
+| ------ | ------------------------------------------------------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| M2-001 | Extend semantic resource descriptors for every Arrow handle        | **DONE**    | 14 ABI contracts with manifest-parity tests                                                                                                                                                            |
+| M2-002 | Attach ownership metadata at every expression and binding site     | **DONE**    | All currently accepted managed types and sites are covered; modeled-only M3 value types fail closed                                                                                                    |
+| M2-003 | Define table-column ownership and parent/child release ordering    | **DONE**    | Retained child; both release orders pass                                                                                                                                                               |
+| M2-004 | Emit cleanup across every non-terminating control-flow exit        | **DONE**    | Generic slot cleanup covers current types                                                                                                                                                              |
+| M2-005 | Prevent post-terminator cleanup and double release after moves     | **DONE**    | Nulling slots and terminator guards                                                                                                                                                                    |
+| M2-006 | Add class-field and generator-frame ownership cleanup              | **DONE**    | Aggregate destructors and frame close implemented                                                                                                                                                      |
+| M2-007 | Model retained and borrowed view owners explicitly                 | **DONE**    | Views carry parent/root and retain policy                                                                                                                                                              |
+| M2-008 | Harden Python wrappers for deterministic close and use-after-close | **DONE**    | Context-manager and fail-closed tests                                                                                                                                                                  |
+| M2-009 | Run ownership programs under ASan, LSan, and UBSan                 | **PARTIAL** | ASan/UBSan harness passes locally; LSan and generated-program sanitizer coverage remain unverified                                                                                                     |
+| M2-010 | Add allocator-fault injection across native Arrow operations       | **PARTIAL** | Operation-entry failpoints exist; real allocator failures after mutation remain unverified                                                                                                             |
+| M2-011 | Add bounded-memory loops and release-order property tests          | **DONE**    | 256 native lifecycle iterations return Arrow-pool bytes to baseline; a generated generator loop has zero remaining malloc/free owners; both release orders pass                                        |
+| M2-012 | Guard aggregate allocation and isolate resume-state cleanup        | **DONE**    | 22 aggregate/generator tests; real malloc-failure class/frame executables report errors; resumed owning locals verify and execute                                                                      |
+| M2-013 | Close remaining aggregate storage-class and cycle gaps             | **PARTIAL** | Unsafe owned-string field initialization and borrowed-string field replacement fail in analysis; owned-string fields, cyclic class graphs and static-managed storage need supported lifecycle policies |
 
 ### Semantic resource descriptor foundation (M2-001)
 
@@ -1377,11 +1460,61 @@ than maintaining per-type lifecycle tables.
 The exported `arrow_resource_ownership()` factory is the single semantic entry
 point for Arrow handle metadata. It rejects non-Arrow resource kinds, derives a
 root owner when possible, and preserves that root and the static lifecycle
-contract across validated transfers. Nine focused tests cover manifest parity,
-shared and affine descriptors, owner roots, transfers, legacy resource helpers,
-runtime type validation, invalid resource families, and the moved state. The
-semantic-analysis suite passes 202 tests and the complete IRx suite passes 1,004
-tests.
+contract across validated transfers. Focused tests cover manifest parity, shared
+and affine descriptors, owner roots, transfers, managed type mapping, runtime
+type validation, invalid resource families, and the moved state.
+
+### Current ownership and cleanup implementation (M2-002 through M2-011)
+
+All currently supported IRx managed values use one semantic resource classifier.
+Generator ownership here is an ASTx/IRx capability: Arx source does not yet
+parse user-defined `yield`, and its bundled `range` currently returns a list.
+DataFrame/Table, Series/ChunkedArray, Tensor-backed buffer views, ordinary
+buffer views, lists, strings, class instances, and generator frames carry typed
+ownership through literals, identifiers, parameters, calls, declarations,
+assignments, returns, fields, loop values, projections, yields, and explicit
+releases. Shared copies lower through the retain ABI; fresh values move into
+their destination. New M3-M7 types and operations must enter through the same
+classifier and site-specific ownership helpers rather than reopening M2.
+
+Lowering consumes semantic cleanup and retain intrinsic names through the
+runtime-feature registry. Owned locals and temporaries use entry-initialized
+slots, cleanup runs in reverse order on fallthrough, return, loop transfer, and
+runtime failure, and successful moves or releases null the source slot. Builder,
+append, finish, borrow, and projection statuses are checked before outputs are
+read. Array, DataFrame, and tensor partial construction registers each
+successful intermediate owner immediately.
+
+Table-column projection is a retained child handle, so table and column can be
+released in either order. Tensor slices retain their buffer owner; raw
+descriptor views remain explicitly borrowed. Supported class objects have a
+common descriptor/dispatch/destructor/reference-count header, reverse-order
+managed field destruction, and shared retain/release helpers. Generator values
+carry a frame, resume function, and destroy function; owned frame slots are
+initialized to empty values and released both on exhaustion and early close.
+Python RecordBatch schema, builder, batch, writer, and reader wrappers support
+deterministic context management and reject use after release, finish, or close.
+
+`irx.check-arrow-ownership-sanitizers` builds a 256-iteration C++ lifecycle
+harness that checks live Arrow-pool bytes return to baseline after each
+iteration with ASan, UBSan, and LSan. It is configured in the Clang ABI CI job;
+that remote run has not been observed here. ASan and UBSan pass locally; this
+sandbox runs under ptrace, so local LSan execution is blocked while the
+unmodified CI command retains leak detection. Compile-time native allocation and
+operation-entry failpoints verify OUT_OF_MEMORY behavior, null outputs, retry
+safety, and input preservation at those injection points. They do not prove
+recovery from real allocation failure after a mutation has begun. General
+compute and unified stream/file operations remain future work. Legacy
+RecordBatch stream operations already exist and still need allocator-failure
+coverage; future M6-M7 paths require the same contract.
+
+The 2026-09-16 audit reopens M2: operation-entry failpoints are not proof of
+allocator failure atomicity, unmeasured loops do not establish a memory bound,
+and configured CI is not evidence of a successful LSan run. M2-011 now adds
+measured Arrow-pool and generated-program allocation accounting. Later
+milestones may add resource kinds, views, or fallible operations only with
+ownership metadata, deterministic cleanup, sanitizer coverage, and
+allocation-failure tests in the same vertical slice.
 
 ### IRx work
 
@@ -1417,6 +1550,27 @@ tests.
   or released according to the contract.
 
 ## 8. Milestone 3 — complete Arrow type and schema model
+
+### Milestone 3 work items
+
+| ID     | Item                                                                          | Status          | Evidence or blocker                                                                                                                    |
+| ------ | ----------------------------------------------------------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| M3-001 | Reusable recursive logical types, fields, schemas and container types in ASTx | **DONE**        | 45 logical kinds, immutable recursive descriptors, runtime collection checks, ASTx tests                                               |
+| M3-002 | Canonical schema validation and lossless conversion rules in IRx              | **DONE**        | Field paths, metadata identity, parameter validation and conversion-domain tests                                                       |
+| M3-003 | Central scalar/storage mapping and physical type resolution                   | **PARTIAL**     | C Data formats and scalar mapping integrated with existing tensor/DataFrame helpers; lowering sidecars remain                          |
+| M3-004 | Descriptor/schema, C Data and IPC metadata round trips                        | **DONE**        | 45 families round-trip through PyArrow C Data, IPC schemas and native recursive field handles; synthetic-child restrictions documented |
+| M3-005 | Builtin source syntax and typed construction/inspection/conversion nodes      | **NOT STARTED** | Requires coordinated parser, semantics and native lowering                                                                             |
+| M3-006 | Native descriptor ABI, ownership, failure paths and milestone gate            | **PARTIAL**     | Existing schema ABI preserves recursive fields and metadata; dedicated type/field handles and end-to-end Gate B remain                 |
+
+### Implemented descriptor foundation (2026-09-16)
+
+See `docs/arrow-type-schemas.md` for the exact API and restrictions. The host
+interoperability implementation is not a Python execution fallback for Arx. All
+45 modeled logical families have recursive descriptors and native schema
+round-trip tests. Columnar value declarations not yet backed by lowering fail in
+semantic analysis. No new Arx syntax or standard-library namespace has been
+introduced. The remaining M3-003/005/006 work is required before this milestone
+or Gate B can be marked complete.
 
 ### ASTx
 

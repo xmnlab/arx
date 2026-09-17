@@ -16,6 +16,17 @@ from irx.analysis.handlers.base import (
     SemanticAnalyzerCore,
     SemanticVisitorMixinBase,
 )
+from irx.analysis.ownership import (
+    arrow_resource_ownership,
+    resource_ownership,
+    transfer_resource_ownership,
+)
+from irx.analysis.resolved_nodes import (
+    OwnershipKind,
+    OwnershipTransferKind,
+    ResourceKind,
+    ResourceViewKind,
+)
 from irx.analysis.validation import validate_assignment
 from irx.builtins.collections.dataframe import (
     DATAFRAME_COLUMN_INDEX_EXTRA,
@@ -118,6 +129,30 @@ class ExpressionDataFrameVisitorMixin(SemanticVisitorMixinBase):
         )
         self._semantic(node).extras[SERIES_ELEMENT_TYPE_EXTRA] = column.type_
         self._semantic(node).extras[SERIES_NULLABLE_EXTRA] = column.nullable
+        base_ownership = resource_ownership(node.base)
+        self._set_resource_ownership(
+            node,
+            arrow_resource_ownership(
+                ResourceKind.CHUNKED_ARRAY,
+                OwnershipKind.OWNED,
+                owner_root_symbol_id=(
+                    base_ownership.owner_root_symbol_id
+                    if base_ownership is not None
+                    else None
+                ),
+                source_symbol_id=(
+                    base_ownership.source_symbol_id
+                    if base_ownership is not None
+                    else None
+                ),
+                view_kind=ResourceViewKind.RETAINED,
+                view_parent_symbol_id=(
+                    base_ownership.source_symbol_id
+                    if base_ownership is not None
+                    else None
+                ),
+            ),
+        )
         self._set_type(node, node.type_)
 
     @SemanticAnalyzerCore.visit.dispatch
@@ -201,6 +236,13 @@ class ExpressionDataFrameVisitorMixin(SemanticVisitorMixinBase):
 
         self._set_dataframe_schema(node, schema)
         self._set_type(node, node.type_)
+        self._set_resource_ownership(
+            node,
+            arrow_resource_ownership(
+                ResourceKind.TABLE,
+                OwnershipKind.OWNED,
+            ),
+        )
 
     @SemanticAnalyzerCore.visit.dispatch
     def visit(self, node: astx.DataFrameColumnAccess) -> None:
@@ -288,6 +330,15 @@ class ExpressionDataFrameVisitorMixin(SemanticVisitorMixinBase):
                 node=node,
                 code=DiagnosticCodes.SEMANTIC_TYPE_MISMATCH,
             )
+        ownership = resource_ownership(node.base)
+        if ownership is not None:
+            self._set_resource_ownership(
+                node.base,
+                transfer_resource_ownership(
+                    ownership,
+                    transfer_kind=OwnershipTransferKind.MOVE,
+                ),
+            )
         self._set_type(node, astx.Int32())
 
     @SemanticAnalyzerCore.visit.dispatch
@@ -321,6 +372,15 @@ class ExpressionDataFrameVisitorMixin(SemanticVisitorMixinBase):
                 "series release requires a Series value",
                 node=node,
                 code=DiagnosticCodes.SEMANTIC_TYPE_MISMATCH,
+            )
+        ownership = resource_ownership(node.base)
+        if ownership is not None:
+            self._set_resource_ownership(
+                node.base,
+                transfer_resource_ownership(
+                    ownership,
+                    transfer_kind=OwnershipTransferKind.MOVE,
+                ),
             )
         self._set_type(node, astx.Int32())
 

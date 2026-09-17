@@ -418,6 +418,10 @@ groups:
           python scripts/check_arrow_abi_compatibility.py
           pytest -q packages/irx/tests/test_arrow_abi_conformance.py
 
+      check-arrow-ownership-sanitizers:
+        help: run Arrow ownership loops under ASan, UBSan, and LSan
+        run: python scripts/check_arrow_ownership_sanitizers.py
+
       format:
         help: format IRx Python files
         run: pre-commit run ruff-format-irx --all-files

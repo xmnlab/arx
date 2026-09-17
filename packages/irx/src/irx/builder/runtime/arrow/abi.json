@@ -66,7 +66,7 @@
     {
       "id": 2,
       "name": "array",
-      "contract_version": "1.0.0",
+      "contract_version": "1.1.0",
       "availability": "implemented"
     },
     {

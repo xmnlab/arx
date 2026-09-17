@@ -170,16 +170,22 @@ def test_arrow_abi_manifest_defines_versioned_runtime_features() -> None:
         cast(str, feature["name"]): cast(int, feature["id"])
         for feature in features
     } == EXPECTED_RUNTIME_FEATURES
-    assert all(feature["contract_version"] == "1.0.0" for feature in features)
+    assert all(
+        feature["contract_version"]
+        == ("1.1.0" if feature["name"] == "array" else "1.0.0")
+        for feature in features
+    )
     assert all(
         feature["availability"] == "implemented" for feature in features
     )
     assert RUNTIME_FEATURE_IDS == EXPECTED_RUNTIME_FEATURES
     assert RUNTIME_FEATURE_VERSIONS == {
-        name: (1, 0, 0) for name in EXPECTED_RUNTIME_FEATURES
+        name: (1, 1 if name == "array" else 0, 0)
+        for name in EXPECTED_RUNTIME_FEATURES
     }
     assert RUNTIME_FEATURE_PACKED_VERSIONS == {
-        name: 0x00010000 for name in EXPECTED_RUNTIME_FEATURES
+        name: 0x00010100 if name == "array" else 0x00010000
+        for name in EXPECTED_RUNTIME_FEATURES
     }
     assert LLVM_RUNTIME_FEATURE_IDS == RUNTIME_FEATURE_IDS
     assert LLVM_RUNTIME_FEATURE_VERSIONS == (RUNTIME_FEATURE_PACKED_VERSIONS)

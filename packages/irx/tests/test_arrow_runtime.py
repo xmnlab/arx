@@ -14,6 +14,7 @@ import textwrap
 from collections.abc import Callable, Iterator, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
+from dataclasses import replace
 from pathlib import Path
 from threading import Barrier
 from typing import TypedDict, cast
@@ -96,6 +97,7 @@ ARROW_STATUS_NULL_POINTER = 101
 ARROW_STATUS_TYPE_MISMATCH = 103
 ARROW_STATUS_OVERFLOW = 106
 ARROW_STATUS_NOT_SUPPORTED = 107
+ARROW_STATUS_OUT_OF_MEMORY = 200
 ARROW_STATUS_CATEGORY_INVALID = 2
 ARROW_STATUS_CATEGORY_UNKNOWN = 6
 ARROW_HANDLE_KIND_ERROR = 1
@@ -320,12 +322,16 @@ def _plain_main_module() -> astx.Module:
 
 def _arrow_runtime_feature(
     capabilities: tuple[str, ...] = FULL_ARROW_RUNTIME_CAPABILITIES,
+    *,
+    failure_injection: bool = False,
 ) -> RuntimeFeature:
     """
     title: Build a selected linked Arrow runtime feature set for tests.
     parameters:
       capabilities:
         type: tuple[str, Ellipsis]
+      failure_injection:
+        type: bool
     returns:
       type: RuntimeFeature
     """
@@ -343,6 +349,11 @@ def _arrow_runtime_feature(
                 "-DIRX_ARROW_RUNTIME_BUILD_TENSOR",
                 "-DIRX_ARROW_RUNTIME_BUILD_DATAFRAME",
                 "-DIRX_ARROW_RUNTIME_BUILD_RECORD_BATCH",
+                *(
+                    ("-DIRX_ARROW_ENABLE_TEST_FAILURES",)
+                    if failure_injection
+                    else ()
+                ),
             ),
         )
         return RuntimeFeature(
@@ -373,7 +384,16 @@ def _arrow_runtime_feature(
             if key in seen_artifacts:
                 continue
             seen_artifacts.add(key)
-            artifacts.append(artifact)
+            selected_artifact = artifact
+            if failure_injection:
+                selected_artifact = replace(
+                    artifact,
+                    compile_flags=(
+                        *artifact.compile_flags,
+                        "-DIRX_ARROW_ENABLE_TEST_FAILURES",
+                    ),
+                )
+            artifacts.append(selected_artifact)
         for flag in feature.linker_flags:
             if flag in seen_flags:
                 continue
@@ -471,11 +491,14 @@ def _shared_library_suffix() -> str:
 def _load_arrow_runtime_library(
     *,
     compatibility: bool = True,
+    failure_injection: bool = False,
 ) -> Iterator[ctypes.CDLL]:
     """
     title: Load arrow runtime library.
     parameters:
       compatibility:
+        type: bool
+      failure_injection:
         type: bool
     returns:
       type: Iterator[ctypes.CDLL]
@@ -483,7 +506,9 @@ def _load_arrow_runtime_library(
     if sys.platform == "win32":
         pytest.skip("Arrow C++ shared-library tests require Unix")
 
-    feature = _arrow_runtime_feature()
+    feature = _arrow_runtime_feature(
+        failure_injection=failure_injection,
+    )
     c_compiler = _find_c_compiler()
     if c_compiler is None:
         pytest.skip("a C compiler is required for Arrow runtime interop tests")
@@ -653,6 +678,30 @@ def _assert_arrow_ok(library: ctypes.CDLL, code: int) -> None:
         type: int
     """
     assert code == 0, library.irx_arrow_last_error().decode()
+
+
+def _release_raw_arrow_error(
+    library: ctypes.CDLL,
+    failure: ctypes.c_void_p,
+) -> None:
+    """
+    title: Release one explicit stable-ABI error handle.
+    parameters:
+      library:
+        type: ctypes.CDLL
+      failure:
+        type: ctypes.c_void_p
+    """
+    release_failure = ctypes.c_void_p()
+    assert (
+        library.irx_arrow_error_release(
+            ctypes.byref(failure),
+            ctypes.byref(release_failure),
+        )
+        == ARROW_STATUS_OK
+    )
+    assert failure.value is None
+    assert release_failure.value is None
 
 
 def _assert_handle_metadata(
@@ -1076,6 +1125,7 @@ def test_arrow_length_build_returns_length() -> None:
         assert artifact_names == {
             "irx_arrow_core_runtime.cc",
             "irx_arrow_array_runtime.cc",
+            "irx_error_runtime.c",
         }
 
         nm_binary = shutil.which("nm")
@@ -1167,7 +1217,7 @@ def test_arrow_runtime_reports_stable_abi_and_feature_versions() -> None:
         #endif
 
         #if IRX_ARROW_RUNTIME_FEATURE_ARRAY_CONTRACT_VERSION != \
-            UINT32_C(0x00010000)
+            UINT32_C(0x00010100)
         #error "unexpected array feature contract version"
         #endif
 
@@ -1190,18 +1240,18 @@ def test_arrow_runtime_reports_stable_abi_and_feature_versions() -> None:
                   &available,
                   &supported,
                   &failure) != IRX_ARROW_STATUS_OK) return 15;
-          if (available != 1 || supported != UINT32_C(0x00010000)) {
+          if (available != 1 || supported != UINT32_C(0x00010100)) {
             return 16;
           }
           if (failure != NULL) return 17;
 
           if (irx_arrow_runtime_has_feature(
                   IRX_ARROW_RUNTIME_FEATURE_ARRAY,
-                  UINT32_C(0x00010100),
+                  UINT32_C(0x00010200),
                   &available,
                   &supported,
                   &failure) != IRX_ARROW_STATUS_OK) return 18;
-          if (available != 0 || supported != UINT32_C(0x00010000)) {
+          if (available != 0 || supported != UINT32_C(0x00010100)) {
             return 19;
           }
 
@@ -1251,7 +1301,8 @@ def test_arrow_runtime_reports_stable_abi_and_feature_versions() -> None:
             version = RUNTIME_FEATURE_PACKED_VERSIONS[name]
             assert query(feature_id, 0) == (1, version)
             assert query(feature_id, version) == (1, version)
-            assert query(feature_id, 0x00010100) == (0, version)
+            assert query(feature_id, version + 0x100) == (0, version)
+            assert query(feature_id, 0x00010000) == (1, version)
             assert query(feature_id, 0x00020000) == (0, version)
 
         assert query(9001, 0) == (0, 0)
@@ -1552,6 +1603,493 @@ def test_arrow_runtime_returns_explicit_owned_error_details() -> None:
         assert failure.value is None
 
 
+def test_arrow_handle_allocation_failures_preserve_owned_inputs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    title: Injected handle OOM should null outputs and preserve owned inputs.
+    parameters:
+      monkeypatch:
+        type: pytest.MonkeyPatch
+    """
+    failure_variable = "IRX_ARROW_TEST_FAIL_HANDLE_ALLOCATION"
+    with _load_arrow_runtime_library(
+        compatibility=False,
+        failure_injection=True,
+    ) as library:
+        failure = ctypes.c_void_p()
+        builder = ctypes.c_void_p(1)
+        monkeypatch.setenv(failure_variable, "1")
+        assert (
+            library.irx_arrow_array_builder_new(
+                IRX_ARROW_TYPE_INT64,
+                ctypes.byref(builder),
+                ctypes.byref(failure),
+            )
+            == ARROW_STATUS_OUT_OF_MEMORY
+        )
+        assert builder.value is None
+        assert failure.value is not None
+        _release_raw_arrow_error(library, failure)
+
+        monkeypatch.delenv(failure_variable)
+        assert (
+            library.irx_arrow_array_builder_new(
+                IRX_ARROW_TYPE_INT64,
+                ctypes.byref(builder),
+                ctypes.byref(failure),
+            )
+            == ARROW_STATUS_OK
+        )
+        assert (
+            library.irx_arrow_array_builder_append_int(
+                builder,
+                42,
+                ctypes.byref(failure),
+            )
+            == ARROW_STATUS_OK
+        )
+
+        array = ctypes.c_void_p(1)
+        monkeypatch.setenv(failure_variable, "1")
+        assert (
+            library.irx_arrow_array_builder_finish(
+                ctypes.byref(builder),
+                ctypes.byref(array),
+                ctypes.byref(failure),
+            )
+            == ARROW_STATUS_OUT_OF_MEMORY
+        )
+        assert builder.value is not None
+        assert array.value is None
+        assert failure.value is not None
+        _release_raw_arrow_error(library, failure)
+        monkeypatch.delenv(failure_variable)
+        assert (
+            library.irx_arrow_array_builder_finish(
+                ctypes.byref(builder),
+                ctypes.byref(array),
+                ctypes.byref(failure),
+            )
+            == ARROW_STATUS_OK
+        )
+        assert builder.value is None
+        assert array.value is not None
+        assert (
+            library.irx_arrow_array_release(
+                ctypes.byref(array),
+                ctypes.byref(failure),
+            )
+            == ARROW_STATUS_OK
+        )
+        assert array.value is None
+
+        shape = (ctypes.c_int64 * 1)(1)
+        tensor_builder = ctypes.c_void_p(1)
+        monkeypatch.setenv(failure_variable, "1")
+        assert (
+            library.irx_arrow_tensor_builder_new(
+                IRX_ARROW_TYPE_INT64,
+                1,
+                shape,
+                None,
+                ctypes.byref(tensor_builder),
+                ctypes.byref(failure),
+            )
+            == ARROW_STATUS_OUT_OF_MEMORY
+        )
+        assert tensor_builder.value is None
+        assert failure.value is not None
+        _release_raw_arrow_error(library, failure)
+
+
+def test_arrow_table_allocation_failures_preserve_parent_and_inputs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    title: Table and projection OOM should not consume their source handles.
+    parameters:
+      monkeypatch:
+        type: pytest.MonkeyPatch
+    """
+    failure_variable = "IRX_ARROW_TEST_FAIL_HANDLE_ALLOCATION"
+    with _load_arrow_runtime_library(
+        compatibility=False,
+        failure_injection=True,
+    ) as library:
+        failure = ctypes.c_void_p()
+        builder = ctypes.c_void_p()
+        assert (
+            library.irx_arrow_array_builder_new(
+                IRX_ARROW_TYPE_INT64,
+                ctypes.byref(builder),
+                ctypes.byref(failure),
+            )
+            == ARROW_STATUS_OK
+        )
+        assert (
+            library.irx_arrow_array_builder_append_int(
+                builder,
+                7,
+                ctypes.byref(failure),
+            )
+            == ARROW_STATUS_OK
+        )
+        array = ctypes.c_void_p()
+        assert (
+            library.irx_arrow_array_builder_finish(
+                ctypes.byref(builder),
+                ctypes.byref(array),
+                ctypes.byref(failure),
+            )
+            == ARROW_STATUS_OK
+        )
+
+        names = (ctypes.c_char_p * 1)(b"value")
+        arrays = (ctypes.c_void_p * 1)(array.value)
+        table = ctypes.c_void_p(1)
+        monkeypatch.setenv(failure_variable, "1")
+        assert (
+            library.irx_arrow_table_new_from_arrays(
+                1,
+                names,
+                arrays,
+                ctypes.byref(table),
+                ctypes.byref(failure),
+            )
+            == ARROW_STATUS_OUT_OF_MEMORY
+        )
+        assert table.value is None
+        assert array.value is not None
+        assert failure.value is not None
+        _release_raw_arrow_error(library, failure)
+
+        monkeypatch.delenv(failure_variable)
+        assert (
+            library.irx_arrow_table_new_from_arrays(
+                1,
+                names,
+                arrays,
+                ctypes.byref(table),
+                ctypes.byref(failure),
+            )
+            == ARROW_STATUS_OK
+        )
+        column = ctypes.c_void_p(1)
+        monkeypatch.setenv(failure_variable, "1")
+        assert (
+            library.irx_arrow_table_column_by_index(
+                table,
+                0,
+                ctypes.byref(column),
+                ctypes.byref(failure),
+            )
+            == ARROW_STATUS_OUT_OF_MEMORY
+        )
+        assert column.value is None
+        assert table.value is not None
+        assert failure.value is not None
+        _release_raw_arrow_error(library, failure)
+
+        monkeypatch.delenv(failure_variable)
+        assert (
+            library.irx_arrow_table_release(
+                ctypes.byref(table),
+                ctypes.byref(failure),
+            )
+            == ARROW_STATUS_OK
+        )
+        assert (
+            library.irx_arrow_array_release(
+                ctypes.byref(array),
+                ctypes.byref(failure),
+            )
+            == ARROW_STATUS_OK
+        )
+        assert table.value is None
+        assert array.value is None
+
+
+def test_array_operation_failures_preserve_builder_and_import_sources(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    title: Injected append, finish, and reserve OOM should permit retry.
+    parameters:
+      monkeypatch:
+        type: pytest.MonkeyPatch
+    """
+    failure_variable = "IRX_ARROW_TEST_FAIL_OPERATION"
+    with _load_arrow_runtime_library(
+        compatibility=False,
+        failure_injection=True,
+    ) as library:
+        failure = ctypes.c_void_p()
+        builder = ctypes.c_void_p(1)
+        monkeypatch.setenv(failure_variable, "array_builder_new")
+        assert (
+            library.irx_arrow_array_builder_new(
+                IRX_ARROW_TYPE_INT64,
+                ctypes.byref(builder),
+                ctypes.byref(failure),
+            )
+            == ARROW_STATUS_OUT_OF_MEMORY
+        )
+        assert builder.value is None
+        _release_raw_arrow_error(library, failure)
+        monkeypatch.delenv(failure_variable)
+        _assert_arrow_ok(
+            library,
+            library.irx_arrow_array_builder_new(
+                IRX_ARROW_TYPE_INT64,
+                ctypes.byref(builder),
+                ctypes.byref(failure),
+            ),
+        )
+
+        monkeypatch.setenv(failure_variable, "array_builder_append")
+        assert (
+            library.irx_arrow_array_builder_append_int(
+                builder,
+                42,
+                ctypes.byref(failure),
+            )
+            == ARROW_STATUS_OUT_OF_MEMORY
+        )
+        assert builder.value is not None
+        _release_raw_arrow_error(library, failure)
+        monkeypatch.delenv(failure_variable)
+        _assert_arrow_ok(
+            library,
+            library.irx_arrow_array_builder_append_int(
+                builder,
+                42,
+                ctypes.byref(failure),
+            ),
+        )
+
+        array = ctypes.c_void_p(1)
+        monkeypatch.setenv(failure_variable, "array_builder_finish")
+        assert (
+            library.irx_arrow_array_builder_finish(
+                ctypes.byref(builder),
+                ctypes.byref(array),
+                ctypes.byref(failure),
+            )
+            == ARROW_STATUS_OUT_OF_MEMORY
+        )
+        assert builder.value is not None
+        assert array.value is None
+        _release_raw_arrow_error(library, failure)
+        monkeypatch.delenv(failure_variable)
+        _assert_arrow_ok(
+            library,
+            library.irx_arrow_array_builder_finish(
+                ctypes.byref(builder),
+                ctypes.byref(array),
+                ctypes.byref(failure),
+            ),
+        )
+        length = ctypes.c_int64()
+        _assert_arrow_ok(
+            library,
+            library.irx_arrow_array_length(
+                array,
+                ctypes.byref(length),
+                ctypes.byref(failure),
+            ),
+        )
+        assert length.value == 1
+        _assert_arrow_ok(
+            library,
+            library.irx_arrow_array_release(
+                ctypes.byref(array),
+                ctypes.byref(failure),
+            ),
+        )
+
+        _, schema_capsule, array_capsule, schema_addr, array_addr = (
+            _pyarrow_c_array([1, 2, 3], pa.int32())
+        )
+        imported = ctypes.c_void_p(1)
+        monkeypatch.setenv(failure_variable, "array_import_reserve")
+        assert (
+            library.irx_arrow_array_import_copy(
+                array_addr,
+                schema_addr,
+                ctypes.byref(imported),
+                ctypes.byref(failure),
+            )
+            == ARROW_STATUS_OUT_OF_MEMORY
+        )
+        assert imported.value is None
+        _release_raw_arrow_error(library, failure)
+        monkeypatch.delenv(failure_variable)
+        _assert_arrow_ok(
+            library,
+            library.irx_arrow_array_import_copy(
+                array_addr,
+                schema_addr,
+                ctypes.byref(imported),
+                ctypes.byref(failure),
+            ),
+        )
+        _assert_arrow_ok(
+            library,
+            library.irx_arrow_array_length(
+                imported,
+                ctypes.byref(length),
+                ctypes.byref(failure),
+            ),
+        )
+        assert length.value == 3  # noqa: PLR2004
+        _assert_arrow_ok(
+            library,
+            library.irx_arrow_array_release(
+                ctypes.byref(imported),
+                ctypes.byref(failure),
+            ),
+        )
+        _ = (schema_capsule, array_capsule)
+
+
+def test_move_import_failure_preserves_c_data_for_retry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    title: Injected move-import OOM should leave Arrow C Data unconsumed.
+    parameters:
+      monkeypatch:
+        type: pytest.MonkeyPatch
+    """
+    failure_variable = "IRX_ARROW_TEST_FAIL_OPERATION"
+    with _load_arrow_runtime_library(
+        compatibility=False,
+        failure_injection=True,
+    ) as library:
+        _, schema_capsule, array_capsule, schema_addr, array_addr = (
+            _pyarrow_c_array([1, 2, 3], pa.int32())
+        )
+        failure = ctypes.c_void_p()
+        imported = ctypes.c_void_p(1)
+        monkeypatch.setenv(failure_variable, "array_import_move")
+        assert (
+            library.irx_arrow_array_import_move(
+                array_addr,
+                schema_addr,
+                ctypes.byref(imported),
+                ctypes.byref(failure),
+            )
+            == ARROW_STATUS_OUT_OF_MEMORY
+        )
+        assert imported.value is None
+        assert _arrow_array_struct(array_addr).release is not None
+        assert _arrow_schema_struct(schema_addr).release is not None
+        _release_raw_arrow_error(library, failure)
+
+        monkeypatch.delenv(failure_variable)
+        _assert_arrow_ok(
+            library,
+            library.irx_arrow_array_import_move(
+                array_addr,
+                schema_addr,
+                ctypes.byref(imported),
+                ctypes.byref(failure),
+            ),
+        )
+        assert _arrow_array_struct(array_addr).release is None
+        assert _arrow_schema_struct(schema_addr).release is None
+        _assert_arrow_ok(
+            library,
+            library.irx_arrow_array_release(
+                ctypes.byref(imported),
+                ctypes.byref(failure),
+            ),
+        )
+        _ = (schema_capsule, array_capsule)
+
+
+def test_tensor_operation_failures_preserve_builder_for_retry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    title: Injected tensor append and finish OOM should permit retry.
+    parameters:
+      monkeypatch:
+        type: pytest.MonkeyPatch
+    """
+    failure_variable = "IRX_ARROW_TEST_FAIL_OPERATION"
+    with _load_arrow_runtime_library(
+        compatibility=False,
+        failure_injection=True,
+    ) as library:
+        failure = ctypes.c_void_p()
+        builder = ctypes.c_void_p()
+        shape = (ctypes.c_int64 * 1)(1)
+        _assert_arrow_ok(
+            library,
+            library.irx_arrow_tensor_builder_new(
+                IRX_ARROW_TYPE_INT64,
+                1,
+                shape,
+                None,
+                ctypes.byref(builder),
+                ctypes.byref(failure),
+            ),
+        )
+
+        monkeypatch.setenv(failure_variable, "tensor_builder_append")
+        assert (
+            library.irx_arrow_tensor_builder_append_int(
+                builder,
+                7,
+                ctypes.byref(failure),
+            )
+            == ARROW_STATUS_OUT_OF_MEMORY
+        )
+        assert builder.value is not None
+        _release_raw_arrow_error(library, failure)
+        monkeypatch.delenv(failure_variable)
+        _assert_arrow_ok(
+            library,
+            library.irx_arrow_tensor_builder_append_int(
+                builder,
+                7,
+                ctypes.byref(failure),
+            ),
+        )
+
+        tensor = ctypes.c_void_p(1)
+        monkeypatch.setenv(failure_variable, "tensor_builder_finish")
+        assert (
+            library.irx_arrow_tensor_builder_finish(
+                ctypes.byref(builder),
+                ctypes.byref(tensor),
+                ctypes.byref(failure),
+            )
+            == ARROW_STATUS_OUT_OF_MEMORY
+        )
+        assert builder.value is not None
+        assert tensor.value is None
+        _release_raw_arrow_error(library, failure)
+        monkeypatch.delenv(failure_variable)
+        _assert_arrow_ok(
+            library,
+            library.irx_arrow_tensor_builder_finish(
+                ctypes.byref(builder),
+                ctypes.byref(tensor),
+                ctypes.byref(failure),
+            ),
+        )
+        _assert_arrow_ok(
+            library,
+            library.irx_arrow_tensor_release(
+                ctypes.byref(tensor),
+                ctypes.byref(failure),
+            ),
+        )
+
+
 def test_arrow_runtime_handle_lifecycle_contracts() -> None:
     """
     title: Every implemented opaque handle should obey its ownership class.
@@ -1787,6 +2325,89 @@ def test_arrow_runtime_handle_lifecycle_contracts() -> None:
                 final_release(ctypes.byref(released)),
             )
         assert library.irx_arrow_array_length(array_handle) == -1
+
+
+@pytest.mark.parametrize("release_parent_first", [False, True])
+def test_table_column_survives_either_parent_child_release_order(
+    release_parent_first: bool,
+) -> None:
+    """
+    title: Table projections own shared storage independently of the parent.
+    parameters:
+      release_parent_first:
+        type: bool
+    """
+    with _load_arrow_runtime_library() as library:
+        array_handle = _build_runtime_array(
+            library,
+            IRX_ARROW_TYPE_INT32,
+            "int",
+            [1, 2, 3],
+        )
+        table_handle = ctypes.c_void_p()
+        column_handle = ctypes.c_void_p()
+        names = (ctypes.c_char_p * 1)(b"values")
+        arrays = (ctypes.c_void_p * 1)(array_handle.value)
+        try:
+            _assert_arrow_ok(
+                library,
+                library.irx_arrow_table_new_from_arrays(
+                    1,
+                    names,
+                    arrays,
+                    ctypes.byref(table_handle),
+                ),
+            )
+            _assert_arrow_ok(
+                library,
+                library.irx_arrow_table_column_by_index(
+                    table_handle,
+                    0,
+                    ctypes.byref(column_handle),
+                ),
+            )
+
+            first_handle = (
+                table_handle if release_parent_first else column_handle
+            )
+            first_release = (
+                library.irx_arrow_table_release
+                if release_parent_first
+                else library.irx_arrow_chunked_array_release
+            )
+            second_handle = (
+                column_handle if release_parent_first else table_handle
+            )
+            second_release = (
+                library.irx_arrow_chunked_array_release
+                if release_parent_first
+                else library.irx_arrow_table_release
+            )
+            _assert_arrow_ok(
+                library,
+                first_release(ctypes.byref(first_handle)),
+            )
+            expected_kind = (
+                ARROW_HANDLE_KIND_CHUNKED_ARRAY
+                if release_parent_first
+                else ARROW_HANDLE_KIND_TABLE
+            )
+            _assert_handle_metadata(
+                library,
+                second_handle,
+                expected_kind,
+                ARROW_HANDLE_OWNERSHIP_SHARED,
+            )
+            _assert_arrow_ok(
+                library,
+                second_release(ctypes.byref(second_handle)),
+            )
+        finally:
+            library.irx_arrow_chunked_array_release(
+                ctypes.byref(column_handle)
+            )
+            library.irx_arrow_table_release(ctypes.byref(table_handle))
+            library.irx_arrow_array_release(ctypes.byref(array_handle))
 
 
 def test_arrow_runtime_shared_handle_refcounts_are_thread_safe() -> None:

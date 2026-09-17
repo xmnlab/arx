@@ -4,7 +4,9 @@ title: LLVM call helpers for the generated Arrow runtime ABI.
 
 from __future__ import annotations
 
-from typing import Sequence
+from typing import Any, Sequence, cast
+
+import astx
 
 from llvmlite import ir
 
@@ -49,4 +51,38 @@ def call_arrow_runtime(
     return status, error_slot
 
 
-__all__ = ["call_arrow_runtime"]
+@typechecked
+def require_arrow_runtime_success(
+    visitor: VisitorMixinBase,
+    node: astx.AST,
+    status: ir.Value,
+    operation: str,
+) -> None:
+    """
+    title: Fail through the structured runtime path unless Arrow succeeded.
+    parameters:
+      visitor:
+        type: VisitorMixinBase
+      node:
+        type: astx.AST
+      status:
+        type: ir.Value
+      operation:
+        type: str
+    """
+    ok = visitor._llvm.ir_builder.icmp_signed(
+        "==",
+        status,
+        ir.Constant(visitor._llvm.INT32_TYPE, 0),
+        name=f"{operation}_ok",
+    )
+    cast(Any, visitor)._guard_runtime_condition(
+        node,
+        ok,
+        code="ARX-RUNTIME-ARROW-001",
+        message=f"Arrow runtime operation failed: {operation}",
+        block_name=f"arrow.{operation}",
+    )
+
+
+__all__ = ["call_arrow_runtime", "require_arrow_runtime_success"]

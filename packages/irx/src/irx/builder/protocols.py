@@ -11,7 +11,10 @@ import astx
 from llvmlite import binding as llvm
 from llvmlite import ir
 
-from irx.analysis.resolved_nodes import FunctionSignature
+from irx.analysis.resolved_nodes import (
+    FunctionSignature,
+    ResolvedGeneratorFunction,
+)
 from irx.base.visitors.protocols import BaseVisitorProtocol
 from irx.builder.state import (
     CleanupAction,
@@ -70,6 +73,8 @@ class VisitorProtocol(BaseVisitorProtocol, Protocol):
         type: ir.Value | None
       _current_generator_next_state:
         type: int | None
+      _current_generator_metadata:
+        type: ResolvedGeneratorFunction | None
       target:
         type: llvm.TargetRef
       target_machine:
@@ -96,6 +101,7 @@ class VisitorProtocol(BaseVisitorProtocol, Protocol):
     _current_generator_frame_slots: dict[str, int]
     _current_generator_out_ptr: ir.Value | None
     _current_generator_next_state: int | None
+    _current_generator_metadata: ResolvedGeneratorFunction | None
     target: llvm.TargetRef
     target_machine: llvm.TargetMachine
 
@@ -684,6 +690,8 @@ class VisitorMixinTypingBase:
         type: ir.Value | None
       _current_generator_next_state:
         type: int | None
+      _current_generator_metadata:
+        type: ResolvedGeneratorFunction | None
       target:
         type: llvm.TargetRef
       target_machine:
@@ -710,6 +718,7 @@ class VisitorMixinTypingBase:
     _current_generator_frame_slots: dict[str, int]
     _current_generator_out_ptr: ir.Value | None
     _current_generator_next_state: int | None
+    _current_generator_metadata: ResolvedGeneratorFunction | None
     target: llvm.TargetRef
     target_machine: llvm.TargetMachine
 

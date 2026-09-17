@@ -174,6 +174,14 @@ class ExpressionOperatorVisitorMixin(SemanticVisitorMixinBase):
                 target_type=target_type,
                 is_local=isinstance(node.lhs, astx.Identifier),
             )
+            self._resolve_arrow_assignment_ownership(
+                node,
+                node.rhs,
+                assignment_symbol,
+                target_name=target_name,
+                target_type=target_type,
+                is_local=isinstance(node.lhs, astx.Identifier),
+            )
             return
 
         lhs_has_value = self._require_value_expression(

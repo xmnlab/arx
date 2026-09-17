@@ -24,6 +24,9 @@ from irx.builder.runtime.errors.feature import build_runtime_failure_feature
 from irx.builder.runtime.feature_libc import build_libc_runtime_feature
 from irx.builder.runtime.feature_libm import build_libm_runtime_feature
 from irx.builder.runtime.features import NativeArtifact, RuntimeFeature
+from irx.builder.runtime.lifecycle.feature import (
+    build_lifecycle_runtime_feature,
+)
 from irx.builder.runtime.list.feature import build_list_runtime_feature
 from irx.builder.runtime.record_batch import (
     build_record_batch_runtime_feature,
@@ -284,6 +287,43 @@ class RuntimeFeatureState:
         """
         return symbol_name in self.feature(feature_name).symbols
 
+    def require_symbol_by_name(self, symbol_name: str) -> ir.Function:
+        """
+        title: Require a uniquely registered runtime symbol by ABI name.
+        summary: >-
+          Ownership lowering receives the cleanup intrinsic from semantic
+          metadata. Resolve its owning feature here so lowering does not
+          reconstruct a resource-kind-to-feature table.
+        parameters:
+          symbol_name:
+            type: str
+        returns:
+          type: ir.Function
+        """
+        candidates = tuple(
+            name
+            for name in self._registry.names()
+            if symbol_name in self._registry.get(name).symbols
+        )
+        active = tuple(
+            name for name in candidates if name in self._active_features
+        )
+        selected = active or candidates
+        if len(selected) != 1:
+            qualifier = "not registered" if not selected else "ambiguous"
+            raise RuntimeFeatureError(
+                Diagnostic(
+                    message=(f"runtime symbol '{symbol_name}' is {qualifier}"),
+                    code=DiagnosticCodes.RUNTIME_FEATURE_UNKNOWN,
+                    phase="runtime",
+                    notes=("candidate features: " + ", ".join(selected),)
+                    if selected
+                    else (),
+                    cause=KeyError(symbol_name),
+                )
+            )
+        return self.require_symbol(selected[0], symbol_name)
+
     def require_symbol(
         self,
         feature_name: str,
@@ -390,5 +430,6 @@ def get_default_runtime_feature_registry() -> RuntimeFeatureRegistry:
     registry.register(build_dataframe_runtime_feature())
     registry.register(build_tensor_runtime_feature())
     registry.register(build_list_runtime_feature())
+    registry.register(build_lifecycle_runtime_feature())
     registry.register(build_record_batch_runtime_feature())
     return registry

@@ -12,8 +12,11 @@ import astx
 
 from llvmlite import ir
 
+from irx.analysis.ownership import resource_ownership
 from irx.analysis.resolved_nodes import (
     ClassHeaderFieldKind,
+    OwnershipEscapeKind,
+    OwnershipTransferKind,
     ResolvedClassConstruction,
 )
 from irx.builder.core import VisitorCore
@@ -128,6 +131,7 @@ class LiteralVisitorMixin(VisitorMixinBase):
                 astx.PointerType,
                 astx.OpaqueHandleType,
                 astx.BufferOwnerType,
+                astx.GeneratorType,
             ),
         ):
             return ir.Constant(llvm_type, None)
@@ -168,6 +172,15 @@ class LiteralVisitorMixin(VisitorMixinBase):
             [object_size],
             f"{class_.name}_raw",
         )
+        self._guard_runtime_condition(
+            node,
+            self._llvm.ir_builder.icmp_unsigned(
+                "!=", raw_ptr, ir.Constant(raw_ptr.type, None)
+            ),
+            code="ARX-RUNTIME-ALLOCATION-001",
+            message=f"class '{class_.name}' allocation failed",
+            block_name="class.allocation",
+        )
         object_ptr = self._llvm.ir_builder.bitcast(
             raw_ptr,
             llvm_type,
@@ -205,7 +218,59 @@ class LiteralVisitorMixin(VisitorMixinBase):
                     self._llvm.OPAQUE_POINTER_TYPE,
                     name=f"{class_.name}_{header.name}_init",
                 )
+            elif header.kind is ClassHeaderFieldKind.DESTRUCTOR:
+                destructor = self._llvm.module.globals.get(
+                    layout.destructor_name
+                )
+                if not isinstance(destructor, ir.Function):
+                    raise_lowering_internal_error(
+                        "class construction is missing its destructor",
+                        node=node,
+                    )
+                header_value = self._llvm.ir_builder.bitcast(
+                    destructor,
+                    self._llvm.OPAQUE_POINTER_TYPE,
+                    name=f"{class_.name}_{header.name}_init",
+                )
+            elif header.kind is ClassHeaderFieldKind.REFERENCE_COUNT:
+                header_value = ir.Constant(self._llvm.INT64_TYPE, 1)
             self._llvm.ir_builder.store(header_value, header_addr)
+
+        for initializer in resolution.initialization.instance_initializers:
+            field = initializer.field
+            field_addr = self._llvm.ir_builder.gep(
+                object_ptr,
+                [
+                    ir.Constant(self._llvm.INT32_TYPE, 0),
+                    ir.Constant(
+                        self._llvm.INT32_TYPE,
+                        field.storage_index,
+                    ),
+                ],
+                inbounds=True,
+                name=f"{field.member.name}_zero_addr",
+            )
+            initial_value = self._default_runtime_initializer(
+                field.member.type_,
+                name_hint=f"{class_.name}_{field.member.name}_zero",
+            )
+            self._llvm.ir_builder.store(initial_value, field_addr)
+
+        object_slot = self.create_entry_block_alloca(
+            f"{class_.name}_partial_object",
+            object_ptr.type,
+        )
+        self._llvm.ir_builder.store(object_ptr, object_slot)
+        ownership = resource_ownership(node)
+        if ownership is None:
+            raise_lowering_internal_error(
+                "class construction is missing ownership metadata",
+                node=node,
+            )
+        cast(Any, self)._register_resource_slot_cleanup(
+            ownership,
+            object_slot,
+        )
 
         for initializer in resolution.initialization.instance_initializers:
             field = initializer.field
@@ -239,8 +304,20 @@ class LiteralVisitorMixin(VisitorMixinBase):
                     source_type=self._resolved_ast_type(initializer.value),
                     target_type=field.member.type_,
                 )
+                field_value = cast(Any, self)._retain_copied_resource_value(
+                    initializer.value,
+                    field_value,
+                )
             self._llvm.ir_builder.store(field_value, field_addr)
 
+        if (
+            ownership.transfer_kind is OwnershipTransferKind.MOVE
+            or ownership.escape_kind is OwnershipEscapeKind.RETURN
+        ):
+            self._llvm.ir_builder.store(
+                ir.Constant(object_ptr.type, None),
+                object_slot,
+            )
         self.result_stack.append(object_ptr)
 
     @VisitorCore.visit.dispatch

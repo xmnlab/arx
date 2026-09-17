@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cstdarg>
+#include <cstdlib>
 #include <cstdio>
 #include <cstring>
 #include <limits>
@@ -48,6 +49,31 @@ using irx_arrow_internal::kHandleMagic;
 
 constexpr irx_arrow_status kArrowOk = IRX_ARROW_STATUS_OK;
 constexpr int64_t kPrimitiveArrayBufferCount = 2;
+
+template <typename Handle>
+std::unique_ptr<Handle> make_runtime_handle() {
+#if defined(IRX_ARROW_ENABLE_TEST_FAILURES)
+  const char* failure =
+      std::getenv("IRX_ARROW_TEST_FAIL_HANDLE_ALLOCATION");
+  if (failure != nullptr && std::strcmp(failure, "1") == 0) {
+    throw std::bad_alloc();
+  }
+#endif
+  return std::make_unique<Handle>();
+}
+
+bool fail_allocation_for_operation(const char* operation) {
+#if defined(IRX_ARROW_ENABLE_TEST_FAILURES)
+  const char* failure =
+      std::getenv("IRX_ARROW_TEST_FAIL_OPERATION");
+  return failure != nullptr &&
+      (std::strcmp(failure, "*") == 0 ||
+       std::strcmp(failure, operation) == 0);
+#else
+  (void)operation;
+  return false;
+#endif
+}
 
 enum class AppendKind {
   kSigned,
@@ -652,6 +678,54 @@ const TypeSpec* type_spec_from_c_data_format(const char* format) {
   return nullptr;
 }
 
+// ImportField consumes its C structs. Clone the tree, but borrow strings and
+// metadata only for this synchronous import; Arrow copies those into its Field.
+// Never let an import invoke producer callbacks or mutate producer children.
+struct BorrowedSchemaTree {
+  ArrowSchema schema{};
+  std::vector<std::unique_ptr<BorrowedSchemaTree>> children;
+  std::vector<ArrowSchema*> child_pointers;
+  std::unique_ptr<BorrowedSchemaTree> dictionary;
+};
+
+void release_borrowed_schema(ArrowSchema* schema) {
+  schema->release = nullptr;
+}
+
+arrow::Result<std::unique_ptr<BorrowedSchemaTree>> borrow_schema_tree(
+    const ArrowSchema* source, int depth = 0) {
+  constexpr int kMaxSchemaDepth = 64;
+  if (source == nullptr || source->format == nullptr ||
+      source->release == nullptr || source->n_children < 0 ||
+      (source->n_children > 0 && source->children == nullptr)) {
+    return arrow::Status::Invalid("invalid or released C schema");
+  }
+  if (depth > kMaxSchemaDepth) {
+    return arrow::Status::Invalid("C schema exceeds maximum nesting depth");
+  }
+  auto tree = std::make_unique<BorrowedSchemaTree>();
+  tree->schema = *source;
+  tree->schema.release = release_borrowed_schema;
+  tree->schema.private_data = nullptr;
+  tree->schema.children = nullptr;
+  tree->schema.dictionary = nullptr;
+  for (int64_t index = 0; index < source->n_children; ++index) {
+    ARROW_ASSIGN_OR_RAISE(auto child,
+                         borrow_schema_tree(source->children[index], depth + 1));
+    tree->child_pointers.push_back(&child->schema);
+    tree->children.push_back(std::move(child));
+  }
+  if (!tree->child_pointers.empty()) {
+    tree->schema.children = tree->child_pointers.data();
+  }
+  if (source->dictionary != nullptr) {
+    ARROW_ASSIGN_OR_RAISE(tree->dictionary,
+                         borrow_schema_tree(source->dictionary, depth + 1));
+    tree->schema.dictionary = &tree->dictionary->schema;
+  }
+  return tree;
+}
+
 int validate_supported_c_schema(
     const ArrowSchema* schema,
     ResolvedSchema* out_resolved) {
@@ -956,6 +1030,11 @@ int build_array_copy_from_c_data(
   }
 
   std::unique_ptr<arrow::ArrayBuilder> builder = std::move(builder_result).ValueUnsafe();
+  if (fail_allocation_for_operation("array_import_reserve")) {
+    return set_error(
+        IRX_ARROW_STATUS_OUT_OF_MEMORY,
+        "injected Arrow array import reserve failure");
+  }
   arrow::Status status = builder->Reserve(array->length);
   if (!status.ok()) {
     return set_arrow_error("Arrow builder reserve failed", status);
@@ -1422,16 +1501,30 @@ irx_arrow_status irx_arrow_schema_import_copy(
     }
     *out_schema = nullptr;
 
-    ResolvedSchema resolved;
-    int code = validate_supported_c_schema(schema, &resolved);
-    if (code != kArrowOk) {
-      return code;
+    if (schema == nullptr) {
+      return set_error(IRX_ARROW_STATUS_NULL_POINTER, "schema must not be NULL");
     }
-
-    auto handle = std::make_unique<irx_arrow_schema_handle>();
-    handle->field = arrow::field("", resolved.spec->make_type(), resolved.nullable);
-    handle->type_id = resolved.spec->type_id;
-    handle->nullable = resolved.nullable ? 1 : 0;
+    if (fail_allocation_for_operation("schema_import_copy")) {
+      return set_error(
+          IRX_ARROW_STATUS_OUT_OF_MEMORY,
+          "injected Arrow schema import allocation failure");
+    }
+    auto handle = make_runtime_handle<irx_arrow_schema_handle>();
+    auto borrowed = borrow_schema_tree(schema);
+    if (!borrowed.ok()) {
+      return set_arrow_error("Arrow schema copy failed", borrowed.status());
+    }
+    auto field = arrow::ImportField(&(*borrowed)->schema);
+    if (!field.ok()) {
+      return set_arrow_error("Arrow schema import failed", field.status());
+    }
+    handle->field = *field;
+    const TypeSpec* spec =
+        type_spec_from_arrow_type_id(handle->field->type()->id());
+    // Preserve the v1 primitive query contract. Non-primitive types use their
+    // exported recursive descriptor, not a fabricated primitive type id.
+    handle->type_id = spec == nullptr ? IRX_ARROW_TYPE_UNKNOWN : spec->type_id;
+    handle->nullable = handle->field->nullable() ? 1 : 0;
 
     *out_schema = handle.release();
     return kArrowOk;
@@ -1447,6 +1540,10 @@ irx_arrow_status irx_arrow_schema_export(
     ArrowSchema* out_schema) {
   begin_operation(__func__);
   try {
+    if (out_schema == nullptr) {
+      return set_error(IRX_ARROW_STATUS_NULL_POINTER, "out_schema must not be NULL");
+    }
+    std::memset(out_schema, 0, sizeof(*out_schema));
     const irx_arrow_status validation = validate_handle(
         schema,
         IRX_ARROW_HANDLE_KIND_SCHEMA,
@@ -1454,11 +1551,6 @@ irx_arrow_status irx_arrow_schema_export(
     if (validation != kArrowOk) {
       return validation;
     }
-    if (out_schema == nullptr) {
-      return set_error(IRX_ARROW_STATUS_NULL_POINTER, "out_schema must not be NULL");
-    }
-    std::memset(out_schema, 0, sizeof(*out_schema));
-
     const arrow::Status status = arrow::ExportField(*schema->field, out_schema);
     if (!status.ok()) {
       return set_arrow_error("Arrow schema export failed", status);
@@ -1525,6 +1617,11 @@ irx_arrow_status irx_arrow_array_builder_new(
     if (spec == nullptr) {
       return set_error(IRX_ARROW_STATUS_NOT_SUPPORTED, "unsupported Arrow type id %d", type_id);
     }
+    if (fail_allocation_for_operation("array_builder_new")) {
+      return set_error(
+          IRX_ARROW_STATUS_OUT_OF_MEMORY,
+          "injected Arrow array builder allocation failure");
+    }
 
     arrow::Result<std::unique_ptr<arrow::ArrayBuilder>> builder_result =
         arrow::MakeBuilder(spec->make_type());
@@ -1532,7 +1629,7 @@ irx_arrow_status irx_arrow_array_builder_new(
       return set_arrow_error("Arrow builder allocation failed", builder_result.status());
     }
 
-    auto handle = std::make_unique<irx_arrow_array_builder_handle>();
+    auto handle = make_runtime_handle<irx_arrow_array_builder_handle>();
     handle->builder = std::move(builder_result).ValueUnsafe();
     handle->type_id = type_id;
     *out_builder = handle.release();
@@ -1558,6 +1655,11 @@ irx_arrow_status irx_arrow_array_builder_append_null(
   if (count < 0) {
     return set_error(IRX_ARROW_STATUS_INVALID_ARGUMENT, "null append count must be non-negative");
   }
+  if (fail_allocation_for_operation("array_builder_append")) {
+    return set_error(
+        IRX_ARROW_STATUS_OUT_OF_MEMORY,
+        "injected Arrow array append allocation failure");
+  }
   const arrow::Status status = builder->builder->AppendNulls(count);
   if (!status.ok()) {
     return set_arrow_error("Arrow null append failed", status);
@@ -1576,6 +1678,11 @@ irx_arrow_status irx_arrow_array_builder_append_int(
   if (validation != kArrowOk) {
     return validation;
   }
+  if (fail_allocation_for_operation("array_builder_append")) {
+    return set_error(
+        IRX_ARROW_STATUS_OUT_OF_MEMORY,
+        "injected Arrow array append allocation failure");
+  }
   return append_int_value(builder->builder.get(), builder->type_id, value);
 }
 
@@ -1590,6 +1697,11 @@ irx_arrow_status irx_arrow_array_builder_append_uint(
   if (validation != kArrowOk) {
     return validation;
   }
+  if (fail_allocation_for_operation("array_builder_append")) {
+    return set_error(
+        IRX_ARROW_STATUS_OUT_OF_MEMORY,
+        "injected Arrow array append allocation failure");
+  }
   return append_uint_value(builder->builder.get(), builder->type_id, value);
 }
 
@@ -1603,6 +1715,11 @@ irx_arrow_status irx_arrow_array_builder_append_double(
       "array builder");
   if (validation != kArrowOk) {
     return validation;
+  }
+  if (fail_allocation_for_operation("array_builder_append")) {
+    return set_error(
+        IRX_ARROW_STATUS_OUT_OF_MEMORY,
+        "injected Arrow array append allocation failure");
   }
   return append_double_value(builder->builder.get(), builder->type_id, value);
 }
@@ -1640,6 +1757,13 @@ irx_arrow_status irx_arrow_array_builder_finish(
     if (validation != kArrowOk) {
       return validation;
     }
+    if (fail_allocation_for_operation("array_builder_finish")) {
+      return set_error(
+          IRX_ARROW_STATUS_OUT_OF_MEMORY,
+          "injected Arrow array finish allocation failure");
+    }
+
+    auto handle = make_runtime_handle<irx_arrow_array_handle>();
 
     std::shared_ptr<arrow::Array> array;
     const arrow::Status status = builder->builder->Finish(&array);
@@ -1652,7 +1776,6 @@ irx_arrow_status irx_arrow_array_builder_finish(
       return set_error(IRX_ARROW_STATUS_NOT_SUPPORTED, "builder used unsupported Arrow type id %d", builder->type_id);
     }
 
-    auto handle = std::make_unique<irx_arrow_array_handle>();
     handle->array = std::move(array);
     ResolvedSchema resolved{spec, true};
     int code = populate_array_metadata(handle.get(), resolved);
@@ -1794,7 +1917,7 @@ irx_arrow_status irx_arrow_array_schema_copy(
       return set_error(IRX_ARROW_STATUS_NOT_SUPPORTED, "unsupported Arrow array storage type");
     }
 
-    auto handle = std::make_unique<irx_arrow_schema_handle>();
+    auto handle = make_runtime_handle<irx_arrow_schema_handle>();
     handle->field = arrow::field("", array->array->type(), resolved.nullable);
     handle->type_id = resolved.spec->type_id;
     handle->nullable = resolved.nullable ? 1 : 0;
@@ -1867,6 +1990,11 @@ irx_arrow_status irx_arrow_array_import_copy(
     if (code != kArrowOk) {
       return code;
     }
+    if (fail_allocation_for_operation("array_import_copy")) {
+      return set_error(
+          IRX_ARROW_STATUS_OUT_OF_MEMORY,
+          "injected Arrow array import allocation failure");
+    }
 
     std::shared_ptr<arrow::Array> copied_array;
     code = build_array_copy_from_c_data(array, resolved, &copied_array);
@@ -1874,7 +2002,7 @@ irx_arrow_status irx_arrow_array_import_copy(
       return code;
     }
 
-    auto handle = std::make_unique<irx_arrow_array_handle>();
+    auto handle = make_runtime_handle<irx_arrow_array_handle>();
     handle->array = std::move(copied_array);
     code = populate_array_metadata(handle.get(), resolved);
     if (code != kArrowOk) {
@@ -1910,6 +2038,13 @@ irx_arrow_status irx_arrow_array_import_move(
       return code;
     }
 
+    auto handle = make_runtime_handle<irx_arrow_array_handle>();
+    if (fail_allocation_for_operation("array_import_move")) {
+      return set_error(
+          IRX_ARROW_STATUS_OUT_OF_MEMORY,
+          "injected Arrow array move-import allocation failure");
+    }
+
     arrow::Result<std::shared_ptr<arrow::Array>> import_result =
         arrow::ImportArray(array, schema);
     if (!import_result.ok()) {
@@ -1922,7 +2057,6 @@ irx_arrow_status irx_arrow_array_import_move(
       return set_error(IRX_ARROW_STATUS_NOT_SUPPORTED, "unsupported Arrow array storage type");
     }
 
-    auto handle = std::make_unique<irx_arrow_array_handle>();
     handle->array = std::move(imported);
     code = populate_array_metadata(handle.get(), imported_resolved);
     if (code != kArrowOk) {
@@ -2070,6 +2204,13 @@ irx_arrow_status irx_arrow_record_batch_import_move(
           "array and schema must not be NULL");
     }
 
+    auto handle = make_runtime_handle<irx_arrow_record_batch_handle>();
+    if (fail_allocation_for_operation("record_batch_import_move")) {
+      return set_error(
+          IRX_ARROW_STATUS_OUT_OF_MEMORY,
+          "injected Arrow RecordBatch import allocation failure");
+    }
+
     arrow::Result<std::shared_ptr<arrow::RecordBatch>> import_result =
         arrow::ImportRecordBatch(array, schema);
     if (!import_result.ok()) {
@@ -2086,7 +2227,6 @@ irx_arrow_status irx_arrow_record_batch_import_move(
           validation);
     }
 
-    auto handle = std::make_unique<irx_arrow_record_batch_handle>();
     handle->batch = std::move(imported);
     *out_batch = handle.release();
     return kArrowOk;
@@ -2235,8 +2375,13 @@ irx_arrow_status irx_arrow_tensor_builder_new(
     if (code != kArrowOk) {
       return code;
     }
+    if (fail_allocation_for_operation("tensor_builder_new")) {
+      return set_error(
+          IRX_ARROW_STATUS_OUT_OF_MEMORY,
+          "injected Arrow tensor builder allocation failure");
+    }
 
-    auto builder = std::make_unique<irx_arrow_tensor_builder_handle>();
+    auto builder = make_runtime_handle<irx_arrow_tensor_builder_handle>();
     builder->type_id = type_id;
     builder->ndim = ndim;
     builder->element_count = element_count;
@@ -2269,6 +2414,18 @@ irx_arrow_status irx_arrow_tensor_builder_append_int(
     irx_arrow_tensor_builder_handle* builder,
     int64_t value) {
   begin_operation(__func__);
+  const irx_arrow_status validation = validate_handle(
+      builder,
+      IRX_ARROW_HANDLE_KIND_TENSOR_BUILDER,
+      "tensor builder");
+  if (validation != kArrowOk) {
+    return validation;
+  }
+  if (fail_allocation_for_operation("tensor_builder_append")) {
+    return set_error(
+        IRX_ARROW_STATUS_OUT_OF_MEMORY,
+        "injected Arrow tensor append allocation failure");
+  }
   uint8_t* slot = nullptr;
   const int code = tensor_builder_require_slot(builder, &slot);
   if (code != kArrowOk) {
@@ -2298,6 +2455,18 @@ irx_arrow_status irx_arrow_tensor_builder_append_uint(
     irx_arrow_tensor_builder_handle* builder,
     uint64_t value) {
   begin_operation(__func__);
+  const irx_arrow_status validation = validate_handle(
+      builder,
+      IRX_ARROW_HANDLE_KIND_TENSOR_BUILDER,
+      "tensor builder");
+  if (validation != kArrowOk) {
+    return validation;
+  }
+  if (fail_allocation_for_operation("tensor_builder_append")) {
+    return set_error(
+        IRX_ARROW_STATUS_OUT_OF_MEMORY,
+        "injected Arrow tensor append allocation failure");
+  }
   uint8_t* slot = nullptr;
   const int code = tensor_builder_require_slot(builder, &slot);
   if (code != kArrowOk) {
@@ -2327,6 +2496,18 @@ irx_arrow_status irx_arrow_tensor_builder_append_double(
     irx_arrow_tensor_builder_handle* builder,
     double value) {
   begin_operation(__func__);
+  const irx_arrow_status validation = validate_handle(
+      builder,
+      IRX_ARROW_HANDLE_KIND_TENSOR_BUILDER,
+      "tensor builder");
+  if (validation != kArrowOk) {
+    return validation;
+  }
+  if (fail_allocation_for_operation("tensor_builder_append")) {
+    return set_error(
+        IRX_ARROW_STATUS_OUT_OF_MEMORY,
+        "injected Arrow tensor append allocation failure");
+  }
   uint8_t* slot = nullptr;
   const int code = tensor_builder_require_slot(builder, &slot);
   if (code != kArrowOk) {
@@ -2374,6 +2555,13 @@ irx_arrow_status irx_arrow_tensor_builder_finish(
           IRX_ARROW_STATUS_INVALID_ARGUMENT,
           "tensor builder value count does not match tensor shape extent");
     }
+    if (fail_allocation_for_operation("tensor_builder_finish")) {
+      return set_error(
+          IRX_ARROW_STATUS_OUT_OF_MEMORY,
+          "injected Arrow tensor finish allocation failure");
+    }
+
+    auto tensor = make_runtime_handle<irx_arrow_tensor_handle>();
 
     std::shared_ptr<arrow::Buffer> buffer = arrow::Buffer::FromVector(std::move(builder->data));
     arrow::Result<std::shared_ptr<arrow::Tensor>> tensor_result = arrow::Tensor::Make(
@@ -2385,7 +2573,6 @@ irx_arrow_status irx_arrow_tensor_builder_finish(
       return set_arrow_error("Arrow tensor construction failed", tensor_result.status());
     }
 
-    auto tensor = std::make_unique<irx_arrow_tensor_handle>();
     tensor->tensor = std::move(tensor_result).ValueUnsafe();
     tensor->shape_cache = tensor->tensor->shape();
     tensor->strides_cache = tensor->tensor->strides();
@@ -2563,6 +2750,11 @@ irx_arrow_status irx_arrow_table_new_from_arrays(
     if (column_count > 0 && arrays == nullptr) {
       return set_error(IRX_ARROW_STATUS_NULL_POINTER, "arrays must not be NULL");
     }
+    if (fail_allocation_for_operation("table_new")) {
+      return set_error(
+          IRX_ARROW_STATUS_OUT_OF_MEMORY,
+          "injected Arrow table allocation failure");
+    }
 
     std::vector<std::shared_ptr<arrow::Field>> fields;
     std::vector<std::shared_ptr<arrow::ChunkedArray>> columns;
@@ -2607,7 +2799,7 @@ irx_arrow_status irx_arrow_table_new_from_arrays(
         std::move(columns),
         row_count < 0 ? 0 : row_count);
 
-    auto handle = std::make_unique<irx_arrow_table_handle>();
+    auto handle = make_runtime_handle<irx_arrow_table_handle>();
     handle->table = std::move(table);
     *out_table = handle.release();
     return kArrowOk;
@@ -2673,8 +2865,13 @@ irx_arrow_status irx_arrow_table_column_by_name(
     if (!column) {
       return set_error(IRX_ARROW_STATUS_INDEX_OUT_OF_BOUNDS, "table has no column named '%s'", name);
     }
+    if (fail_allocation_for_operation("table_column")) {
+      return set_error(
+          IRX_ARROW_STATUS_OUT_OF_MEMORY,
+          "injected Arrow table column allocation failure");
+    }
 
-    auto handle = std::make_unique<irx_arrow_chunked_array_handle>();
+    auto handle = make_runtime_handle<irx_arrow_chunked_array_handle>();
     handle->column = std::move(column);
     *out_column = handle.release();
     return kArrowOk;
@@ -2710,8 +2907,13 @@ irx_arrow_status irx_arrow_table_column_by_index(
     if (index < 0 || index >= table->table->num_columns()) {
       return set_error(IRX_ARROW_STATUS_INDEX_OUT_OF_BOUNDS, "column index is out of bounds");
     }
+    if (fail_allocation_for_operation("table_column")) {
+      return set_error(
+          IRX_ARROW_STATUS_OUT_OF_MEMORY,
+          "injected Arrow table column allocation failure");
+    }
 
-    auto handle = std::make_unique<irx_arrow_chunked_array_handle>();
+    auto handle = make_runtime_handle<irx_arrow_chunked_array_handle>();
     handle->column = table->table->column(index);
     *out_column = handle.release();
     return kArrowOk;

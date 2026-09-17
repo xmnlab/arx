@@ -33,6 +33,8 @@ from astx.binary_op import (
 )
 from llvmlite import ir
 
+from irx.analysis.ownership import resource_ownership
+from irx.analysis.resolved_nodes import ResourceKind
 from irx.analysis.types import common_numeric_type, is_string_type
 from irx.builder.core import (
     VisitorCore,
@@ -565,15 +567,13 @@ class BinaryOpVisitorMixin(VisitorMixinBase):
             source_type=self._resolved_ast_type(node.rhs),
             target_type=self._resolved_ast_type(node),
         )
+        llvm_rhs = cast(Any, self)._retain_copied_resource_value(
+            node.rhs,
+            llvm_rhs,
+        )
 
         llvm_lhs = self._lvalue_address(var_lhs)
         if isinstance(self._resolved_ast_type(node), astx.ListType):
-            if not isinstance(var_lhs, astx.Identifier):
-                raise_lowering_internal_error(
-                    "list field assignment reached lowering without an "
-                    "object-field ownership contract",
-                    node=node,
-                )
             self._destroy_replaced_list(
                 node,
                 llvm_lhs,
@@ -588,7 +588,32 @@ class BinaryOpVisitorMixin(VisitorMixinBase):
                 llvm_lhs,
                 target_name=lhs_name,
             )
+        ownership = resource_ownership(node)
+        incoming_slot: ir.Value | None = None
+        if ownership is not None and ownership.resource_kind not in (
+            ResourceKind.LIST,
+            ResourceKind.STRING,
+        ):
+            incoming_slot = self._llvm.ir_builder.alloca(
+                llvm_rhs.type,
+                name=f"{lhs_name}_field_replacement_incoming",
+            )
+            self._llvm.ir_builder.store(llvm_rhs, incoming_slot)
+            cast(Any, self)._register_resource_slot_cleanup(
+                ownership,
+                incoming_slot,
+            )
+            self._destroy_replaced_native_resource(
+                node,
+                llvm_lhs,
+                target_name=lhs_name,
+            )
         self._llvm.ir_builder.store(llvm_rhs, llvm_lhs)
+        if incoming_slot is not None:
+            self._llvm.ir_builder.store(
+                ir.Constant(llvm_rhs.type, None),
+                incoming_slot,
+            )
         self.result_stack.append(llvm_rhs)
 
     @VisitorCore.visit.dispatch

@@ -20,7 +20,7 @@ from irx.system import PrintExpr
 
 from .conftest import assert_ir_parses, check_result
 
-EXPECTED_STRING_REPLACEMENT_FREES = 2
+EXPECTED_STRING_REPLACEMENT_FREE_SITES = 3
 
 
 def _string_concat(lhs: str, rhs: str) -> astx.BinaryOp:
@@ -484,7 +484,8 @@ def test_owned_string_assignment_releases_each_lifetime_generation() -> None:
     ir_text = LLVMBuilder().translate(module)
 
     assert (
-        ir_text.count('call void @"free"') == EXPECTED_STRING_REPLACEMENT_FREES
+        ir_text.count('call void @"free"')
+        == EXPECTED_STRING_REPLACEMENT_FREE_SITES
     )
     assert_ir_parses(ir_text)
     check_result(

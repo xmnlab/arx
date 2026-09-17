@@ -24,6 +24,7 @@ from irx.analysis.resolved_nodes import (
     ResourceMutability,
     ResourceOwnership,
     ResourceSharingKind,
+    ResourceViewKind,
     SemanticInfo,
     SemanticSymbol,
 )
@@ -148,6 +149,27 @@ STRING_RESOURCE_CONTRACT = ResourceContract(
     "free",
     None,
 )
+BUFFER_VIEW_RESOURCE_CONTRACT = ResourceContract(
+    ResourceKind.BUFFER_VIEW,
+    ResourceSharingKind.SHARED,
+    ResourceMutability.IMMUTABLE,
+    "irx_buffer_view_release",
+    "irx_buffer_view_retain",
+)
+CLASS_INSTANCE_RESOURCE_CONTRACT = ResourceContract(
+    ResourceKind.CLASS_INSTANCE,
+    ResourceSharingKind.SHARED,
+    ResourceMutability.MUTABLE,
+    "irx_class_release",
+    "irx_class_retain",
+)
+GENERATOR_FRAME_RESOURCE_CONTRACT = ResourceContract(
+    ResourceKind.GENERATOR_FRAME,
+    ResourceSharingKind.UNIQUE,
+    ResourceMutability.MUTABLE,
+    "irx_generator_release",
+    None,
+)
 
 
 @public
@@ -199,6 +221,8 @@ def build_resource_ownership(
     source_symbol_id: str | None = None,
     transfer_kind: OwnershipTransferKind = OwnershipTransferKind.NONE,
     escape_kind: OwnershipEscapeKind = OwnershipEscapeKind.NONE,
+    view_kind: ResourceViewKind = ResourceViewKind.NONE,
+    view_parent_symbol_id: str | None = None,
 ) -> ResourceOwnership:
     """
     title: Build ownership metadata from one canonical resource contract.
@@ -217,6 +241,10 @@ def build_resource_ownership(
         type: OwnershipTransferKind
       escape_kind:
         type: OwnershipEscapeKind
+      view_kind:
+        type: ResourceViewKind
+      view_parent_symbol_id:
+        type: str | None
     returns:
       type: ResourceOwnership
     """
@@ -237,6 +265,8 @@ def build_resource_ownership(
         source_symbol_id=source_symbol_id,
         transfer_kind=transfer_kind,
         escape_kind=escape_kind,
+        view_kind=view_kind,
+        view_parent_symbol_id=view_parent_symbol_id,
     )
 
 
@@ -270,6 +300,8 @@ def arrow_resource_ownership(
     source_symbol_id: str | None = None,
     transfer_kind: OwnershipTransferKind = OwnershipTransferKind.NONE,
     escape_kind: OwnershipEscapeKind = OwnershipEscapeKind.NONE,
+    view_kind: ResourceViewKind = ResourceViewKind.NONE,
+    view_parent_symbol_id: str | None = None,
 ) -> ResourceOwnership:
     """
     title: Build semantic ownership for one canonical Arrow handle family.
@@ -288,6 +320,10 @@ def arrow_resource_ownership(
         type: OwnershipTransferKind
       escape_kind:
         type: OwnershipEscapeKind
+      view_kind:
+        type: ResourceViewKind
+      view_parent_symbol_id:
+        type: str | None
     returns:
       type: ResourceOwnership
     """
@@ -299,6 +335,100 @@ def arrow_resource_ownership(
         source_symbol_id=source_symbol_id,
         transfer_kind=transfer_kind,
         escape_kind=escape_kind,
+        view_kind=view_kind,
+        view_parent_symbol_id=view_parent_symbol_id,
+    )
+
+
+@public
+@typechecked
+def resource_contract_for_type(
+    type_: astx.DataType | None,
+) -> ResourceContract | None:
+    """
+    title: Return the runtime-resource contract represented by an ASTx type.
+    summary: >-
+      This is the semantic source of truth for currently implemented Arx
+      runtime values. Lowering consumes the resulting sidecar and must not
+      repeat this type classification.
+    parameters:
+      type_:
+        type: astx.DataType | None
+    returns:
+      type: ResourceContract | None
+    """
+    if type_ is None:
+        return None
+    if isinstance(type_, astx.ListType):
+        return LIST_RESOURCE_CONTRACT
+    if isinstance(type_, astx.String):
+        return STRING_RESOURCE_CONTRACT
+    if isinstance(type_, astx.ClassType):
+        return CLASS_INSTANCE_RESOURCE_CONTRACT
+    if isinstance(type_, astx.GeneratorType):
+        return GENERATOR_FRAME_RESOURCE_CONTRACT
+    if isinstance(type_, (astx.BufferViewType, astx.TensorType)):
+        return BUFFER_VIEW_RESOURCE_CONTRACT
+    if isinstance(type_, astx.SeriesType):
+        return arrow_resource_contract(ResourceKind.CHUNKED_ARRAY)
+    if isinstance(type_, astx.DataFrameType):
+        return arrow_resource_contract(ResourceKind.TABLE)
+    return None
+
+
+@public
+@typechecked
+def typed_resource_ownership(
+    type_: astx.DataType,
+    kind: OwnershipKind,
+    *,
+    owner_symbol_id: str | None = None,
+    owner_root_symbol_id: str | None = None,
+    source_symbol_id: str | None = None,
+    transfer_kind: OwnershipTransferKind = OwnershipTransferKind.NONE,
+    escape_kind: OwnershipEscapeKind = OwnershipEscapeKind.NONE,
+    view_kind: ResourceViewKind = ResourceViewKind.NONE,
+    view_parent_symbol_id: str | None = None,
+) -> ResourceOwnership:
+    """
+    title: Build ownership metadata for one runtime-managed ASTx type.
+    parameters:
+      type_:
+        type: astx.DataType
+      kind:
+        type: OwnershipKind
+      owner_symbol_id:
+        type: str | None
+      owner_root_symbol_id:
+        type: str | None
+      source_symbol_id:
+        type: str | None
+      transfer_kind:
+        type: OwnershipTransferKind
+      escape_kind:
+        type: OwnershipEscapeKind
+      view_kind:
+        type: ResourceViewKind
+      view_parent_symbol_id:
+        type: str | None
+    returns:
+      type: ResourceOwnership
+    """
+    contract = resource_contract_for_type(type_)
+    if contract is None:
+        raise ValueError(
+            f"type '{type(type_).__name__}' is not runtime-managed"
+        )
+    return build_resource_ownership(
+        contract,
+        kind,
+        owner_symbol_id=owner_symbol_id,
+        owner_root_symbol_id=owner_root_symbol_id,
+        source_symbol_id=source_symbol_id,
+        transfer_kind=transfer_kind,
+        escape_kind=escape_kind,
+        view_kind=view_kind,
+        view_parent_symbol_id=view_parent_symbol_id,
     )
 
 
@@ -418,14 +548,19 @@ def transfer_resource_ownership(
 
 __all__ = [
     "ARROW_RESOURCE_CONTRACTS",
+    "BUFFER_VIEW_RESOURCE_CONTRACT",
+    "CLASS_INSTANCE_RESOURCE_CONTRACT",
+    "GENERATOR_FRAME_RESOURCE_CONTRACT",
     "LIST_RESOURCE_CONTRACT",
     "STRING_RESOURCE_CONTRACT",
     "arrow_resource_contract",
     "arrow_resource_ownership",
     "build_resource_ownership",
     "list_resource_ownership",
+    "resource_contract_for_type",
     "resource_ownership",
     "string_resource_ownership",
     "symbol_resource_ownership",
     "transfer_resource_ownership",
+    "typed_resource_ownership",
 ]

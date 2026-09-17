@@ -18,11 +18,16 @@ from irx.analysis.bindings import VisibleBindings
 from irx.analysis.context import SemanticContext
 from irx.analysis.factories import SemanticEntityFactory
 from irx.analysis.module_interfaces import ModuleKey, ParsedModule
-from irx.analysis.ownership import resource_ownership
+from irx.analysis.ownership import (
+    resource_contract_for_type,
+    resource_ownership,
+    typed_resource_ownership,
+)
 from irx.analysis.registry import SemanticRegistry
 from irx.analysis.resolved_nodes import (
     CallResolution,
     OwnershipKind,
+    OwnershipTransferKind,
     ResolvedAssignment,
     ResolvedBaseClassFieldAccess,
     ResolvedClassConstruction,
@@ -48,6 +53,7 @@ from irx.analysis.resolved_nodes import (
     SemanticStruct,
     SemanticSymbol,
 )
+from irx.analysis.schema_types import columnar_type_diagnostic
 from irx.analysis.session import CompilationSession
 from irx.analysis.types import clone_type, display_type_name, is_assignable
 from irx.base.visitors.base import BaseVisitor
@@ -1083,6 +1089,17 @@ class SemanticAnalyzerCore(BaseVisitor):
                 kind=kind,
             )
             self._set_symbol(target, symbol)
+            self._set_type(target, symbol.type_)
+            if resource_contract_for_type(symbol.type_) is not None:
+                self._set_resource_ownership(
+                    target,
+                    typed_resource_ownership(
+                        symbol.type_,
+                        OwnershipKind.OWNED,
+                        owner_symbol_id=symbol.symbol_id,
+                        transfer_kind=OwnershipTransferKind.MOVE,
+                    ),
+                )
             return symbol
 
         if not isinstance(target, astx.InlineVariableDeclaration):
@@ -1114,6 +1131,17 @@ class SemanticAnalyzerCore(BaseVisitor):
             kind=kind,
         )
         self._set_symbol(target, symbol)
+        self._set_type(target, symbol.type_)
+        if resource_contract_for_type(symbol.type_) is not None:
+            self._set_resource_ownership(
+                target,
+                typed_resource_ownership(
+                    symbol.type_,
+                    OwnershipKind.OWNED,
+                    owner_symbol_id=symbol.symbol_id,
+                    transfer_kind=OwnershipTransferKind.MOVE,
+                ),
+            )
         return symbol
 
     def _set_function(
@@ -1580,6 +1608,14 @@ class SemanticAnalyzerCore(BaseVisitor):
         returns:
           type: astx.DataType
         """
+        columnar_error = columnar_type_diagnostic(type_)
+        if columnar_error is not None:
+            self.context.diagnostics.add(
+                columnar_error,
+                node=node,
+                code=DiagnosticCodes.SEMANTIC_TYPE_MISMATCH,
+            )
+            return type_
         if isinstance(type_, astx.UnionType):
             for member in type_.members:
                 self._resolve_declared_type(

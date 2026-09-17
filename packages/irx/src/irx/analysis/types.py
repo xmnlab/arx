@@ -13,6 +13,7 @@ import astx
 
 from public import public
 
+from irx.analysis.schema_types import same_columnar_type
 from irx.typecheck import typechecked
 
 INT_TYPES = (astx.Int8, astx.Int16, astx.Int32, astx.Int64)
@@ -232,6 +233,12 @@ def clone_type(type_: astx.DataType) -> astx.DataType:
             setattr(cloned, "alias_name", alias_name)
         return cloned
 
+    if isinstance(type_, astx.LogicalValueType):
+        return with_alias(
+            type(type_)(type_.element_type, nullable=type_.nullable)
+        )
+    if isinstance(type_, astx.SchemaValueType):
+        return with_alias(type(type_)(type_.schema))
     if isinstance(type_, astx.UnionType):
         return astx.UnionType(
             tuple(clone_type(member) for member in type_.members),
@@ -479,6 +486,8 @@ def same_type(lhs: astx.DataType | None, rhs: astx.DataType | None) -> bool:
     """
     if lhs is None or rhs is None:
         return False
+    if isinstance(lhs, (astx.LogicalValueType, astx.SchemaValueType)):
+        return same_columnar_type(lhs, rhs)
     if isinstance(lhs, astx.UnionType) and isinstance(rhs, astx.UnionType):
         if len(lhs.members) != len(rhs.members):
             return False

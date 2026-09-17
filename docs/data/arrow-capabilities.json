@@ -74,13 +74,15 @@
       "id": "FND-004",
       "name": "Decimal values",
       "owner": "ASTx types, Arx frontend, and IRx",
-      "status": "not_started",
+      "status": "partial",
       "test_targets": [
+        "packages/irx/tests/analysis/test_schema.py",
+        "packages/irx/tests/test_schema_interop.py",
         "packages/astx/tests/datatypes/test_types.py",
         "packages/irx/tests/analysis/test_sized_type_metadata.py"
       ],
       "blocks": ["M2", "M5"],
-      "baseline": "ASTx reserves decimal data-type kinds but has no usable decimal value model.",
+      "baseline": "Decimal32/64/128/256 descriptors validate precision and scale and round-trip through C Data and IPC schemas; executable decimal values remain absent.",
       "completion": "Add types and literals, precision and scale checks, 32/64/128/256-bit representation, arithmetic, casts, and ABI rules."
     },
     {
@@ -89,11 +91,13 @@
       "owner": "ASTx types, Arx frontend, and IRx",
       "status": "partial",
       "test_targets": [
+        "packages/irx/tests/analysis/test_schema.py",
+        "packages/irx/tests/test_schema_interop.py",
         "packages/astx/tests/datatypes/test_date_time.py",
         "packages/irx/tests/test_record_batch.py"
       ],
       "blocks": ["M2", "M5", "M6"],
-      "baseline": "Date, time, timestamp, and datetime types and literals exist.",
+      "baseline": "Existing temporal literals are unchanged; logical descriptors now preserve units, durations, intervals and timezone metadata with explicit conversion rules.",
       "completion": "Add Arrow units, duration and interval types, timezone metadata, range checks, and conversion policy."
     },
     {
@@ -102,11 +106,13 @@
       "owner": "ASTx types and IRx analysis",
       "status": "partial",
       "test_targets": [
+        "packages/irx/tests/analysis/test_schema.py",
+        "packages/irx/tests/test_schema_interop.py",
         "packages/irx/tests/analysis/test_templates.py",
         "packages/irx/tests/analysis/test_sized_type_metadata.py"
       ],
       "blocks": ["M2", "M3"],
-      "baseline": "Templates, tensors, DataFrames, structs, and unions provide partial foundations.",
+      "baseline": "Immutable recursive schemas now validate fields, nullability, fixed sizes, dictionary indices, union codes and structural identity. New container value lowering remains pending.",
       "completion": "Support recursive schema parameters, fixed sizes, dictionary types, union codes, field nullability, and canonical equality."
     },
     {
@@ -115,11 +121,13 @@
       "owner": "ASTx types and IRx analysis",
       "status": "partial",
       "test_targets": [
+        "packages/irx/tests/analysis/test_schema.py",
+        "packages/irx/tests/test_schema_interop.py",
         "packages/astx/tests/test_sized_type_metadata.py",
         "packages/irx/tests/analysis/test_sized_type_metadata.py"
       ],
       "blocks": ["M2", "M4"],
-      "baseline": "Tensor dimensions and DataFrame fields carry selected static metadata.",
+      "baseline": "Logical descriptors validate precision, scale, time units, widths, sizes and schema fields; new Arx source expressions for these compile-time values remain pending.",
       "completion": "Provide checked type parameters for dimensions, decimal precision and scale, time units, fixed sizes, and schema fields."
     },
     {
@@ -130,12 +138,13 @@
       "test_targets": [
         "packages/irx/tests/test_runtime_features.py",
         "packages/irx/tests/test_generators.py",
+        "packages/irx/tests/test_aggregate_ownership.py",
         "packages/irx/tests/test_arrow_runtime.py",
         "packages/irx/tests/test_record_batch_compatibility.py"
       ],
       "blocks": ["M1", "M3", "M6"],
-      "baseline": "Strings and dynamic lists have semantic ownership. Native Arrow handles, including batches produced through irx_rb compatibility, now use checked shared or unique owner tokens, while IRx semantic ownership remains incomplete.",
-      "completion": "Generalize ownership to handles, views, fields, calls, returns, temporaries, failures, classes, and generators."
+      "baseline": "Current managed values carry semantic ownership through handles, views, fields, calls, returns, temporaries, failures, class objects, and generator frames. Native Arrow handles, including batches produced through irx_rb compatibility, use checked shared or unique owner tokens.",
+      "completion": "Extend the mandatory ownership and deterministic-cleanup contract with every later container, compute, stream, dataset, and file operation."
     },
     {
       "id": "FND-009",
@@ -210,11 +219,12 @@
       "status": "partial",
       "test_targets": [
         "packages/irx/tests/analysis/test_class_semantics.py",
-        "packages/irx/tests/test_class_layout.py"
+        "packages/irx/tests/test_class_layout.py",
+        "packages/irx/tests/test_aggregate_ownership.py"
       ],
       "blocks": ["M3", "M6"],
-      "baseline": "Struct and class support exists, but general class destruction is incomplete.",
-      "completion": "Add deterministic field destruction and move rules before aggregates may store owning Arrow handles."
+      "baseline": "Classes use shared references plus deterministic reverse-order field destruction; structs still reject owning managed fields.",
+      "completion": "Add equivalent ownership and deterministic field destruction for future owning struct and schema-defined record values."
     },
     {
       "id": "FND-015",
@@ -277,7 +287,7 @@
       "category": "Logical types",
       "name": "Null and Boolean",
       "scope": "core",
-      "target_milestone": "M2",
+      "target_milestone": "M3",
       "stages": {
         "native_runtime": "partial",
         "astx_model": "partial",
@@ -287,8 +297,13 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Boolean arrays and validity metadata exist, but Arx has no unified nullable scalar semantics or three-valued compute rules.",
+      "notes": "Logical descriptors, validation, C Data and IPC schema interchange are implemented, including recursive metadata. This does not imply native values, builders, Arx syntax or compute support for the entire family.",
       "evidence": [
+        {
+          "path": "packages/irx/tests/test_schema_interop.py",
+          "symbol": "test_native_schema_copy_preserves_recursive_descriptor",
+          "purpose": "Validates recursive descriptors through native copy, retain, export and release; not container value execution."
+        },
         {
           "path": "packages/irx/tests/test_arrow_runtime.py",
           "symbol": "test_arrow_runtime_nullable_numeric_bridge_is_explicit",
@@ -306,18 +321,23 @@
       "category": "Logical types",
       "name": "Signed and unsigned integers and floats",
       "scope": "core",
-      "target_milestone": "M2",
+      "target_milestone": "M3",
       "stages": {
-        "native_runtime": "complete",
+        "native_runtime": "partial",
         "astx_model": "complete",
         "irx_semantics": "partial",
         "llvm_lowering": "partial",
         "arx_surface": "partial",
-        "interop": "complete"
+        "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Primitive array and scalar types exist, but Arrow-specific cast, overflow, and collection semantics are not complete end to end.",
+      "notes": "Logical descriptors, validation, C Data and IPC schema interchange are implemented, including recursive metadata. This does not imply native values, builders, Arx syntax or compute support for the entire family. Existing primitive builders still exclude float16.",
       "evidence": [
+        {
+          "path": "packages/irx/tests/test_schema_interop.py",
+          "symbol": "test_native_schema_copy_preserves_recursive_descriptor",
+          "purpose": "Validates recursive descriptors through native copy, retain, export and release; not container value execution."
+        },
         {
           "path": "packages/irx/tests/test_arrow_runtime.py",
           "symbol": "test_arrow_runtime_import_export_roundtrips_supported_primitives",
@@ -330,18 +350,23 @@
       "category": "Logical types",
       "name": "Binary, large binary, and binary view",
       "scope": "core",
-      "target_milestone": "M2",
+      "target_milestone": "M3",
       "stages": {
-        "native_runtime": "not_started",
-        "astx_model": "not_started",
-        "irx_semantics": "not_started",
+        "native_runtime": "partial",
+        "astx_model": "partial",
+        "irx_semantics": "partial",
         "llvm_lowering": "not_started",
         "arx_surface": "not_started",
-        "interop": "not_started"
+        "interop": "partial"
       },
-      "overall": "not_started",
-      "notes": "No general Arrow binary value, offsets, view lifetime, or Arx bytes surface is implemented.",
+      "overall": "partial",
+      "notes": "Logical descriptors, validation, C Data and IPC schema interchange are implemented, including recursive metadata. This does not imply native values, builders, Arx syntax or compute support for the entire family.",
       "evidence": [
+        {
+          "path": "packages/irx/tests/test_schema_interop.py",
+          "symbol": "test_native_schema_copy_preserves_recursive_descriptor",
+          "purpose": "Validates recursive descriptors through native copy, retain, export and release; not container value execution."
+        },
         {
           "path": "packages/irx/tests/test_arrow_capability_matrix.py",
           "symbol": "test_required_arrow_24_capabilities_are_classified",
@@ -354,7 +379,7 @@
       "category": "Logical types",
       "name": "UTF-8, large UTF-8, and string view",
       "scope": "core",
-      "target_milestone": "M2",
+      "target_milestone": "M3",
       "stages": {
         "native_runtime": "partial",
         "astx_model": "partial",
@@ -364,8 +389,13 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "RecordBatch UTF-8 and large UTF-8 interoperate with PyArrow; general arrays, string views, DataFrame columns, and LLVM lowering do not.",
+      "notes": "Logical descriptors, validation, C Data and IPC schema interchange are implemented, including recursive metadata. This does not imply native values, builders, Arx syntax or compute support for the entire family.",
       "evidence": [
+        {
+          "path": "packages/irx/tests/test_schema_interop.py",
+          "symbol": "test_native_schema_copy_preserves_recursive_descriptor",
+          "purpose": "Validates recursive descriptors through native copy, retain, export and release; not container value execution."
+        },
         {
           "path": "packages/irx/tests/test_record_batch.py",
           "symbol": "test_irx_strings_read_by_pyarrow",
@@ -383,18 +413,23 @@
       "category": "Logical types",
       "name": "Fixed-size binary",
       "scope": "core",
-      "target_milestone": "M2",
+      "target_milestone": "M3",
       "stages": {
-        "native_runtime": "not_started",
-        "astx_model": "not_started",
-        "irx_semantics": "not_started",
+        "native_runtime": "partial",
+        "astx_model": "partial",
+        "irx_semantics": "partial",
         "llvm_lowering": "not_started",
         "arx_surface": "not_started",
-        "interop": "not_started"
+        "interop": "partial"
       },
-      "overall": "not_started",
-      "notes": "The fixed byte width is not represented in the type system or native ABI.",
+      "overall": "partial",
+      "notes": "Logical descriptors, validation, C Data and IPC schema interchange are implemented, including recursive metadata. This does not imply native values, builders, Arx syntax or compute support for the entire family.",
       "evidence": [
+        {
+          "path": "packages/irx/tests/test_schema_interop.py",
+          "symbol": "test_native_schema_copy_preserves_recursive_descriptor",
+          "purpose": "Validates recursive descriptors through native copy, retain, export and release; not container value execution."
+        },
         {
           "path": "packages/irx/tests/test_arrow_capability_matrix.py",
           "symbol": "test_required_arrow_24_capabilities_are_classified",
@@ -407,18 +442,23 @@
       "category": "Logical types",
       "name": "Decimal32, Decimal64, Decimal128, and Decimal256",
       "scope": "core",
-      "target_milestone": "M2",
+      "target_milestone": "M3",
       "stages": {
-        "native_runtime": "not_started",
+        "native_runtime": "partial",
         "astx_model": "partial",
-        "irx_semantics": "not_started",
+        "irx_semantics": "partial",
         "llvm_lowering": "not_started",
         "arx_surface": "not_started",
-        "interop": "not_started"
+        "interop": "partial"
       },
-      "overall": "not_started",
-      "notes": "ASTx reserves decimal data-type kinds, but precision, scale, values, semantics, ABI representation, and Arrow interoperability are absent.",
+      "overall": "partial",
+      "notes": "Logical descriptors, validation, C Data and IPC schema interchange are implemented, including recursive metadata. This does not imply native values, builders, Arx syntax or compute support for the entire family.",
       "evidence": [
+        {
+          "path": "packages/irx/tests/test_schema_interop.py",
+          "symbol": "test_native_schema_copy_preserves_recursive_descriptor",
+          "purpose": "Validates recursive descriptors through native copy, retain, export and release; not container value execution."
+        },
         {
           "path": "packages/irx/tests/test_arrow_capability_matrix.py",
           "symbol": "test_required_arrow_24_capabilities_are_classified",
@@ -431,7 +471,7 @@
       "category": "Logical types",
       "name": "Date, time, timestamp, duration, and interval",
       "scope": "core",
-      "target_milestone": "M2",
+      "target_milestone": "M3",
       "stages": {
         "native_runtime": "partial",
         "astx_model": "partial",
@@ -441,8 +481,13 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "RecordBatch date, time, and timestamp values work in Python; duration, intervals, complete unit metadata, timezone policy, and Arx-native containers remain incomplete.",
+      "notes": "Logical descriptors, validation, C Data and IPC schema interchange are implemented, including recursive metadata. This does not imply native values, builders, Arx syntax or compute support for the entire family.",
       "evidence": [
+        {
+          "path": "packages/irx/tests/test_schema_interop.py",
+          "symbol": "test_native_schema_copy_preserves_recursive_descriptor",
+          "purpose": "Validates recursive descriptors through native copy, retain, export and release; not container value execution."
+        },
         {
           "path": "packages/irx/tests/test_record_batch.py",
           "symbol": "test_irx_temporal_read_by_pyarrow",
@@ -460,7 +505,7 @@
       "category": "Logical types",
       "name": "List, large list, fixed-size list, and list view",
       "scope": "core",
-      "target_milestone": "M2",
+      "target_milestone": "M3",
       "stages": {
         "native_runtime": "partial",
         "astx_model": "partial",
@@ -470,8 +515,13 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Ordinary Arx lists and fixed-width RecordBatch list children exist; recursive Arrow list schemas, large offsets, list views, and container lowering are incomplete.",
+      "notes": "Logical descriptors, validation, C Data and IPC schema interchange are implemented, including recursive metadata. This does not imply native values, builders, Arx syntax or compute support for the entire family.",
       "evidence": [
+        {
+          "path": "packages/irx/tests/test_schema_interop.py",
+          "symbol": "test_native_schema_copy_preserves_recursive_descriptor",
+          "purpose": "Validates recursive descriptors through native copy, retain, export and release; not container value execution."
+        },
         {
           "path": "packages/irx/tests/test_record_batch.py",
           "symbol": "test_irx_list_read_by_pyarrow",
@@ -489,7 +539,7 @@
       "category": "Logical types",
       "name": "Struct and map",
       "scope": "core",
-      "target_milestone": "M2",
+      "target_milestone": "M3",
       "stages": {
         "native_runtime": "partial",
         "astx_model": "partial",
@@ -499,8 +549,13 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Fixed-width RecordBatch struct fields exist; recursive Arrow structs, maps, child ownership, and Arx container semantics do not.",
+      "notes": "Logical descriptors, validation, C Data and IPC schema interchange are implemented, including recursive metadata. This does not imply native values, builders, Arx syntax or compute support for the entire family.",
       "evidence": [
+        {
+          "path": "packages/irx/tests/test_schema_interop.py",
+          "symbol": "test_native_schema_copy_preserves_recursive_descriptor",
+          "purpose": "Validates recursive descriptors through native copy, retain, export and release; not container value execution."
+        },
         {
           "path": "packages/irx/tests/test_record_batch.py",
           "symbol": "test_irx_struct_read_by_pyarrow",
@@ -518,18 +573,23 @@
       "category": "Logical types",
       "name": "Sparse and dense union",
       "scope": "core",
-      "target_milestone": "M2",
+      "target_milestone": "M3",
       "stages": {
-        "native_runtime": "not_started",
+        "native_runtime": "partial",
         "astx_model": "partial",
-        "irx_semantics": "not_started",
+        "irx_semantics": "partial",
         "llvm_lowering": "not_started",
         "arx_surface": "partial",
-        "interop": "not_started"
+        "interop": "partial"
       },
-      "overall": "not_started",
-      "notes": "Arx type unions are not Arrow dense or sparse unions; type codes, offsets, storage, and interchange are not implemented.",
+      "overall": "partial",
+      "notes": "Logical descriptors, validation, C Data and IPC schema interchange are implemented, including recursive metadata. This does not imply native values, builders, Arx syntax or compute support for the entire family.",
       "evidence": [
+        {
+          "path": "packages/irx/tests/test_schema_interop.py",
+          "symbol": "test_native_schema_copy_preserves_recursive_descriptor",
+          "purpose": "Validates recursive descriptors through native copy, retain, export and release; not container value execution."
+        },
         {
           "path": "packages/irx/tests/test_arrow_capability_matrix.py",
           "symbol": "test_required_arrow_24_capabilities_are_classified",
@@ -542,18 +602,23 @@
       "category": "Logical types",
       "name": "Dictionary encoding",
       "scope": "core",
-      "target_milestone": "M2",
+      "target_milestone": "M3",
       "stages": {
-        "native_runtime": "not_started",
-        "astx_model": "not_started",
-        "irx_semantics": "not_started",
+        "native_runtime": "partial",
+        "astx_model": "partial",
+        "irx_semantics": "partial",
         "llvm_lowering": "not_started",
         "arx_surface": "not_started",
-        "interop": "not_started"
+        "interop": "partial"
       },
-      "overall": "not_started",
-      "notes": "Index and value typing, ordered metadata, encode/decode operations, and interchange are absent.",
+      "overall": "partial",
+      "notes": "Logical descriptors, validation, C Data and IPC schema interchange are implemented, including recursive metadata. This does not imply native values, builders, Arx syntax or compute support for the entire family.",
       "evidence": [
+        {
+          "path": "packages/irx/tests/test_schema_interop.py",
+          "symbol": "test_native_schema_copy_preserves_recursive_descriptor",
+          "purpose": "Validates recursive descriptors through native copy, retain, export and release; not container value execution."
+        },
         {
           "path": "packages/irx/tests/test_arrow_capability_matrix.py",
           "symbol": "test_required_arrow_24_capabilities_are_classified",
@@ -566,18 +631,23 @@
       "category": "Logical types",
       "name": "Run-end encoded",
       "scope": "core",
-      "target_milestone": "M2",
+      "target_milestone": "M3",
       "stages": {
-        "native_runtime": "not_started",
-        "astx_model": "not_started",
-        "irx_semantics": "not_started",
+        "native_runtime": "partial",
+        "astx_model": "partial",
+        "irx_semantics": "partial",
         "llvm_lowering": "not_started",
         "arx_surface": "not_started",
-        "interop": "not_started"
+        "interop": "partial"
       },
-      "overall": "not_started",
-      "notes": "Run-end and value child types, validation, decoding, and interchange are absent.",
+      "overall": "partial",
+      "notes": "Logical descriptors, validation, C Data and IPC schema interchange are implemented, including recursive metadata. This does not imply native values, builders, Arx syntax or compute support for the entire family.",
       "evidence": [
+        {
+          "path": "packages/irx/tests/test_schema_interop.py",
+          "symbol": "test_native_schema_copy_preserves_recursive_descriptor",
+          "purpose": "Validates recursive descriptors through native copy, retain, export and release; not container value execution."
+        },
         {
           "path": "packages/irx/tests/test_arrow_capability_matrix.py",
           "symbol": "test_required_arrow_24_capabilities_are_classified",
@@ -590,18 +660,23 @@
       "category": "Logical types",
       "name": "Extension types",
       "scope": "preserve_only",
-      "target_milestone": "M2",
+      "target_milestone": "M3",
       "stages": {
-        "native_runtime": "not_started",
-        "astx_model": "not_started",
-        "irx_semantics": "not_started",
+        "native_runtime": "partial",
+        "astx_model": "partial",
+        "irx_semantics": "partial",
         "llvm_lowering": "not_started",
         "arx_surface": "not_started",
-        "interop": "not_started"
+        "interop": "partial"
       },
-      "overall": "not_started",
-      "notes": "The target is lossless storage and metadata preservation; execution will require separately registered extensions.",
+      "overall": "partial",
+      "notes": "Logical descriptors, validation, C Data and IPC schema interchange are implemented, including recursive metadata. This does not imply native values, builders, Arx syntax or compute support for the entire family.",
       "evidence": [
+        {
+          "path": "packages/irx/tests/test_schema_interop.py",
+          "symbol": "test_native_schema_copy_preserves_recursive_descriptor",
+          "purpose": "Validates recursive descriptors through native copy, retain, export and release; not container value execution."
+        },
         {
           "path": "packages/irx/tests/test_arrow_capability_matrix.py",
           "symbol": "test_required_arrow_24_capabilities_are_classified",
