@@ -4,7 +4,7 @@ NOTE: DON'T TRACK THIS BY GIT, IT SHOULD BE KEPT IGNORED BY .gitignore
 
 **Status:** active implementation roadmap
 
-**Repository snapshot:** 2026-09-16
+**Repository snapshot:** 2026-09-17
 
 **Target:** make Apache Arrow C++ a complete, native, first-class data runtime
 for the Arx language.
@@ -138,6 +138,9 @@ re-scoped; do not defer status updates until the end of a milestone.
 | 2026-09-16 | M3-003/006     | NOT STARTED -> PARTIAL     | Shared scalar/physical mapping and recursive native schema copying; source operations and dedicated descriptor handles remain.   |
 | 2026-09-16 | M2-011         | PARTIAL -> DONE            | Live Arrow-pool accounting over 256 iterations and wrapped malloc/free accounting in a generated owning-local loop pass.         |
 | 2026-09-16 | M1-006         | DONE (updated)             | Array feature contract 1.1.0 advertises recursive schema support; C ABI 1.0.0 remains baseline-compatible.                       |
+| 2026-09-17 | M2-009/010     | PARTIAL -> IN PROGRESS     | Generated ownership sanitizer programs and real allocator-failure probes started.                                                |
+| 2026-09-17 | M2-014/015     | NOT STARTED -> DONE        | Retry-safe primitive/Tensor builders and cleanup-aware fatal paths pass allocator/accounting regressions.                        |
+| 2026-09-17 | M2-009/010     | IN PROGRESS -> PARTIAL     | Expanded probes pass; LSan remains ptrace-blocked and remaining operation sweeps are incomplete.                                 |
 
 ### Verification — 2026-09-16
 
@@ -1434,11 +1437,18 @@ of semantic analysis.
 | M2-006 | Add class-field and generator-frame ownership cleanup              | **DONE**    | Aggregate destructors and frame close implemented                                                                                                                                                      |
 | M2-007 | Model retained and borrowed view owners explicitly                 | **DONE**    | Views carry parent/root and retain policy                                                                                                                                                              |
 | M2-008 | Harden Python wrappers for deterministic close and use-after-close | **DONE**    | Context-manager and fail-closed tests                                                                                                                                                                  |
-| M2-009 | Run ownership programs under ASan, LSan, and UBSan                 | **PARTIAL** | ASan/UBSan harness passes locally; LSan and generated-program sanitizer coverage remain unverified                                                                                                     |
-| M2-010 | Add allocator-fault injection across native Arrow operations       | **PARTIAL** | Operation-entry failpoints exist; real allocator failures after mutation remain unverified                                                                                                             |
+| M2-009 | Run ownership programs under ASan, LSan, and UBSan                 | **PARTIAL** | Native harness and four ASan-instrumented generated ownership programs pass with native UBSan; LSan is blocked locally by ptrace and its CI result is unobserved                                       |
+| M2-010 | Add allocator-fault injection across native Arrow operations       | **PARTIAL** | 53 real allocator regressions cover primitive append/growth/finish, copy import and Tensor creation/finish; move import, legacy IPC and remaining native operations still need full failure sweeps     |
 | M2-011 | Add bounded-memory loops and release-order property tests          | **DONE**    | 256 native lifecycle iterations return Arrow-pool bytes to baseline; a generated generator loop has zero remaining malloc/free owners; both release orders pass                                        |
 | M2-012 | Guard aggregate allocation and isolate resume-state cleanup        | **DONE**    | 22 aggregate/generator tests; real malloc-failure class/frame executables report errors; resumed owning locals verify and execute                                                                      |
 | M2-013 | Close remaining aggregate storage-class and cycle gaps             | **PARTIAL** | Unsafe owned-string field initialization and borrowed-string field replacement fail in analysis; owned-string fields, cyclic class graphs and static-managed storage need supported lifecycle policies |
+
+### Additional verified M2 slices
+
+| ID     | Item                                                              | Status   | Evidence                                                                                                  |
+| ------ | ----------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------- |
+| M2-014 | Preserve builder contents across real allocation failures         | **DONE** | 53 allocation tests, including all 11 primitive builders and standalone C++ finish sweeps                 |
+| M2-015 | Clean current-function owners on assertion and arithmetic failure | **DONE** | Two malloc/free-accounted fatal executables; report-before-cleanup keeps borrowed IRx message bytes valid |
 
 ### Semantic resource descriptor foundation (M2-001)
 
@@ -1497,16 +1507,28 @@ deterministic context management and reject use after release, finish, or close.
 
 `irx.check-arrow-ownership-sanitizers` builds a 256-iteration C++ lifecycle
 harness that checks live Arrow-pool bytes return to baseline after each
-iteration with ASan, UBSan, and LSan. It is configured in the Clang ABI CI job;
-that remote run has not been observed here. ASan and UBSan pass locally; this
-sandbox runs under ptrace, so local LSan execution is blocked while the
-unmodified CI command retains leak detection. Compile-time native allocation and
-operation-entry failpoints verify OUT_OF_MEMORY behavior, null outputs, retry
-safety, and input preservation at those injection points. They do not prove
-recovery from real allocation failure after a mutation has begun. General
-compute and unified stream/file operations remain future work. Legacy
-RecordBatch stream operations already exist and still need allocator-failure
-coverage; future M6-M7 paths require the same contract.
+iteration with ASan, UBSan, and LSan. It also runs four ASan-instrumented
+generated programs covering class owners and generator exhaustion, early close,
+and resumed failure, with UBSan on their registered native artifacts. The Clang
+ABI CI job runs this task; that remote result has not been observed here. ASan
+and native UBSan pass locally; this sandbox runs under ptrace, so local LSan
+execution is blocked while the unmodified CI command retains leak detection.
+
+Operation-entry failpoints alone are not proof of post-mutation recovery. M2-014
+adds test-only Arrow pool failures for partial allocation/reallocation, plus
+standalone C++ allocation sweeps through Array/Tensor finish. These verify
+OUT_OF_MEMORY, null outputs, retry safety, preserved values/nulls, and release.
+Primitive Array finish snapshots buffers before consuming the builder; Tensor
+finish shares its existing buffer without moving from it early. The 53 new
+regressions cover all 11 executable primitive builder types, not every modeled
+Arrow type or native operation. General compute and unified stream/file paths
+remain future work. C Data move import and legacy RecordBatch IPC/stream
+operations still need allocator-failure contracts and coverage; future M6-M7
+paths require the same guarantees.
+
+M2-015 also cleans current-function owners on assertion and scalar integer
+arithmetic failure. Assertion reporting precedes cleanup to keep borrowed
+message bytes live. This is not cross-function fatal stack unwinding.
 
 The 2026-09-16 audit reopens M2: operation-entry failpoints are not proof of
 allocator failure atomicity, unmeasured loops do not establish a memory bound,
@@ -1978,3 +2000,122 @@ Native Arrow C++ support is complete for a declared Arrow release only when:
   structured diagnostic; and
 - remaining optional or out-of-scope Arrow modules are explicitly documented,
   not silently omitted.
+
+## 21. Implementation decisions and alternatives
+
+### 2026-09-17 — M2 native failure safety (M2-009/010/014/015)
+
+- **Assumption:** failed Array/Tensor finish must preserve logical builder
+  contents, not merely leave a non-null handle. Callers may retry or release.
+  **Decision:** prepare all fallible results before consuming the owner.
+  **Alternatives:** poison/consume the builder on failure (simpler, but changes
+  the accepted ABI contract); custom transactional buffers (potentially
+  zero-copy, but a larger maintenance burden against the pinned Arrow API).
+- **Assumption:** native failure tests need both Arrow buffer allocator failures
+  and C++ object allocation failures. Operation-entry failpoints alone are not
+  evidence of post-mutation safety. **Decision:** use a test-build-only failing
+  Arrow pool and a bounded standalone C++ allocation-failure sweep; production
+  builds must ignore test controls. **Alternative:** interpose the entire
+  process allocator, which is less deterministic with Python and Arrow caches.
+- **Assumption:** generated LLVM ownership code must be exercised, not just the
+  C ABI harness. **Decision:** extend the sanitizer task with generated class
+  and suspended-generator programs. **Alternative:** rely solely on native
+  handle tests, which misses compiler-emitted lifetime bugs.
+
+#### Implemented choices and best alternatives
+
+1. **Primitive Array finish: snapshot, then consume.** Copy value/validity
+   buffers once at finish and retain original builder contents until the
+   complete Array and handle exist. A failing resize also restores the logical
+   capacity marker, so retry cannot skip validity allocation. Actual allocation
+   tests exposed a segmentation fault in the previous retry path; the corrected
+   regression passes for all 11 current builder families. Capacity can grow on a
+   failed call; logical values, nulls and length must not change.
+   - **Trade-off:** O(n) copying and transient extra buffer memory at finish,
+     not on each append. This applies to the unified primitive Array builder; it
+     is not a zero-copy finish claim or a retrofit of legacy RecordBatch.
+   - **Best performance alternative:** a two-phase buffer-freeze/publication
+     API, ideally upstream in Arrow. It would avoid copying but needs failure
+     atomicity tests before replacing this implementation.
+   - **Dependency assumption:** the pinned Arrow C++ protected builder API
+     remains available. Keep the adapter private; revalidate on Arrow upgrades.
+2. **Tensor finish: shared Arrow buffer, no destructive move.** Allocate with
+   the Arrow pool, retain the builder's buffer during Tensor construction, then
+   consume the builder on success. Value-buffer finalization stays zero-copy.
+   - **Alternative:** copy the vector before finish (simpler but O(n)); moving
+     the original vector early was rejected because later allocation can fail.
+3. **Two independent allocator probes.** A compile-time test-only pool fails the
+   selected zero-based Allocate/Reallocate call in each ABI operation. A
+   standalone executable sweeps C++ `new` failures through finish until an
+   uninjected success, with an explicit upper bound. The process is separate
+   from Python, and production artifacts ignore the pool environment control.
+   - **Limitation:** these tests are representative operation sweeps, not a
+     proof over every allocator, operation, schedule or live process byte.
+   - **Alternative:** a public allocator-injection ABI would support embedders
+     but should not be added solely to expose testing machinery.
+4. **Fatal-path ownership: report, clean, terminate.** Assertions report before
+   freeing current-function owners so a borrowed diagnostic string remains
+   valid; integer division uses the common cleanup-aware guard. Existing
+   assertion record format and exit status remain unchanged, and the legacy
+   combined native assertion helper remains available.
+   - **Scope assumption:** this is current-function/frame cleanup, not native
+     stack unwinding. Arx source still accepts literal assertion messages only;
+     dynamic message ownership tests exercise the lower-level ASTx/IRx API.
+   - **Best general alternative:** explicit error propagation with cleanup in
+     each caller; this requires a language-wide calling convention decision.
+     Cross-function fatal unwinding, static managed storage, owned string
+     fields, and cyclic class graphs therefore remain open M2 work.
+5. **Sanitizer evidence must be real.** Generated functions receive LLVM's
+   `sanitize_address` attribute, are compiled with Clang, and the resulting
+   object must contain ASan instrumentation. Registered native artifacts use
+   ASan/UBSan. Sanitizer failures use distinct exit codes, so an expected
+   language failure cannot accidentally count as a passing sanitizer run.
+   - **Limitations:** UBSan is not a frontend pass on pre-existing LLVM IR;
+     Arrow's installed shared libraries are not rebuilt with sanitizers here.
+     Local ptrace prevents LSan; disabling leak detection is an explicit local
+     option, never the default or the CI command.
+   - **Best stronger alternative:** untraced CI with an instrumented Arrow build
+     and a broader generated-program corpus, followed by clean-wheel runs. Keep
+     M2-009 partial until the required leak evidence is observed.
+
+#### Verification and remaining work
+
+- `pytest -q packages/irx/tests/test_arrow_allocation_failures.py`: 53 passed.
+- Assertion/binary/generator tests: 39 passed; two additional fatal-path
+  malloc/free-accounting tests passed.
+- `python scripts/check_arrow_ownership_sanitizers.py --skip-leak-detection`:
+  native harness and generated class ownership, generator exhaustion, early
+  close, and resumed assertion-failure programs passed.
+- `pytest -q packages/irx/tests packages/astx/tests`: 1,813 passed on Python
+  3.14.3 (includes the allocation and fatal-path regressions above).
+- `pytest -q packages/arx/tests/python/test_codegen_ast_output.py packages/arx/tests/python/test_codegen_file_object.py`:
+  27 passed; generated LLVM verifies and source assertions report before
+  cleanup/exit.
+- `makim arx.test-compiled`: 30 passed, zero failed.
+- `pytest -q packages/arx/tests/python/test_wheel_smoke_script.py`: four passed.
+- `mypy src` passes in IRx (141 files) and Arx (28 files). Ruff check/format,
+  idempotent Douki sync (zero updates), and Vulture pass for all 12 touched
+  Python files; Bandit passes its configured high-severity/high-confidence gate
+  for touched code.
+- All six wheels/sdists rebuilt with `./scripts/build.sh`, using
+  `POETRY_VIRTUALENVS_CREATE=false` and workspace-local Poetry cache/TMPDIR
+  after the default cache path was rejected by sandbox permissions.
+  `python scripts/test_wheels.py --current-environment` passes artifact audit
+  and installed-wheel compilation/execution, including the new required native
+  header. This offline mode reuses existing third-party dependencies; it is not
+  the isolated release gate.
+- ABI generation and capability-matrix freshness checks pass; ABI compatibility
+  remains 1.0.0. API-doc generation and `git diff --check` pass.
+- The default sanitizer invocation was also attempted: LSan exits 23 with its
+  explicit ptrace limitation before generated programs run. This is an
+  environment blocker, not a passing leak check; CI results remain unobserved.
+- No completion of the full M2/M3 milestones, cross-platform/Python matrix,
+  fresh third-party dependency installation or Quarto build is inferred from
+  these bounded checks.
+
+M2-009/010/013 remain partial with the limitations above. In particular,
+allocation failure during consuming C Data move import and legacy RecordBatch
+IPC/stream operations still needs an explicit consumption/retry contract and
+allocator tests. M3-003/005/006 remain unchanged and incomplete. They require
+source operations, focused ASTx nodes, resolved sidecars consumed by native
+lowering, and dedicated descriptor handles, not a Python execution fallback.

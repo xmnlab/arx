@@ -10,6 +10,7 @@ from arx.codegen import ArxBuilder
 from arx.io import ArxIO
 from arx.lexer import Lexer
 from arx.parser import Parser
+from llvmlite import binding as llvm
 
 
 @pytest.mark.parametrize(
@@ -181,3 +182,28 @@ def test_ast_to_output(code: str) -> None:
 
     result = ir.translate(module_ast)
     assert result
+
+
+def test_assertion_reports_before_owner_cleanup() -> None:
+    """
+    title: Translate source assertions with safe fatal-path string cleanup.
+    """
+    source = dedent(
+        """\
+        ```
+        title: Assertion ownership regression
+        ```
+        fn main() -> i32:
+          var message: str = "owned " + "message"
+          assert false, "assertion failed"
+          return 0
+        """
+    )
+    ArxIO.string_to_buffer(source)
+    module = Parser().parse(Lexer().lex())
+    ir_text = ArxBuilder().translate(module)
+    llvm.parse_assembly(ir_text).verify()
+    report = ir_text.index('call void @"__arx_assert_report"')
+    cleanup = ir_text.index('call void @"free"', report)
+    terminate = ir_text.index('call void @"exit"', cleanup)
+    assert report < cleanup < terminate

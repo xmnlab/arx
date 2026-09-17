@@ -29,6 +29,81 @@ HAS_CLANG = shutil.which("clang") is not None
 COPIED_CLASS_OWNER_COUNT = 2
 
 
+@pytest.mark.skipif(
+    not HAS_CLANG or sys.platform != "linux",
+    reason="allocation accounting needs Clang and GNU linker wrapping",
+)
+@pytest.mark.parametrize("failure", ["assertion", "division"])
+def test_fatal_paths_release_local_string_owners(
+    tmp_path: Path, failure: str
+) -> None:
+    """
+    title: Fatal branches release live owners without losing diagnostic bytes.
+    parameters:
+      tmp_path:
+        type: Path
+      failure:
+        type: str
+    """
+    body = astx.Block()
+    body.append(
+        astx.VariableDeclaration(
+            "message",
+            astx.String(),
+            value=astx.BinaryOp(
+                "+",
+                astx.LiteralString("owned"),
+                astx.LiteralString(" message"),
+            ),
+        )
+    )
+    if failure == "assertion":
+        body.append(
+            astx.AssertStmt(
+                astx.LiteralBoolean(False), astx.Identifier("message")
+            )
+        )
+    else:
+        body.append(
+            astx.BinaryOp("/", astx.LiteralInt32(1), astx.LiteralInt32(0))
+        )
+    body.append(astx.FunctionReturn(astx.LiteralInt32(0)))
+    main = astx.FunctionDef(
+        astx.FunctionPrototype("main", astx.Arguments(), astx.Int32()), body
+    )
+    builder = Builder()
+    ir_text = builder.translate(make_module("main", main))
+    parsed = llvm.parse_assembly(ir_text)
+    parsed.verify()
+    machine = llvm.Target.from_default_triple().create_target_machine()
+    primary = tmp_path / "program.o"
+    primary.write_bytes(machine.emit_object(parsed))
+    executable = tmp_path / "program"
+    link_executable(
+        primary,
+        executable,
+        (
+            *builder.translator.runtime_features.native_artifacts(),
+            NativeArtifact(
+                kind="c_source",
+                path=Path(__file__).parent
+                / "native"
+                / "ownership_accounting.c",
+            ),
+        ),
+        linker_flags=("-Wl,--wrap=malloc", "-Wl,--wrap=free"),
+    )
+    result = subprocess.run(
+        [str(executable)], capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 1, result.stderr
+    if failure == "assertion":
+        assert "ARX_ASSERT_FAIL|" in result.stderr
+        assert "owned message" in result.stderr
+    else:
+        assert "ARX-RUNTIME-ARITHMETIC-001" in result.stderr
+
+
 def _tensor_literal(value: int) -> astx.TensorLiteral:
     """
     title: Build a one-element Int32 tensor literal.

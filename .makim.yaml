@@ -419,7 +419,7 @@ groups:
           pytest -q packages/irx/tests/test_arrow_abi_conformance.py
 
       check-arrow-ownership-sanitizers:
-        help: run Arrow ownership loops under ASan, UBSan, and LSan
+        help: sanitize Arrow ownership loops and generated class/generator programs
         run: python scripts/check_arrow_ownership_sanitizers.py
 
       format:

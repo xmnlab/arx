@@ -288,6 +288,31 @@ class VisitorProtocol(BaseVisitorProtocol, Protocol):
         """
         ...
 
+    def _guard_runtime_condition(
+        self,
+        node: astx.AST,
+        condition: ir.Value,
+        *,
+        code: str,
+        message: str,
+        block_name: str,
+    ) -> None:
+        """
+        title: Guard a runtime condition with current-function owner cleanup.
+        parameters:
+          node:
+            type: astx.AST
+          condition:
+            type: ir.Value
+          code:
+            type: str
+          message:
+            type: str
+          block_name:
+            type: str
+        """
+        _ = node, condition, code, message, block_name
+
     def _emit_active_cleanups(
         self,
         _start_depth: int = 0,
@@ -909,6 +934,31 @@ class VisitorMixinTypingBase:
           type: ir.Function
         """
         return cast(ir.Function, None)
+
+    def _guard_runtime_condition(
+        self,
+        node: astx.AST,
+        condition: ir.Value,
+        *,
+        code: str,
+        message: str,
+        block_name: str,
+    ) -> None:
+        """
+        title: Guard a runtime condition with current-function owner cleanup.
+        parameters:
+          node:
+            type: astx.AST
+          condition:
+            type: ir.Value
+          code:
+            type: str
+          message:
+            type: str
+          block_name:
+            type: str
+        """
+        _ = node, condition, code, message, block_name
 
     def _emit_active_cleanups(
         self,

@@ -46,10 +46,6 @@ from irx.builder.core import (
 from irx.builder.diagnostics import raise_lowering_internal_error
 from irx.builder.protocols import VisitorMixinBase
 from irx.builder.runtime import safe_pop
-from irx.builder.runtime.errors import (
-    RUNTIME_FAILURE_FEATURE_NAME,
-    RUNTIME_FAILURE_SYMBOL_NAME,
-)
 from irx.builder.types import is_fp_type, is_int_type
 from irx.builder.vector import emit_add, emit_int_div, is_vector
 from irx.typecheck import typechecked
@@ -334,42 +330,16 @@ class BinaryOpVisitorMixin(VisitorMixinBase):
                 name="integer_division_is_invalid",
             )
 
-        function = self._llvm.ir_builder.function
-        fail_block = function.append_basic_block("integer.division.fail")
-        pass_block = function.append_basic_block("integer.division.pass")
-        self._llvm.ir_builder.cbranch(invalid, fail_block, pass_block)
-
-        self._llvm.ir_builder.position_at_start(fail_block)
-        string_pointer = cast(Any, self)._constant_c_string_pointer
-        code_ptr = string_pointer(
-            "ARX-RUNTIME-ARITHMETIC-001",
-            name_hint="arithmetic_failure_code",
+        self._guard_runtime_condition(
+            node,
+            self._llvm.ir_builder.not_(invalid),
+            code="ARX-RUNTIME-ARITHMETIC-001",
+            message=(
+                "integer division or remainder has a zero divisor or an "
+                "unrepresentable signed result"
+            ),
+            block_name="integer.division",
         )
-        source_ptr = string_pointer(
-            cast(Any, self)._assert_source_name(node),
-            name_hint="arithmetic_failure_source",
-        )
-        message_ptr = string_pointer(
-            "integer division or remainder has a zero divisor or an "
-            "unrepresentable signed result",
-            name_hint="arithmetic_failure_message",
-        )
-        failure = self.require_runtime_symbol(
-            RUNTIME_FAILURE_FEATURE_NAME,
-            RUNTIME_FAILURE_SYMBOL_NAME,
-        )
-        self._llvm.ir_builder.call(
-            failure,
-            [
-                code_ptr,
-                source_ptr,
-                ir.Constant(self._llvm.INT32_TYPE, node.loc.line),
-                ir.Constant(self._llvm.INT32_TYPE, node.loc.col),
-                message_ptr,
-            ],
-        )
-        self._llvm.ir_builder.unreachable()
-        self._llvm.ir_builder.position_at_start(pass_block)
 
     def _emit_vector_sub(
         self,

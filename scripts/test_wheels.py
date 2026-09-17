@@ -60,6 +60,7 @@ REQUIRED_IRX_NATIVE_ASSETS = (
     "irx/builder/runtime/arrow/native/irx_arrow_abi_internal_names_generated.h",
     "irx/builder/runtime/arrow/native/irx_arrow_abi_wrappers_generated.inc",
     "irx/builder/runtime/arrow/native/irx_arrow_array_runtime.cc",
+    "irx/builder/runtime/arrow/native/irx_arrow_builder_support.h",
     "irx/builder/runtime/arrow/native/irx_arrow_core_runtime.cc",
     "irx/builder/runtime/arrow/native/irx_arrow_runtime.cc",
     "irx/builder/runtime/arrow/native/irx_arrow_runtime.h",

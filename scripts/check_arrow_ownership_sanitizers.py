@@ -14,6 +14,12 @@ from collections.abc import Sequence
 from dataclasses import replace
 from pathlib import Path
 
+from arrow_ownership_programs import ownership_programs
+from llvmlite import binding as llvm
+
+import astx
+
+from irx.builder import Builder
 from irx.builder.runtime.arrow.feature import (
     ARROW_RUNTIME_CAPABILITIES,
     arrow_native_source_dir,
@@ -244,7 +250,9 @@ def build_harness(build_dir: Path, cxx_binary: str) -> Path:
     return executable
 
 
-def run_harness(executable: Path, *, detect_leaks: bool = True) -> None:
+def run_harness(
+    executable: Path, *, detect_leaks: bool = True, expected_status: int = 0
+) -> None:
     """
     title: Run the ownership harness with fail-fast sanitizer settings.
     parameters:
@@ -252,15 +260,104 @@ def run_harness(executable: Path, *, detect_leaks: bool = True) -> None:
         type: Path
       detect_leaks:
         type: bool
+      expected_status:
+        type: int
     """
     environment = os.environ.copy()
     environment["ASAN_OPTIONS"] = (
-        f"detect_leaks={int(detect_leaks)}:halt_on_error=1"
+        f"detect_leaks={int(detect_leaks)}:halt_on_error=1:exitcode=86"
     )
-    environment["UBSAN_OPTIONS"] = "halt_on_error=1:print_stacktrace=1"
+    environment["UBSAN_OPTIONS"] = (
+        "halt_on_error=1:print_stacktrace=1:exitcode=87"
+    )
     if detect_leaks:
         environment["LSAN_OPTIONS"] = "exitcode=23"
-    subprocess.run([str(executable)], check=True, env=environment)
+    result = subprocess.run(
+        [str(executable)],
+        check=False,
+        env=environment,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != expected_status:
+        raise RuntimeError(
+            f"{executable.name}: expected exit {expected_status}, "
+            f"got {result.returncode}\n{result.stdout}{result.stderr}"
+        )
+    if expected_status != 0 and "ARX_ASSERT_FAIL|" not in result.stderr:
+        raise RuntimeError(
+            f"missing expected assertion record: {result.stderr}"
+        )
+
+
+def build_generated_program(
+    module: astx.Module, build_dir: Path, cxx_binary: str, clang_binary: str
+) -> Path:
+    """
+    title: Instrument generated LLVM and all its registered native artifacts.
+    parameters:
+      module:
+        type: astx.Module
+      build_dir:
+        type: Path
+      cxx_binary:
+        type: str
+      clang_binary:
+        type: str
+    returns:
+      type: Path
+    """
+    builder = Builder()
+    builder.translate(module)
+    ir_module = builder.translator._llvm.module
+    for function in ir_module.functions:
+        if not function.is_declaration:
+            function.attributes.add("sanitize_address")
+            function._clear_string_cache()
+    ir_text = str(ir_module)
+    llvm.parse_assembly(ir_text).verify()
+    source = build_dir / "program.ll"
+    source.write_text(ir_text, encoding="utf8")
+    primary = build_dir / "program.o"
+    subprocess.run(
+        [
+            clang_binary,
+            "-O1",
+            "-fPIC",
+            "-fsanitize=address",
+            "-c",
+            str(source),
+            "-o",
+            str(primary),
+        ],
+        check=True,
+    )
+    # Compiling .ll with a sanitizer flag alone can leave functions untouched.
+    # Require emitted instrumentation, not just a linked sanitizer library.
+    if b"__asan_report" not in primary.read_bytes():
+        raise RuntimeError("generated LLVM lacks ASan instrumentation")
+    artifacts = tuple(
+        replace(item, compile_flags=(*item.compile_flags, *SANITIZER_FLAGS))
+        for item in builder.translator.runtime_features.native_artifacts()
+    )
+    inputs = compile_native_artifacts(
+        artifacts, build_dir, clang_binary=clang_binary, cxx_binary=cxx_binary
+    )
+    executable = build_dir / "program"
+    subprocess.run(
+        [
+            cxx_binary,
+            *SANITIZER_FLAGS,
+            str(primary),
+            *(str(path) for path in inputs.objects),
+            *inputs.linker_flags,
+            *builder.translator.runtime_features.linker_flags(),
+            "-o",
+            str(executable),
+        ],
+        check=True,
+    )
+    return executable
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -273,6 +370,11 @@ def main(argv: Sequence[str] | None = None) -> int:
       type: int
     """
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--clang",
+        default=os.environ.get("CC", "clang"),
+        help="Clang compiler used to instrument generated LLVM IR",
+    )
     parser.add_argument(
         "--cxx",
         default=os.environ.get("CXX", "c++"),
@@ -294,6 +396,18 @@ def main(argv: Sequence[str] | None = None) -> int:
             executable,
             detect_leaks=not arguments.skip_leak_detection,
         )
+        for name, module, expected in ownership_programs():
+            program_dir = build_dir / name
+            program_dir.mkdir()
+            program = build_generated_program(
+                module, program_dir, arguments.cxx, arguments.clang
+            )
+            run_harness(
+                program,
+                detect_leaks=not arguments.skip_leak_detection,
+                expected_status=expected,
+            )
+            print(f"Generated ownership sanitizer program passed: {name}")
 
     print("Arrow ownership sanitizer harness passed")
     return 0

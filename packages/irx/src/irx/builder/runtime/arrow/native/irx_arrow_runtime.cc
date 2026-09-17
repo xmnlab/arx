@@ -3,6 +3,7 @@
 #define IRX_ARROW_BUILDING_RUNTIME
 #include "irx_arrow_runtime.h"
 #include "irx_arrow_runtime_internal.h"
+#include "irx_arrow_builder_support.h"
 
 #include <arrow/api.h>
 #include <arrow/c/bridge.h>
@@ -286,7 +287,7 @@ struct irx_arrow_tensor_builder_handle {
   uintptr_t dtype_token = 0;
   int64_t element_size_bytes = 0;
   std::shared_ptr<arrow::DataType> type;
-  std::vector<uint8_t> data;
+  std::shared_ptr<arrow::Buffer> data;
   std::vector<int64_t> shape;
   std::vector<int64_t> strides;
 };
@@ -397,6 +398,7 @@ void copy_error_text(char* destination, size_t capacity, const char* source) {
 }
 
 void begin_operation(const char* operation) {
+  irx_arrow_internal::reset_pool_failure();
   current_error = ErrorDetail{};
   copy_error_text(
       current_error.operation,
@@ -908,11 +910,17 @@ int append_typed_value(arrow::ArrayBuilder* builder, Value value) {
   if (typed_builder == nullptr) {
     return set_error(IRX_ARROW_STATUS_TYPE_MISMATCH, "array builder element type mismatch");
   }
-  const arrow::Status status = typed_builder->Append(value);
-  if (!status.ok()) {
-    return set_arrow_error("Arrow array append failed", status);
+  try {
+    const arrow::Status status = typed_builder->Append(value);
+    if (!status.ok()) {
+      return set_arrow_error("Arrow array append failed", status);
+    }
+    return kArrowOk;
+  } catch (const std::bad_alloc&) {
+    return set_error(IRX_ARROW_STATUS_OUT_OF_MEMORY, "Arrow array append allocation failed");
+  } catch (const std::exception& exc) {
+    return set_exception_error("Arrow array append", exc);
   }
-  return kArrowOk;
 }
 
 int append_int_value(arrow::ArrayBuilder* builder, int32_t type_id, int64_t value) {
@@ -1024,7 +1032,8 @@ int build_array_copy_from_c_data(
   }
 
   arrow::Result<std::unique_ptr<arrow::ArrayBuilder>> builder_result =
-      arrow::MakeBuilder(resolved.spec->make_type());
+      arrow::MakeBuilder(resolved.spec->make_type(),
+                         irx_arrow_internal::builder_memory_pool());
   if (!builder_result.ok()) {
     return set_arrow_error("Arrow builder allocation failed", builder_result.status());
   }
@@ -1186,7 +1195,8 @@ int tensor_builder_require_slot(
   if (builder->values_appended >= builder->element_count) {
     return set_error(IRX_ARROW_STATUS_INVALID_STATE, "too many values appended to tensor builder");
   }
-  *out_slot = builder->data.data() + builder->values_appended * builder->element_size_bytes;
+  *out_slot = builder->data->mutable_data() +
+              builder->values_appended * builder->element_size_bytes;
   builder->values_appended += 1;
   return kArrowOk;
 }
@@ -1623,14 +1633,13 @@ irx_arrow_status irx_arrow_array_builder_new(
           "injected Arrow array builder allocation failure");
     }
 
-    arrow::Result<std::unique_ptr<arrow::ArrayBuilder>> builder_result =
-        arrow::MakeBuilder(spec->make_type());
-    if (!builder_result.ok()) {
-      return set_arrow_error("Arrow builder allocation failed", builder_result.status());
+    auto native_builder = irx_arrow_internal::make_snapshot_builder(spec->arrow_type_id);
+    if (!native_builder) {
+      return set_error(IRX_ARROW_STATUS_NOT_SUPPORTED, "unsupported snapshot builder type");
     }
 
     auto handle = make_runtime_handle<irx_arrow_array_builder_handle>();
-    handle->builder = std::move(builder_result).ValueUnsafe();
+    handle->builder = std::move(native_builder);
     handle->type_id = type_id;
     *out_builder = handle.release();
     return kArrowOk;
@@ -1655,16 +1664,25 @@ irx_arrow_status irx_arrow_array_builder_append_null(
   if (count < 0) {
     return set_error(IRX_ARROW_STATUS_INVALID_ARGUMENT, "null append count must be non-negative");
   }
+  if (count > std::numeric_limits<int64_t>::max() - builder->builder->length()) {
+    return set_error(IRX_ARROW_STATUS_OVERFLOW, "null append length overflow");
+  }
   if (fail_allocation_for_operation("array_builder_append")) {
     return set_error(
         IRX_ARROW_STATUS_OUT_OF_MEMORY,
         "injected Arrow array append allocation failure");
   }
-  const arrow::Status status = builder->builder->AppendNulls(count);
-  if (!status.ok()) {
-    return set_arrow_error("Arrow null append failed", status);
+  try {
+    const arrow::Status status = builder->builder->AppendNulls(count);
+    if (!status.ok()) {
+      return set_arrow_error("Arrow null append failed", status);
+    }
+    return kArrowOk;
+  } catch (const std::bad_alloc&) {
+    return set_error(IRX_ARROW_STATUS_OUT_OF_MEMORY, "Arrow null append allocation failed");
+  } catch (const std::exception& exc) {
+    return set_exception_error("Arrow null append", exc);
   }
-  return kArrowOk;
 }
 
 irx_arrow_status irx_arrow_array_builder_append_int(
@@ -2388,7 +2406,16 @@ irx_arrow_status irx_arrow_tensor_builder_new(
     builder->dtype_token = spec->dtype_token;
     builder->element_size_bytes = spec->element_size_bytes;
     builder->type = spec->make_type();
-    builder->data.assign(static_cast<size_t>(data_nbytes), 0);
+    auto data_result = arrow::AllocateBuffer(
+        data_nbytes, irx_arrow_internal::builder_memory_pool());
+    if (!data_result.ok()) {
+      return set_arrow_error("Arrow tensor buffer allocation failed",
+                             data_result.status());
+    }
+    builder->data = std::move(data_result).ValueUnsafe();
+    if (data_nbytes != 0) {
+      std::memset(builder->data->mutable_data(), 0, data_nbytes);
+    }
 
     code = copy_tensor_layout(
         ndim,
@@ -2563,10 +2590,9 @@ irx_arrow_status irx_arrow_tensor_builder_finish(
 
     auto tensor = make_runtime_handle<irx_arrow_tensor_handle>();
 
-    std::shared_ptr<arrow::Buffer> buffer = arrow::Buffer::FromVector(std::move(builder->data));
     arrow::Result<std::shared_ptr<arrow::Tensor>> tensor_result = arrow::Tensor::Make(
         builder->type,
-        buffer,
+        builder->data,
         builder->shape,
         builder->strides);
     if (!tensor_result.ok()) {
