@@ -72,6 +72,7 @@ class DeclarationStructVisitorMixin(SemanticVisitorMixinBase):
             if managed_nullable(normalize_nullable(attr.type_)) or isinstance(
                 attr.type_,
                 (
+                    astx.ScalarType,
                     astx.ArrayType,
                     astx.ArrayBuilderType,
                     astx.ChunkedArrayType,

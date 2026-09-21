@@ -21,6 +21,7 @@ from irx.analysis.nullability import (
     ResolvedNullableOperator,
     ResolvedNullableQuery,
 )
+from irx.analysis.scalar_values import ResolvedScalar
 from irx.analysis.schema_conversions import SchemaConversion
 from irx.analysis.schema_descriptors import ResolvedDescriptor
 from irx.analysis.tabular import ResolvedTabular
@@ -1818,6 +1819,8 @@ class SemanticInfo:
     attributes:
       resolved_array:
         type: ResolvedArray | None
+      resolved_scalar:
+        type: ResolvedScalar | None
       resolved_tabular:
         type: ResolvedTabular | None
       resolved_nullable_query:
@@ -1887,6 +1890,7 @@ class SemanticInfo:
     """
 
     resolved_array: ResolvedArray | None = None
+    resolved_scalar: ResolvedScalar | None = None
     resolved_tabular: ResolvedTabular | None = None
     resolved_nullable_query: ResolvedNullableQuery | None = None
     resolved_nullable_operator: ResolvedNullableOperator | None = None

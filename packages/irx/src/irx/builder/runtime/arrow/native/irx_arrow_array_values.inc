@@ -33,9 +33,8 @@ irx_arrow_status publish_value_array(std::shared_ptr<arrow::Array> value,
                                      irx_arrow_array_handle **output) {
   auto owner = make_runtime_handle<irx_arrow_array_handle>();
   auto resolved = resolved_from_arrow_type(value->type(), nullable);
-  if (!resolved.spec)
-    return set_error(IRX_ARROW_STATUS_NOT_SUPPORTED,
-                     "array value type is not implemented");
+  auto validation = value->ValidateFull();
+  if (!validation.ok()) return set_arrow_error("array value", validation);
   owner->array = std::move(value);
   const auto status = populate_array_metadata(owner.get(), resolved);
   if (status != kArrowOk)
@@ -95,6 +94,11 @@ irx_arrow_array_builder_finish_typed(irx_arrow_array_builder_handle **builder,
         if (nullable != 0 && nullable != 1)
           return set_error(IRX_ARROW_STATUS_INVALID_ARGUMENT,
                            "invalid nullability flag");
+        if ((*builder)->logical_type) {
+          const auto result = irx_arrow_array_builder_build(*builder, nullable, out_array);
+          if (result != kArrowOk) return result;
+          return irx_arrow_array_builder_release(builder);
+        }
         if (!nullable && (*builder)->builder->null_count() != 0)
           return set_error(IRX_ARROW_STATUS_TYPE_MISMATCH,
                            "nulls in a nonnullable array");
@@ -216,7 +220,7 @@ irx_arrow_status irx_arrow_array_concat(const irx_arrow_array_handle *lhs,
     status = validate_value_array(rhs);
     if (status != kArrowOk)
       return status;
-    if (!lhs->array->type()->Equals(rhs->array->type()))
+    if (!lhs->array->type()->Equals(rhs->array->type(), true))
       return set_error(IRX_ARROW_STATUS_TYPE_MISMATCH,
                        "array concatenation requires equal element types");
     if (rhs->array->length() >
@@ -246,6 +250,13 @@ irx_arrow_status irx_arrow_array_copy(const irx_arrow_array_handle *array,
                                      irx_arrow_internal::builder_memory_pool());
     if (!result.ok())
       return set_arrow_error("array copy", result.status());
+    // Concatenate may share dictionary storage. Explicit copy must detach
+    // recursively, not merely publish another independent owner token.
+    if (array->type_id == IRX_ARROW_TYPE_UNKNOWN) {
+      result = (*result)->CopyTo(arrow::CPUDevice::memory_manager(
+          irx_arrow_internal::builder_memory_pool()));
+      if (!result.ok()) return set_arrow_error("nested array copy", result.status());
+    }
     return publish_value_array(*result, array->nullable != 0, out_array);
   });
 }

@@ -284,7 +284,7 @@ def test_modeled_container_types_have_structural_identity_and_fail_early() -> (
     module.block.append(
         astx.FunctionPrototype(
             "future",
-            astx.Arguments(astx.Argument("values", second)),
+            astx.Arguments(astx.Argument("values", astx.StreamType())),
             return_type=astx.Int32(),
         )
     )

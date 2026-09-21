@@ -50,6 +50,7 @@ from irx.typecheck import typechecked
 COLUMNAR_OPERATOR_TYPES = (
     astx.TableType,
     astx.RecordBatchType,
+    astx.ScalarType,
     astx.ArrayType,
     astx.ArrayBuilderType,
     astx.ChunkedArrayType,

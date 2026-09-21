@@ -111,6 +111,8 @@ def is_builtin(name: str) -> bool:
         "record_batch",
         *(operation.value for operation in astx.TabularOperation),
         "chunked_array",
+        "scalar",
+        *(operation.value for operation in astx.ScalarOperation),
         *(operation.value for operation in astx.ArrayOperation),
         *(operation.value for operation in astx.NullableOperation),
         "conversion_kind",

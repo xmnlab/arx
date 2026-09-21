@@ -90,6 +90,7 @@ class TabularOperation(Enum):
     COLUMN = "column"
     COLUMN_AS = "column_as"
     SLICE = "slice_rows"
+    TAKE = "take_rows"
     SELECT = "select_columns"
     RENAME = "rename_columns"
     ADD = "add_column"

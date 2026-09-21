@@ -300,10 +300,13 @@ def columnar_type_diagnostic(
     try:
         if isinstance(type_, astx.LogicalValueType):
             canonical_logical_type(type_.element_type)
+            if isinstance(type_, astx.ScalarType) and type_.nullable:
+                return "use scalar[T] | none for optional scalar owners"
             if (
                 isinstance(
                     type_,
                     (
+                        astx.ScalarType,
                         astx.ArrayType,
                         astx.ArrayBuilderType,
                         astx.ChunkedArrayType,

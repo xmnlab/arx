@@ -283,6 +283,52 @@
   irx_arrow_internal_table_to_batch
 #define irx_arrow_table_combine \
   irx_arrow_internal_table_combine
+#define irx_arrow_scalar_retain \
+  irx_arrow_internal_scalar_retain
+#define irx_arrow_scalar_release \
+  irx_arrow_internal_scalar_release
+#define irx_arrow_scalar_parse \
+  irx_arrow_internal_scalar_parse
+#define irx_arrow_scalar_from_array \
+  irx_arrow_internal_scalar_from_array
+#define irx_arrow_scalar_from_fields \
+  irx_arrow_internal_scalar_from_fields
+#define irx_arrow_scalar_dictionary \
+  irx_arrow_internal_scalar_dictionary
+#define irx_arrow_scalar_wrap \
+  irx_arrow_internal_scalar_wrap
+#define irx_arrow_scalar_union \
+  irx_arrow_internal_scalar_union
+#define irx_arrow_scalar_interval \
+  irx_arrow_internal_scalar_interval
+#define irx_arrow_scalar_equal \
+  irx_arrow_internal_scalar_equal
+#define irx_arrow_scalar_text \
+  irx_arrow_internal_scalar_text
+#define irx_arrow_scalar_values \
+  irx_arrow_internal_scalar_values
+#define irx_arrow_scalar_field \
+  irx_arrow_internal_scalar_field
+#define irx_arrow_array_get_scalar \
+  irx_arrow_internal_array_get_scalar
+#define irx_arrow_chunked_get_scalar \
+  irx_arrow_internal_chunked_get_scalar
+#define irx_arrow_array_builder_new_logical \
+  irx_arrow_internal_array_builder_new_logical
+#define irx_arrow_array_builder_append_scalar \
+  irx_arrow_internal_array_builder_append_scalar
+#define irx_arrow_chunked_new_logical \
+  irx_arrow_internal_chunked_new_logical
+#define irx_arrow_scalar_from_bytes \
+  irx_arrow_internal_scalar_from_bytes
+#define irx_arrow_scalar_bytes \
+  irx_arrow_internal_scalar_bytes
+#define irx_arrow_batch_take \
+  irx_arrow_internal_batch_take
+#define irx_arrow_table_take \
+  irx_arrow_internal_table_take
+#define irx_arrow_array_from_buffer \
+  irx_arrow_internal_array_from_buffer
 
 uint32_t irx_arrow_abi_version(void);
 
@@ -878,6 +924,119 @@ irx_arrow_status irx_arrow_table_to_batch(
 irx_arrow_status irx_arrow_table_combine(
     const irx_arrow_table_handle* value,
     irx_arrow_table_handle** output);
+
+irx_arrow_status irx_arrow_scalar_retain(
+    const irx_arrow_scalar_handle* value,
+    irx_arrow_scalar_handle** output);
+
+irx_arrow_status irx_arrow_scalar_release(
+    irx_arrow_scalar_handle** value);
+
+irx_arrow_status irx_arrow_scalar_parse(
+    const irx_arrow_type_handle* type,
+    const char* text,
+    irx_arrow_scalar_handle** output);
+
+irx_arrow_status irx_arrow_scalar_from_array(
+    const irx_arrow_type_handle* type,
+    const irx_arrow_array_handle* value,
+    irx_arrow_scalar_handle** output);
+
+irx_arrow_status irx_arrow_scalar_from_fields(
+    const irx_arrow_type_handle* type,
+    const void** values,
+    int64_t count,
+    irx_arrow_scalar_handle** output);
+
+irx_arrow_status irx_arrow_scalar_dictionary(
+    const irx_arrow_type_handle* type,
+    const irx_arrow_scalar_handle* index,
+    const irx_arrow_array_handle* values,
+    irx_arrow_scalar_handle** output);
+
+irx_arrow_status irx_arrow_scalar_wrap(
+    const irx_arrow_type_handle* type,
+    const irx_arrow_scalar_handle* value,
+    irx_arrow_scalar_handle** output);
+
+irx_arrow_status irx_arrow_scalar_union(
+    const irx_arrow_type_handle* type,
+    const char* name,
+    const irx_arrow_scalar_handle* value,
+    irx_arrow_scalar_handle** output);
+
+irx_arrow_status irx_arrow_scalar_interval(
+    const irx_arrow_type_handle* type,
+    const int64_t* values,
+    int64_t count,
+    irx_arrow_scalar_handle** output);
+
+irx_arrow_status irx_arrow_scalar_equal(
+    const irx_arrow_scalar_handle* left,
+    const irx_arrow_scalar_handle* right,
+    int32_t* output);
+
+irx_arrow_status irx_arrow_scalar_text(
+    const irx_arrow_scalar_handle* value,
+    const char** output);
+
+irx_arrow_status irx_arrow_scalar_values(
+    const irx_arrow_scalar_handle* value,
+    irx_arrow_array_handle** output);
+
+irx_arrow_status irx_arrow_scalar_field(
+    const irx_arrow_scalar_handle* value,
+    const char* name,
+    irx_arrow_scalar_handle** output);
+
+irx_arrow_status irx_arrow_array_get_scalar(
+    const irx_arrow_array_handle* value,
+    int64_t index,
+    irx_arrow_scalar_handle** output);
+
+irx_arrow_status irx_arrow_chunked_get_scalar(
+    const irx_arrow_chunked_array_handle* value,
+    int64_t index,
+    irx_arrow_scalar_handle** output);
+
+irx_arrow_status irx_arrow_array_builder_new_logical(
+    const irx_arrow_type_handle* type,
+    irx_arrow_array_builder_handle** output);
+
+irx_arrow_status irx_arrow_array_builder_append_scalar(
+    irx_arrow_array_builder_handle* builder,
+    const irx_arrow_scalar_handle* value);
+
+irx_arrow_status irx_arrow_chunked_new_logical(
+    const irx_arrow_type_handle* type,
+    int32_t nullable,
+    const void** chunks,
+    int64_t count,
+    irx_arrow_chunked_array_handle** output);
+
+irx_arrow_status irx_arrow_scalar_from_bytes(
+    const irx_arrow_type_handle* type,
+    const irx_arrow_array_handle* value,
+    irx_arrow_scalar_handle** output);
+
+irx_arrow_status irx_arrow_scalar_bytes(
+    const irx_arrow_scalar_handle* value,
+    irx_arrow_array_handle** output);
+
+irx_arrow_status irx_arrow_batch_take(
+    const irx_arrow_record_batch_handle* value,
+    const irx_arrow_array_handle* indices,
+    irx_arrow_record_batch_handle** output);
+
+irx_arrow_status irx_arrow_table_take(
+    const irx_arrow_table_handle* value,
+    const irx_arrow_array_handle* indices,
+    irx_arrow_table_handle** output);
+
+irx_arrow_status irx_arrow_array_from_buffer(
+    int32_t type_id,
+    irx_buffer_view* view,
+    irx_arrow_array_handle** output);
 
 
 #endif

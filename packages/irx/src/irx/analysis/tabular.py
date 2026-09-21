@@ -11,7 +11,7 @@ import astx
 from public import private, public
 
 from irx.analysis.schema import canonical_schema
-from irx.analysis.types import is_assignable, is_signed_integer_type
+from irx.analysis.types import is_assignable, is_signed_integer_type, same_type
 from irx.typecheck import typechecked
 
 TABULAR_TYPES = (astx.TableType, astx.RecordBatchType)
@@ -45,7 +45,7 @@ class ResolvedTabular:
     arguments: tuple[astx.Expr, ...]
     indices: tuple[int, ...] | None = None
     feature: str = "dataframe"
-    required_version: int = 0x00010100
+    required_version: int = 0x00010200
     required_features: tuple[str, ...] = (
         "core",
         "array",
@@ -220,6 +220,7 @@ def resolve_tabular_query(
         astx.TabularOperation.ADD: 3,
         astx.TabularOperation.REPLACE: 3,
         astx.TabularOperation.REMOVE: 2,
+        astx.TabularOperation.TAKE: 2,
     }.get(op, 1)
     variadic = op in {
         astx.TabularOperation.SELECT,
@@ -246,6 +247,11 @@ def resolve_tabular_query(
         if not all(is_signed_integer_type(type_) for type_ in types[1:]):
             raise ValueError("slice_rows requires signed integer bounds")
         suffix = "slice"
+    elif op is astx.TabularOperation.TAKE:
+        expected = astx.ArrayType(astx.LogicalType(astx.LogicalKind.INT64))
+        if not same_type(types[1], expected):
+            raise ValueError("take_rows requires a nonnullable array[i64]")
+        suffix = "take"
     elif op is astx.TabularOperation.COLUMN_AS:
         if not is_signed_integer_type(types[1]) or not isinstance(
             args[2], astx.FieldLiteral

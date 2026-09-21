@@ -333,6 +333,7 @@ class ExpressionParserMixin(ParserMixinBase):
         if id_name in {"table", "record_batch"} and self._is_operator("["):
             return TabularParser(self).literal(id_loc, id_name)
         if id_name in {
+            "scalar",
             "array",
             "array_builder",
             "chunked_array",
@@ -472,6 +473,16 @@ class ExpressionParserMixin(ParserMixinBase):
                 )
             return astx.TabularQuery(
                 tabular_queries[id_name], tuple(args), loc=id_loc
+            )
+
+        scalar_queries = {item.value: item for item in astx.ScalarOperation}
+        if id_name in scalar_queries:
+            if template_args is not None:
+                raise ParserException(
+                    "Scalar queries reject template arguments."
+                )
+            return astx.ScalarQuery(
+                scalar_queries[id_name], tuple(args), loc=id_loc
             )
 
         array_queries = {item.value: item for item in astx.ArrayOperation}

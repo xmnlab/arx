@@ -299,15 +299,16 @@ not a new checked Arrow Compute cast policy.
 Nullable strings, general nullable collection elements, managed struct fields
 and C FFI nullable signatures remain unsupported and fail before lowering.
 
-## First-class primitive arrays
+## First-class arrays
 
 Arrow arrays are ambient builtins: no Arrow import or namespace is required.
 `array[T]` excludes null elements; `array[T | none]` admits them. Both are
 immutable shared owners with explicit retain/release semantics on copies and
 returns. Construction is `array[T](value, ...)`, including empty arrays.
-Supported elements are Boolean, signed/unsigned 8/16/32/64-bit integers, and
-16/32/64-bit floats. Narrow or signed-to-unsigned scalar inputs require explicit
-casts; `array[i8](300)` is rejected rather than truncated.
+Primitive elements are Boolean, signed/unsigned 8/16/32/64-bit integers, and
+16/32/64-bit floats. The logical scalar section below describes variable-width,
+temporal, decimal and recursive elements. Narrow or signed-to-unsigned inputs
+require explicit casts; `array[i8](300)` is rejected rather than truncated.
 
 The closed builtin operations are:
 
@@ -324,29 +325,35 @@ The closed builtin operations are:
   such as `a == b` and `++a` are rejected for columnar owners; opaque handles
   are never interpreted as strings or numeric scalar storage.
 
+Null counts follow element validity: union and run-end values inspect logical
+children rather than a nonexistent parent bitmap. Dictionary validity belongs to
+its index; a valid index can reference a null dictionary value.
+
 Boolean values retain Arrow's bit packing. Sliced values and validity bitmaps
 honor nonzero offsets. Scalar iteration is explicit: loop over indices and call
 `array_at`; no implicit row/batch/column iteration is selected.
 
 See [`examples/columnar_arrays.x`](../../examples/columnar_arrays.x) for
 executable construction, nullable access, slicing, copying, concatenation and
-owner returns. Source buffer/C Data constructors, variable-width/nested arrays
-and the complete batch/table API remain pending. The native C Data
-primitive-array bridge exists, but is not yet exposed as a pure-Arx
-pointer/interchange constructor.
+owner returns. `array_from_buffer(tensor)` copies a rank-one numeric buffer into
+an independent nonnullable array. It accepts positive/negative strides and empty
+views, rejects byte-packed Boolean/half storage and bitmap-bearing views, and
+checks dimensions and arithmetic overflow before reading. IRx hosts can also
+supply typed `BufferViewType` values. The caller of the low-level native ABI
+must supply readable buffer storage; the view has no allocation-size field. Raw
+external C Data pointer/adoption constructors are not yet Arx builtins.
 
 ## Reusable builders and chunked arrays
 
-`array_builder[T]()` creates a unique mutable primitive builder. Assignment
-cannot alias an existing builder; functions may borrow it.
-`builder_append(b, value)` accepts its declared element type, including explicit
-`none` only for a nullable builder. `builder_reserve(b, additional)` reserves
-additional capacity; negative values and size overflow fail. `builder_length(b)`
-returns `i64`. `builder_finish(b)` publishes an immutable array and resets the
-builder for reuse **only after success**. Allocation or nullability failure
-leaves the builder's existing values available for retry at the native ABI
-boundary. Arx source currently reports native errors through its fatal
-diagnostic path.
+`array_builder[T]()` creates a unique mutable typed builder. Assignment cannot
+alias an existing builder; functions may borrow it. `builder_append(b, value)`
+accepts its declared element type, including explicit `none` only for a nullable
+builder. `builder_reserve(b, additional)` reserves additional capacity; negative
+values and size overflow fail. `builder_length(b)` returns `i64`.
+`builder_finish(b)` publishes an immutable array and resets the builder for
+reuse **only after success**. Allocation or nullability failure leaves the
+builder's existing values available for retry at the native ABI boundary. Arx
+source currently reports native errors through its fatal diagnostic path.
 
 `chunked_array[T](a, b, ...)` borrows arrays of exactly the declared logical and
 nullability type; it creates an independent shared owner. Empty sequences and
@@ -372,13 +379,14 @@ no implicit conversion or complete Series API is claimed.
 
 ## Nullable resource owners
 
-`array[T] | none`, `chunked_array[T] | none`, `datatype | none`, `field | none`,
-and `schema | none` support local storage, reassignment, default arguments,
-borrowing, copying, returns and checked extraction. An empty valid array still
-has an owner and is **not** `none`. The backend reserves a null owner pointer
-for absence; it never calls native retain on that pointer. Release accepts an
-empty slot, so cleanup remains safe on both paths. Primitive scalar nullable
-values retain their independent validity/payload representation.
+`scalar[T] | none`, `array[T] | none`, `chunked_array[T] | none`,
+`ClassName | none`, `datatype | none`, `field | none`, and `schema | none`
+support local storage, reassignment, default arguments, borrowing, copying,
+returns and checked extraction. An empty valid array still has an owner and is
+**not** `none`. The backend reserves a null owner pointer for absence; it never
+calls native retain on that pointer. Release accepts an empty slot, so cleanup
+remains safe on both paths. Primitive scalar nullable values retain their
+independent validity/payload representation.
 
 Use `expect_valid` or a direct predicate refinement before querying the owner.
 Borrowed extraction does not invalidate its parent, and copying or returning a
@@ -391,14 +399,16 @@ are absent, assignment releases a replaced owner, and class destruction cleans
 up remaining owners. Mutable field predicates do not refine subsequent reads;
 use `expect_valid` on the field. Static nullable fields are rejected. IRx also
 supports by-value primitive nullable struct fields; this does not introduce Arx
-`struct` syntax or managed struct destruction. Nullable strings remain pending.
+`struct` syntax or managed struct destruction. Nullable C-string `str` remains
+unsupported; nullable Arrow text uses `scalar[string] | none` instead.
 
 ## Record batches and tables
 
 `record_batch[fields]` owns equal-length array columns; `table[fields]` owns
 chunked columns. Both are ambient builtins, accept schema/field metadata, and
-support all currently executable primitive array element types, including
-nullable values and half-floats. Constructors require the row count first:
+support the executable primitive and logical array element types described here,
+including nullable, nested and half-float values. Constructors require the row
+count first:
 
 ````arx
 ```
@@ -429,6 +439,7 @@ checked native diagnostic boundary, not by reading an invalid output slot.
 | `column(value, "name")`                         | Resolve a literal name in a static schema; return an array for batches or chunked array for tables. |
 | `runtime_schema(value)`                         | Retain an owner while explicitly erasing static schema facts.                                       |
 | `column_as(value, index, field[...])`           | Check field name, type, nullability and metadata at runtime before returning a typed column.        |
+| `take_rows(value, indices)`                     | Select/reorder/repeat rows using nonnullable `array[i64]`; bounds are strict.                       |
 | `slice_rows(value, offset, length)`             | Strict bounded row slice; does not silently clamp.                                                  |
 | `select_columns(value, "b", "a")`               | Project/reorder unique static fields; selecting no fields preserves row count.                      |
 | `rename_columns(value, "new_a", "new_b")`       | Supply one unique name per field; preserve metadata.                                                |
@@ -446,11 +457,60 @@ implicit iteration axis.
 
 `table` is **not** a new spelling for legacy `dataframe`, nor is `chunked_array`
 a new spelling for `series`. Existing DataFrame/Series syntax is unchanged;
-compatibility adapters and expanded column families remain pending. Descriptor
-support and native imported nested-table transformations do not imply Arx source
-construction of string, binary, temporal, decimal, dictionary or nested columns.
-Those value paths, source buffer/C Data constructors, and noncontiguous row
-selection are not implemented yet.
+compatibility adapters and expansion of the legacy DataFrame/Series APIs remain
+pending. Logical columns and noncontiguous row selection are available through
+the typed batch/table APIs. Table selection shares immutable row slices; batch
+selection materializes columns. Neither uses an implicit Compute kernel or
+changes schema metadata.
 
 See `examples/columnar_tables.x` and `examples/columnar_table_owners.x` for
 executable transformation and lifetime examples.
+
+## Logical scalars and nested values
+
+`scalar[T]` is an immutable, shared Arrow scalar owner. It is distinct from the
+ordinary numeric scalar representation and from the current C-string `str`. Use
+`scalar[T] | none` for absence, not `scalar[T | none]`. Constructors and queries
+are ambient builtins, with no Arrow namespace or import.
+
+- Atomic scalars accept text: `scalar[date32]("2024-01-02")`,
+  `scalar[decimal128(precision=12, scale=2)]("12.34")`. Decimal construction
+  rejects precision overflow or rescaling that would lose digits.
+- String/binary families accept text or nonnullable `array[u8]` data. Use bytes
+  for embedded NUL or arbitrary binary data. `scalar_bytes(value)` returns an
+  independently owned byte array without truncation. `scalar_text(value)`
+  returns an owned `str` representation and rejects embedded NUL that `str`
+  cannot hold.
+- Intervals use signed integer components: months; days/milliseconds; or
+  months/days/nanoseconds. Component overflow is checked.
+- List, large-list, list-view, large-list-view and fixed-list scalars accept an
+  array matching the declared child field. Fixed-list size is checked.
+  `scalar_values(value)` returns an independently owned child array.
+- Struct scalars take one scalar per field, in declaration order; nullable
+  children may be `none`. `scalar_field(value, "name")` returns a nullable owned
+  child, using a statically checked field name. Maps take an entries array with
+  the declared key/value struct type.
+- Dictionary scalars take a typed index scalar and a value array. Sparse/dense
+  union scalars take a literal field name and that field's scalar. Run-end
+  encoded scalars wrap their value scalar. These remain typed logical values,
+  not strings containing serialized objects.
+- `scalar_equal(a, b)` requires identical logical types and uses Arrow equality.
+  Generic arithmetic on opaque scalars is rejected; primitive `array_at`
+  continues to return native nullable numeric/Boolean values.
+
+For non-primitive arrays, `array_at` returns `scalar[T] | none`. String/binary
+array literals and builder appends accept ordinary `str` inputs directly; other
+non-primitive inputs use explicit scalar constructors. All supported logical
+elements work in chunks and typed batch/table columns. `array_copy` recursively
+detaches nested/dictionary buffers; chunked copy preserves chunk boundaries.
+Generic builders retain immutable scalar inputs and build a separate snapshot,
+clearing their state only after successful publication. This favors correctness
+and retry safety over a specialized high-throughput nested builder.
+
+Examples: [`logical_scalar_owners.x`](../../examples/logical_scalar_owners.x),
+[`nested_columnar_values.x`](../../examples/nested_columnar_values.x), and
+[`logical_value_families.x`](../../examples/logical_value_families.x). Extension
+descriptors remain supported, but extension **value** construction requires a
+future registered codec/storage contract and is rejected, including inside
+nested value types. Null arrays use `array[null | none](none, ...)`; there is no
+present `scalar[null]` constructor.

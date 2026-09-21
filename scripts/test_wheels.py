@@ -72,6 +72,7 @@ REQUIRED_IRX_NATIVE_ASSETS = (
     "irx/builder/runtime/arrow/native/irx_arrow_array_values.inc",
     "irx/builder/runtime/arrow/native/irx_arrow_chunks.inc",
     "irx/builder/runtime/arrow/native/irx_arrow_tabular.inc",
+    "irx/builder/runtime/arrow/native/irx_arrow_scalar_values.inc",
     "irx/builder/runtime/arrow/native/irx_arrow_feature_query_generated.inc",
     "irx/builder/runtime/arrow/native/irx_arrow_record_batch_runtime.cc",
     "irx/builder/runtime/arrow/native/irx_arrow_tensor_runtime.cc",
@@ -190,6 +191,22 @@ fn main() -> i32:
   return 0
 """
 
+LOGICAL_MODULE = """```
+title: Installed logical values
+```
+type Batch = record_batch[t:string | none]
+fn main() -> i32:
+  var values: array[string | none] = array[string | none]("wheel", none)
+  var batch: Batch = record_batch[t:string | none](2, values)
+  var selected: Batch = take_rows(batch, array[i64](1, 0))
+  assert is_null(array_at(column(selected, "t"), 0))
+  var child: scalar[string] | none = array_at(column(selected, "t"), 1)
+  assert scalar_text(expect_valid(child)) == "wheel"
+  var source: tensor[i32, 2] = [1, 2]
+  assert expect_valid(array_at(array_from_buffer(source), 1)) == 2
+  return 0
+"""
+
 SMOKE_DRIVER = r"""
 import os
 import shutil
@@ -265,6 +282,7 @@ for source_name in (
     "list_smoke.x",
     "tensor_smoke.x",
     "descriptor_smoke.x",
+    "logical_smoke.x",
 ):
     artifact = compiler.compile_file(
         root / source_name,
@@ -498,6 +516,7 @@ def run_smoke(
             "list_smoke.x": LIST_MODULE,
             "tensor_smoke.x": TENSOR_MODULE,
             "descriptor_smoke.x": DESCRIPTOR_MODULE,
+            "logical_smoke.x": LOGICAL_MODULE,
         }
         for name, content in sources.items():
             (work_dir / name).write_text(content, encoding="utf-8")

@@ -1,5 +1,7 @@
 """
-title: Semantic storage contracts for first-class primitive Arrow arrays.
+title: >-
+  Semantic storage contracts for first-class primitive and logical Arrow
+  arrays.
 """
 
 from __future__ import annotations
@@ -48,6 +50,10 @@ class ResolvedArray:
         type: tuple[str, Ellipsis]
       required_feature_version:
         type: int
+      descriptor:
+        type: astx.TypeDescriptorLiteral | None
+      arguments:
+        type: tuple[astx.Expr, Ellipsis] | None
     """
 
     symbol: str
@@ -58,7 +64,9 @@ class ResolvedArray:
     argument_types: tuple[astx.DataType, ...]
     operation: astx.ArrayOperation | None = None
     required_features: tuple[str, ...] = ("core", "array")
-    required_feature_version: int = 0x00010400
+    required_feature_version: int = 0x00010500
+    descriptor: astx.TypeDescriptorLiteral | None = None
+    arguments: tuple[astx.Expr, ...] | None = None
 
 
 @public
@@ -67,17 +75,31 @@ def array_storage(
     type_: astx.LogicalValueType,
 ) -> tuple[astx.DataType, astx.DataType, int, str] | None:
     """
-    title: Resolve typed primitive storage without conflating Boolean bytes.
+    title: Resolve native payload or opaque logical scalar array storage.
     parameters:
       type_:
         type: astx.LogicalValueType
     returns:
       type: tuple[astx.DataType, astx.DataType, int, str] | None
     """
+    pending = [type_.element_type]
+    seen: set[int] = set()
+    while pending:
+        logical = pending.pop()
+        if logical.kind is astx.LogicalKind.EXTENSION:
+            return None
+        if id(logical) not in seen:
+            seen.add(id(logical))
+            pending.extend(field.type_ for field in logical.fields)
     kind = type_.element_type.kind
     scalar = ARRAY_VALUE_TYPES.get(kind)
     if scalar is None:
-        return None
+        return (
+            astx.ScalarType(type_.element_type),
+            astx.ScalarType(type_.element_type),
+            0,
+            "scalar",
+        )
     spec = ARRAY_PRIMITIVE_TYPE_SPECS[kind.value]
     if kind.value.startswith("float"):
         return scalar(), astx.Float64(), spec.type_id, "double"

@@ -29,7 +29,7 @@ extern "C" {
 #endif
 
 #define IRX_ARROW_ABI_VERSION_MAJOR UINT32_C(1)
-#define IRX_ARROW_ABI_VERSION_MINOR UINT32_C(4)
+#define IRX_ARROW_ABI_VERSION_MINOR UINT32_C(5)
 #define IRX_ARROW_ABI_VERSION_PATCH UINT32_C(0)
 #define IRX_ARROW_ABI_VERSION \
   ((IRX_ARROW_ABI_VERSION_MAJOR << 16) | \
@@ -99,7 +99,7 @@ enum irx_arrow_runtime_feature_id_code {
    IRX_ARROW_RUNTIME_FEATURE_CORE_CONTRACT_VERSION_PATCH)
 
 #define IRX_ARROW_RUNTIME_FEATURE_ARRAY_CONTRACT_VERSION_MAJOR UINT32_C(1)
-#define IRX_ARROW_RUNTIME_FEATURE_ARRAY_CONTRACT_VERSION_MINOR UINT32_C(4)
+#define IRX_ARROW_RUNTIME_FEATURE_ARRAY_CONTRACT_VERSION_MINOR UINT32_C(5)
 #define IRX_ARROW_RUNTIME_FEATURE_ARRAY_CONTRACT_VERSION_PATCH UINT32_C(0)
 #define IRX_ARROW_RUNTIME_FEATURE_ARRAY_CONTRACT_VERSION \
   ((IRX_ARROW_RUNTIME_FEATURE_ARRAY_CONTRACT_VERSION_MAJOR << 16) | \
@@ -115,7 +115,7 @@ enum irx_arrow_runtime_feature_id_code {
    IRX_ARROW_RUNTIME_FEATURE_TENSOR_CONTRACT_VERSION_PATCH)
 
 #define IRX_ARROW_RUNTIME_FEATURE_DATAFRAME_CONTRACT_VERSION_MAJOR UINT32_C(1)
-#define IRX_ARROW_RUNTIME_FEATURE_DATAFRAME_CONTRACT_VERSION_MINOR UINT32_C(1)
+#define IRX_ARROW_RUNTIME_FEATURE_DATAFRAME_CONTRACT_VERSION_MINOR UINT32_C(2)
 #define IRX_ARROW_RUNTIME_FEATURE_DATAFRAME_CONTRACT_VERSION_PATCH UINT32_C(0)
 #define IRX_ARROW_RUNTIME_FEATURE_DATAFRAME_CONTRACT_VERSION \
   ((IRX_ARROW_RUNTIME_FEATURE_DATAFRAME_CONTRACT_VERSION_MAJOR << 16) | \
@@ -949,6 +949,142 @@ IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_table_to_batch(
 IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_table_combine(
     const irx_arrow_table_handle* value,
     irx_arrow_table_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_scalar_retain(
+    const irx_arrow_scalar_handle* value,
+    irx_arrow_scalar_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_scalar_release(
+    irx_arrow_scalar_handle** value,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_scalar_parse(
+    const irx_arrow_type_handle* type,
+    const char* text,
+    irx_arrow_scalar_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_scalar_from_array(
+    const irx_arrow_type_handle* type,
+    const irx_arrow_array_handle* value,
+    irx_arrow_scalar_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_scalar_from_fields(
+    const irx_arrow_type_handle* type,
+    const void** values,
+    int64_t count,
+    irx_arrow_scalar_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_scalar_dictionary(
+    const irx_arrow_type_handle* type,
+    const irx_arrow_scalar_handle* index,
+    const irx_arrow_array_handle* values,
+    irx_arrow_scalar_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_scalar_wrap(
+    const irx_arrow_type_handle* type,
+    const irx_arrow_scalar_handle* value,
+    irx_arrow_scalar_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_scalar_union(
+    const irx_arrow_type_handle* type,
+    const char* name,
+    const irx_arrow_scalar_handle* value,
+    irx_arrow_scalar_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_scalar_interval(
+    const irx_arrow_type_handle* type,
+    const int64_t* values,
+    int64_t count,
+    irx_arrow_scalar_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_scalar_equal(
+    const irx_arrow_scalar_handle* left,
+    const irx_arrow_scalar_handle* right,
+    int32_t* output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_scalar_text(
+    const irx_arrow_scalar_handle* value,
+    const char** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_scalar_values(
+    const irx_arrow_scalar_handle* value,
+    irx_arrow_array_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_scalar_field(
+    const irx_arrow_scalar_handle* value,
+    const char* name,
+    irx_arrow_scalar_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_array_get_scalar(
+    const irx_arrow_array_handle* value,
+    int64_t index,
+    irx_arrow_scalar_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_chunked_get_scalar(
+    const irx_arrow_chunked_array_handle* value,
+    int64_t index,
+    irx_arrow_scalar_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_array_builder_new_logical(
+    const irx_arrow_type_handle* type,
+    irx_arrow_array_builder_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_array_builder_append_scalar(
+    irx_arrow_array_builder_handle* builder,
+    const irx_arrow_scalar_handle* value,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_chunked_new_logical(
+    const irx_arrow_type_handle* type,
+    int32_t nullable,
+    const void** chunks,
+    int64_t count,
+    irx_arrow_chunked_array_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_scalar_from_bytes(
+    const irx_arrow_type_handle* type,
+    const irx_arrow_array_handle* value,
+    irx_arrow_scalar_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_scalar_bytes(
+    const irx_arrow_scalar_handle* value,
+    irx_arrow_array_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_batch_take(
+    const irx_arrow_record_batch_handle* value,
+    const irx_arrow_array_handle* indices,
+    irx_arrow_record_batch_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_table_take(
+    const irx_arrow_table_handle* value,
+    const irx_arrow_array_handle* indices,
+    irx_arrow_table_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_array_from_buffer(
+    int32_t type_id,
+    irx_buffer_view* view,
+    irx_arrow_array_handle** output,
     irx_arrow_error_handle** out_failure);
 
 #ifdef __cplusplus

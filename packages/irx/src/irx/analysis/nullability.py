@@ -162,6 +162,8 @@ def managed_nullable(type_: astx.DataType | None) -> bool:
     return isinstance(
         payload,
         (
+            astx.ClassType,
+            astx.ScalarType,
             astx.TableType,
             astx.RecordBatchType,
             astx.SchemaType,

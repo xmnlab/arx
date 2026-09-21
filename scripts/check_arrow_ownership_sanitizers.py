@@ -30,6 +30,7 @@ from irx.builder.runtime.features import NativeArtifact
 from irx.builder.runtime.linking import compile_native_artifacts
 
 FAILURE_MARKERS = {
+    "scalar_failure": "ARX-RUNTIME-NULL-001",
     "tabular_failure": "ARX-RUNTIME-ARROW-001",
     "container_failure": "ARX-RUNTIME-NULL-001",
     "array_failure": "ARX_RUNTIME_FAIL|ARX-RUNTIME-NULL-001|",

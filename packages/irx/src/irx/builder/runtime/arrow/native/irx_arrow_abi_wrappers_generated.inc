@@ -140,6 +140,29 @@
 #undef irx_arrow_batch_to_table
 #undef irx_arrow_table_to_batch
 #undef irx_arrow_table_combine
+#undef irx_arrow_scalar_retain
+#undef irx_arrow_scalar_release
+#undef irx_arrow_scalar_parse
+#undef irx_arrow_scalar_from_array
+#undef irx_arrow_scalar_from_fields
+#undef irx_arrow_scalar_dictionary
+#undef irx_arrow_scalar_wrap
+#undef irx_arrow_scalar_union
+#undef irx_arrow_scalar_interval
+#undef irx_arrow_scalar_equal
+#undef irx_arrow_scalar_text
+#undef irx_arrow_scalar_values
+#undef irx_arrow_scalar_field
+#undef irx_arrow_array_get_scalar
+#undef irx_arrow_chunked_get_scalar
+#undef irx_arrow_array_builder_new_logical
+#undef irx_arrow_array_builder_append_scalar
+#undef irx_arrow_chunked_new_logical
+#undef irx_arrow_scalar_from_bytes
+#undef irx_arrow_scalar_bytes
+#undef irx_arrow_batch_take
+#undef irx_arrow_table_take
+#undef irx_arrow_array_from_buffer
 
 #if defined(__GNUC__) || defined(__clang__)
 #pragma GCC visibility pop
@@ -3600,6 +3623,538 @@ irx_arrow_status irx_arrow_table_combine(
   return finish_generated_call(
       status,
       "irx_arrow_table_combine",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_scalar_retain(
+    const irx_arrow_scalar_handle* value,
+    irx_arrow_scalar_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_scalar_retain");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_scalar_retain(value, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_scalar_retain",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_scalar_release(
+    irx_arrow_scalar_handle** value,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_scalar_release");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_scalar_release(value);
+  return finish_generated_call(
+      status,
+      "irx_arrow_scalar_release",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_scalar_parse(
+    const irx_arrow_type_handle* type,
+    const char* text,
+    irx_arrow_scalar_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_scalar_parse");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_scalar_parse(type, text, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_scalar_parse",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_scalar_from_array(
+    const irx_arrow_type_handle* type,
+    const irx_arrow_array_handle* value,
+    irx_arrow_scalar_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_scalar_from_array");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_scalar_from_array(type, value, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_scalar_from_array",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_scalar_from_fields(
+    const irx_arrow_type_handle* type,
+    const void** values,
+    int64_t count,
+    irx_arrow_scalar_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_scalar_from_fields");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_scalar_from_fields(type, values, count, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_scalar_from_fields",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_scalar_dictionary(
+    const irx_arrow_type_handle* type,
+    const irx_arrow_scalar_handle* index,
+    const irx_arrow_array_handle* values,
+    irx_arrow_scalar_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_scalar_dictionary");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_scalar_dictionary(type, index, values, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_scalar_dictionary",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_scalar_wrap(
+    const irx_arrow_type_handle* type,
+    const irx_arrow_scalar_handle* value,
+    irx_arrow_scalar_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_scalar_wrap");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_scalar_wrap(type, value, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_scalar_wrap",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_scalar_union(
+    const irx_arrow_type_handle* type,
+    const char* name,
+    const irx_arrow_scalar_handle* value,
+    irx_arrow_scalar_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_scalar_union");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_scalar_union(type, name, value, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_scalar_union",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_scalar_interval(
+    const irx_arrow_type_handle* type,
+    const int64_t* values,
+    int64_t count,
+    irx_arrow_scalar_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_scalar_interval");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_scalar_interval(type, values, count, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_scalar_interval",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_scalar_equal(
+    const irx_arrow_scalar_handle* left,
+    const irx_arrow_scalar_handle* right,
+    int32_t* output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_scalar_equal");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_scalar_equal(left, right, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_scalar_equal",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_scalar_text(
+    const irx_arrow_scalar_handle* value,
+    const char** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_scalar_text");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_scalar_text(value, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_scalar_text",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_scalar_values(
+    const irx_arrow_scalar_handle* value,
+    irx_arrow_array_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_scalar_values");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_scalar_values(value, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_scalar_values",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_scalar_field(
+    const irx_arrow_scalar_handle* value,
+    const char* name,
+    irx_arrow_scalar_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_scalar_field");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_scalar_field(value, name, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_scalar_field",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_array_get_scalar(
+    const irx_arrow_array_handle* value,
+    int64_t index,
+    irx_arrow_scalar_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_array_get_scalar");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_array_get_scalar(value, index, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_array_get_scalar",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_chunked_get_scalar(
+    const irx_arrow_chunked_array_handle* value,
+    int64_t index,
+    irx_arrow_scalar_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_chunked_get_scalar");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_chunked_get_scalar(value, index, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_chunked_get_scalar",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_array_builder_new_logical(
+    const irx_arrow_type_handle* type,
+    irx_arrow_array_builder_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_array_builder_new_logical");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_array_builder_new_logical(type, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_array_builder_new_logical",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_array_builder_append_scalar(
+    irx_arrow_array_builder_handle* builder,
+    const irx_arrow_scalar_handle* value,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_array_builder_append_scalar");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_array_builder_append_scalar(builder, value);
+  return finish_generated_call(
+      status,
+      "irx_arrow_array_builder_append_scalar",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_chunked_new_logical(
+    const irx_arrow_type_handle* type,
+    int32_t nullable,
+    const void** chunks,
+    int64_t count,
+    irx_arrow_chunked_array_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_chunked_new_logical");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_chunked_new_logical(
+          type,
+          nullable,
+          chunks,
+          count,
+          output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_chunked_new_logical",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_scalar_from_bytes(
+    const irx_arrow_type_handle* type,
+    const irx_arrow_array_handle* value,
+    irx_arrow_scalar_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_scalar_from_bytes");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_scalar_from_bytes(type, value, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_scalar_from_bytes",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_scalar_bytes(
+    const irx_arrow_scalar_handle* value,
+    irx_arrow_array_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_scalar_bytes");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_scalar_bytes(value, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_scalar_bytes",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_DATAFRAME)
+irx_arrow_status irx_arrow_batch_take(
+    const irx_arrow_record_batch_handle* value,
+    const irx_arrow_array_handle* indices,
+    irx_arrow_record_batch_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_batch_take");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_batch_take(value, indices, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_batch_take",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_DATAFRAME)
+irx_arrow_status irx_arrow_table_take(
+    const irx_arrow_table_handle* value,
+    const irx_arrow_array_handle* indices,
+    irx_arrow_table_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_table_take");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_table_take(value, indices, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_table_take",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_array_from_buffer(
+    int32_t type_id,
+    irx_buffer_view* view,
+    irx_arrow_array_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_array_from_buffer");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_array_from_buffer(type_id, view, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_array_from_buffer",
       out_failure);
 }
 

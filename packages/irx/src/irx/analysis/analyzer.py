@@ -17,6 +17,7 @@ from irx.analysis.handlers.descriptors import DescriptorVisitorMixin
 from irx.analysis.handlers.expressions import ExpressionVisitorMixin
 from irx.analysis.handlers.imports import ImportVisitorMixin
 from irx.analysis.handlers.nullable import NullableVisitorMixin
+from irx.analysis.handlers.scalar_values import ScalarValueVisitorMixin
 from irx.analysis.handlers.tabular import TabularVisitorMixin
 from irx.analysis.handlers.templates import TemplateVisitorMixin
 from irx.typecheck import typechecked
@@ -26,6 +27,7 @@ from irx.typecheck import typechecked
 @typechecked
 class SemanticAnalyzer(
     ArrayValueVisitorMixin,
+    ScalarValueVisitorMixin,
     TabularVisitorMixin,
     NullableVisitorMixin,
     DescriptorVisitorMixin,

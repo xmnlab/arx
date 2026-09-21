@@ -73,6 +73,7 @@ _BUILTIN_TYPE_MAP: dict[str, astx.DataType] = {
 
 _BUILTIN_TYPE_NAMES = frozenset(_BUILTIN_TYPE_MAP) | frozenset(
     {
+        "scalar",
         "array",
         "array_builder",
         "table",
@@ -298,7 +299,12 @@ class TypeParserMixin(ParserMixinBase):
             if type_name in {"table", "record_batch"}:
                 self.tokens.get_next_token()
                 type_ = TabularParser(self).type(type_name)
-            elif type_name in {"array", "array_builder", "chunked_array"}:
+            elif type_name in {
+                "array",
+                "array_builder",
+                "chunked_array",
+                "scalar",
+            }:
                 self.tokens.get_next_token()
                 type_ = ArrayParser(self).type(type_name)
             elif type_name == "list":

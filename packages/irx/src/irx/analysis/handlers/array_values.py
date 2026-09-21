@@ -6,6 +6,8 @@ title: Resolve immutable array construction and the closed query signatures.
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import astx
 
 from irx.analysis.array_queries import ARRAY_ARITY, resolve_query
@@ -14,8 +16,12 @@ from irx.analysis.handlers.base import (
     SemanticAnalyzerCore,
     SemanticVisitorMixinBase,
 )
-from irx.analysis.ownership import typed_resource_ownership
+from irx.analysis.ownership import (
+    resource_contract_for_type,
+    typed_resource_ownership,
+)
 from irx.analysis.resolved_nodes import OwnershipKind
+from irx.analysis.scalar_values import BINARY_KINDS
 from irx.analysis.types import is_assignable
 from irx.diagnostics import DiagnosticCodes
 from irx.typecheck import typechecked
@@ -54,16 +60,38 @@ class ArrayValueVisitorMixin(SemanticVisitorMixinBase):
         """
         self._semantic(node).resolved_array = resolved
         self._set_type(node, resolved.result_type)
-        if isinstance(
-            resolved.result_type,
-            (astx.ArrayType, astx.ArrayBuilderType, astx.ChunkedArrayType),
-        ):
+        if resource_contract_for_type(resolved.result_type) is not None:
             self._set_resource_ownership(
                 node,
                 typed_resource_ownership(
                     resolved.result_type, OwnershipKind.OWNED
                 ),
             )
+
+    def array_element(
+        self, value: astx.Expr, element: astx.DataType
+    ) -> astx.Expr:
+        """
+        title: >-
+          Resolve explicit string-to-Arrow-scalar injection at construction.
+        parameters:
+          value:
+            type: astx.Expr
+          element:
+            type: astx.DataType
+        returns:
+          type: astx.Expr
+        """
+        self.visit(value)
+        if (
+            isinstance(element, astx.ScalarType)
+            and element.element_type.kind in BINARY_KINDS
+            and isinstance(self._expr_type(value), astx.String)
+        ):
+            scalar = astx.ScalarLiteral(element, (value,), loc=value.loc)
+            self.visit(scalar)
+            return scalar
+        return value
 
     @SemanticAnalyzerCore.visit.dispatch
     def visit(self, node: astx.ArrayLiteral) -> None:
@@ -77,7 +105,7 @@ class ArrayValueVisitorMixin(SemanticVisitorMixinBase):
         if storage is None:
             self.array_error(
                 node,
-                "array construction requires a supported primitive element",
+                "array construction requires an implemented logical element",
             )
             return
         element, abi_type, type_id, suffix = storage
@@ -93,9 +121,15 @@ class ArrayValueVisitorMixin(SemanticVisitorMixinBase):
             expected = astx.ArrayType(
                 node.type_.element_type, nullable=node.type_.nullable
             )
+        descriptor = None
+        if type_id == 0:
+            descriptor = astx.TypeDescriptorLiteral(node.type_.element_type)
+            self.visit(descriptor)
         arguments: list[astx.DataType] = []
-        for value in node.values:
-            self.visit(value)
+        values = tuple(
+            self.array_element(value, element) for value in node.values
+        )
+        for value in values:
             actual = self._expr_type(value)
             if (
                 not self._require_value_expression(
@@ -121,6 +155,8 @@ class ArrayValueVisitorMixin(SemanticVisitorMixinBase):
                 abi_type,
                 type_id,
                 tuple(arguments),
+                descriptor=descriptor,
+                arguments=values,
                 required_features=("core", "array", "dataframe")
                 if isinstance(node.type_, astx.ChunkedArrayType)
                 else ("core", "array"),
@@ -136,8 +172,23 @@ class ArrayValueVisitorMixin(SemanticVisitorMixinBase):
             type: astx.ArrayQuery
         """
         arguments: list[astx.DataType] = []
-        for index, value in enumerate(node.arguments):
-            self.visit(value)
+        values: list[astx.Expr] = []
+        for index, original in enumerate(node.arguments):
+            value = original
+            if (
+                node.operation is astx.ArrayOperation.APPEND
+                and index == 1
+                and arguments
+                and isinstance(arguments[0], astx.ArrayBuilderType)
+            ):
+                storage = array_storage(arguments[0])
+                if storage is not None:
+                    value = self.array_element(value, storage[0])
+                else:
+                    self.visit(value)
+            else:
+                self.visit(value)
+            values.append(value)
             self._require_value_expression(
                 value,
                 context="Array argument",
@@ -160,4 +211,4 @@ class ArrayValueVisitorMixin(SemanticVisitorMixinBase):
         except ValueError as error:
             self.array_error(node, str(error))
             return
-        self.array_result(node, resolved)
+        self.array_result(node, replace(resolved, arguments=tuple(values)))

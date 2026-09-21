@@ -48,7 +48,7 @@ COMPATIBILITY_CHECKER = ROOT / "scripts" / "check_arrow_abi_compatibility.py"
 HEADER_PROBE = """
 #include "irx_arrow_runtime.h"
 
-#if IRX_ARROW_ABI_VERSION != UINT32_C(0x00010400)
+#if IRX_ARROW_ABI_VERSION != UINT32_C(0x00010500)
 #error "unexpected Arrow ABI version"
 #endif
 
@@ -246,8 +246,8 @@ def test_compatibility_checker_rejects_older_minor_runtime(
         type: Path
     """
     baseline = json.loads(ABI_BASELINE.read_text(encoding="utf-8"))
-    baseline["abi_version"] = "1.5.0"
-    consumer = tmp_path / "consumer-1.5.json"
+    baseline["abi_version"] = "1.6.0"
+    consumer = tmp_path / "consumer-1.6.json"
     write_manifest(consumer, baseline)
 
     result = run_compatibility_check(ABI_MANIFEST, consumer)

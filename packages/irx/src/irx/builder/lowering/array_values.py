@@ -124,14 +124,21 @@ class ArrayValueLoweringMixin(VisitorMixinBase):
             source_type=actual,
             target_type=astx.NullableType(resolved.element_type),
         )
-        valid = builder.extract_value(aggregate, 0)
+        managed = isinstance(resolved.element_type, astx.ScalarType)
+        valid = (
+            builder.icmp_unsigned(
+                "!=", aggregate, ir.Constant(aggregate.type, None)
+            )
+            if managed
+            else builder.extract_value(aggregate, 0)
+        )
         present = builder.function.append_basic_block("array.append.value")
         absent = builder.function.append_basic_block("array.append.null")
         end = builder.function.append_basic_block("array.append.end")
         builder.cbranch(valid, present, absent)
         builder.position_at_end(present)
         payload = core._cast_ast_value(
-            builder.extract_value(aggregate, 1),
+            aggregate if managed else builder.extract_value(aggregate, 1),
             source_type=resolved.element_type,
             target_type=resolved.scalar_abi_type,
         )
@@ -165,11 +172,7 @@ class ArrayValueLoweringMixin(VisitorMixinBase):
             output = self.array_slot(
                 self._llvm.OPAQUE_POINTER_TYPE, "array.builder.output"
             )
-            self.array_call(
-                node,
-                "irx_arrow_array_builder_new",
-                [ir.Constant(ir.IntType(32), resolved.type_id), output],
-            )
+            self.new_array_builder(node, resolved, output)
             result = self._llvm.ir_builder.load(output)
             cast(VisitorCore, self)._register_owned_resource_temporary(
                 node, result
@@ -193,17 +196,12 @@ class ArrayValueLoweringMixin(VisitorMixinBase):
             ),
             owner,
         )
-        self.array_call(
-            node,
-            "irx_arrow_array_builder_new",
-            [
-                ir.Constant(ir.IntType(32), resolved.type_id),
-                owner,
-            ],
-        )
+        self.new_array_builder(node, resolved, owner)
         pointer = builder.load(owner)
         for value, actual in zip(
-            node.values, resolved.argument_types, strict=True
+            resolved.arguments or node.values,
+            resolved.argument_types,
+            strict=True,
         ):
             self.append_array_element(value, actual, resolved, pointer)
         output = self.array_slot(
@@ -212,9 +210,11 @@ class ArrayValueLoweringMixin(VisitorMixinBase):
         assert isinstance(resolved.result_type, astx.ArrayType)
         self.array_call(
             node,
-            "irx_arrow_array_builder_finish_typed",
+            "irx_arrow_array_builder_build"
+            if resolved.descriptor
+            else "irx_arrow_array_builder_finish_typed",
             [
-                owner,
+                pointer if resolved.descriptor else owner,
                 ir.Constant(
                     ir.IntType(32), int(resolved.result_type.nullable)
                 ),
@@ -224,6 +224,47 @@ class ArrayValueLoweringMixin(VisitorMixinBase):
         result = builder.load(output)
         core._register_owned_resource_temporary(node, result)
         self.result_stack.append(result)
+
+    def array_type_operand(self, resolved: ResolvedArray) -> ir.Value:
+        """
+        title: Lower an analyzed descriptor or the stable primitive storage id.
+        parameters:
+          resolved:
+            type: ResolvedArray
+        returns:
+          type: ir.Value
+        """
+        if resolved.descriptor is None:
+            return ir.Constant(ir.IntType(32), resolved.type_id)
+        self.visit_child(resolved.descriptor)
+        value = safe_pop(self.result_stack)
+        if value is None:
+            raise_lowering_internal_error("missing logical array descriptor")
+        return value
+
+    def new_array_builder(
+        self,
+        node: astx.ArrayLiteral,
+        resolved: ResolvedArray,
+        output: ir.Value,
+    ) -> None:
+        """
+        title: Select the resolved primitive or descriptor-driven builder ABI.
+        parameters:
+          node:
+            type: astx.ArrayLiteral
+          resolved:
+            type: ResolvedArray
+          output:
+            type: ir.Value
+        """
+        self.array_call(
+            node,
+            "irx_arrow_array_builder_new_logical"
+            if resolved.descriptor
+            else "irx_arrow_array_builder_new",
+            [self.array_type_operand(resolved), output],
+        )
 
     def chunked_literal(
         self, node: astx.ArrayLiteral, resolved: ResolvedArray
@@ -255,9 +296,11 @@ class ArrayValueLoweringMixin(VisitorMixinBase):
         output = self.array_slot(pointer, "chunked.output")
         self.array_call(
             node,
-            "irx_arrow_chunked_new",
+            "irx_arrow_chunked_new_logical"
+            if resolved.descriptor
+            else "irx_arrow_chunked_new",
             [
-                ir.Constant(ir.IntType(32), resolved.type_id),
+                self.array_type_operand(resolved),
                 ir.Constant(ir.IntType(32), int(node.type_.nullable)),
                 builder.gep(slots, [zero, zero]),
                 ir.Constant(ir.IntType(64), count),
@@ -328,18 +371,23 @@ class ArrayValueLoweringMixin(VisitorMixinBase):
         """
         resolved = self.array_resolution(node)
         core, builder = cast(VisitorCore, self), self._llvm.ir_builder
+        operands = (
+            resolved.arguments
+            if resolved.arguments is not None
+            else node.arguments
+        )
         if resolved.operation is astx.ArrayOperation.APPEND:
-            self.visit_child(node.arguments[0])
+            self.visit_child(operands[0])
             owner = safe_pop(self.result_stack)
             if owner is None:
                 raise_lowering_internal_error("missing builder", node=node)
             self.append_array_element(
-                node.arguments[1], resolved.argument_types[1], resolved, owner
+                operands[1], resolved.argument_types[1], resolved, owner
             )
             return
         arguments: list[ir.Value] = []
         for index, (argument, actual) in enumerate(
-            zip(node.arguments, resolved.argument_types, strict=True)
+            zip(operands, resolved.argument_types, strict=True)
         ):
             self.visit_child(argument)
             value = safe_pop(self.result_stack)
@@ -357,6 +405,21 @@ class ArrayValueLoweringMixin(VisitorMixinBase):
                     value, source_type=actual, target_type=astx.Int64()
                 )
             arguments.append(value)
+        if resolved.operation is astx.ArrayOperation.FROM_BUFFER:
+            view = builder.alloca(arguments[0].type, name="array.buffer.input")
+            builder.store(arguments[0], view)
+            arguments = [ir.Constant(ir.IntType(32), resolved.type_id), view]
+        if resolved.operation is astx.ArrayOperation.AT and isinstance(
+            resolved.element_type, astx.ScalarType
+        ):
+            output = self.array_slot(
+                self._llvm.OPAQUE_POINTER_TYPE, "array.scalar.owner"
+            )
+            self.array_call(node, resolved.symbol, [*arguments, output])
+            result = builder.load(output)
+            core._register_owned_resource_temporary(node, result)
+            self.result_stack.append(result)
+            return
         if resolved.operation is astx.ArrayOperation.AT:
             self.result_stack.append(
                 self.array_scalar_result(node, resolved, arguments)

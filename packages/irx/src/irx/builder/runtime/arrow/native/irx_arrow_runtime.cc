@@ -7,6 +7,7 @@
 
 #include <arrow/api.h>
 #include <arrow/array/concatenate.h>
+#include <arrow/device.h>
 #include <arrow/util/float16.h>
 #include <arrow/c/bridge.h>
 #include <arrow/tensor.h>
@@ -270,11 +271,18 @@ struct irx_arrow_schema_handle {
   int32_t nullable = 0;
 };
 
+struct irx_arrow_scalar_handle {
+  HandleHeader header{IRX_ARROW_HANDLE_KIND_SCALAR, IRX_ARROW_HANDLE_OWNERSHIP_SHARED};
+  std::shared_ptr<arrow::Scalar> scalar;
+};
+
 struct irx_arrow_array_builder_handle {
   HandleHeader header{
       IRX_ARROW_HANDLE_KIND_ARRAY_BUILDER,
       IRX_ARROW_HANDLE_OWNERSHIP_UNIQUE};
   std::unique_ptr<arrow::ArrayBuilder> builder;
+  std::shared_ptr<arrow::DataType> logical_type;
+  arrow::ScalarVector values;
   int32_t type_id = IRX_ARROW_TYPE_UNKNOWN;
 };
 
@@ -778,6 +786,16 @@ int populate_array_metadata(
     return set_error(IRX_ARROW_STATUS_INVALID_STATE, "array handle has no Arrow array");
   }
 
+  if (!resolved.spec) {
+    handle->type_id = IRX_ARROW_TYPE_UNKNOWN;
+    handle->nullable = resolved.nullable ? 1 : 0;
+    handle->dtype_token = 0;
+    handle->element_size_bytes = 0;
+    handle->buffer_view_compatible = 0;
+    handle->shape[0] = handle->array->length();
+    handle->strides[0] = 0;
+    return kArrowOk;
+  }
   handle->type_id = resolved.spec->type_id;
   handle->nullable = resolved.nullable ? 1 : 0;
   handle->dtype_token = resolved.spec->dtype_token;
@@ -1104,6 +1122,22 @@ int checked_offset_bytes(
   }
   *out_offset_bytes = offset * element_size_bytes;
   return kArrowOk;
+}
+
+int64_t logical_null_count(const arrow::Array &array) {
+  // Union and run-end arrays have no parent bitmap. Dictionary validity,
+  // like DictionaryScalar::is_valid, belongs to indices rather than values.
+  if (array.type_id() == arrow::Type::SPARSE_UNION ||
+      array.type_id() == arrow::Type::DENSE_UNION ||
+      array.type_id() == arrow::Type::RUN_END_ENCODED)
+    return array.ComputeLogicalNullCount();
+  return array.null_count();
+}
+
+int64_t logical_null_count(const arrow::ChunkedArray &array) {
+  int64_t count = 0;
+  for (const auto &chunk : array.chunks()) count += logical_null_count(*chunk);
+  return count;
 }
 
 bool array_has_validity_buffer(const irx_arrow_array_handle* array) {
@@ -1524,6 +1558,7 @@ irx_arrow_status irx_arrow_error_release(
 
 #include "irx_arrow_descriptors.inc"
 #include "irx_arrow_array_values.inc"
+#include "irx_arrow_scalar_values.inc"
 #include "irx_arrow_chunks.inc"
 
 irx_arrow_status irx_arrow_schema_import_copy(
@@ -1689,6 +1724,9 @@ irx_arrow_status irx_arrow_array_builder_append_null(
   if (count < 0) {
     return set_error(IRX_ARROW_STATUS_INVALID_ARGUMENT, "null append count must be non-negative");
   }
+  if (builder->logical_type) {
+    return append_logical_nulls(builder, count);
+  }
   if (count > std::numeric_limits<int64_t>::max() - builder->builder->length()) {
     return set_error(IRX_ARROW_STATUS_OVERFLOW, "null append length overflow");
   }
@@ -1806,6 +1844,12 @@ irx_arrow_status irx_arrow_array_builder_finish(
           "injected Arrow array finish allocation failure");
     }
 
+    if (builder->logical_type) {
+      const auto status = irx_arrow_array_builder_build(builder, 1, out_array);
+      if (status != kArrowOk) return status;
+      return release_unique_handle(builder_slot, IRX_ARROW_HANDLE_KIND_ARRAY_BUILDER, "array builder");
+    }
+
     auto handle = make_runtime_handle<irx_arrow_array_handle>();
 
     std::shared_ptr<arrow::Array> array;
@@ -1884,7 +1928,7 @@ int64_t irx_arrow_array_null_count(const irx_arrow_array_handle* array) {
       !array->array) {
     return -1;
   }
-  return array->array->null_count();
+  return logical_null_count(*array->array);
 }
 
 int32_t irx_arrow_array_type_id(const irx_arrow_array_handle* array) {
@@ -1956,13 +2000,9 @@ irx_arrow_status irx_arrow_array_schema_copy(
     *out_schema = nullptr;
 
     ResolvedSchema resolved = resolved_from_arrow_type(array->array->type(), array->nullable != 0);
-    if (resolved.spec == nullptr) {
-      return set_error(IRX_ARROW_STATUS_NOT_SUPPORTED, "unsupported Arrow array storage type");
-    }
-
     auto handle = make_runtime_handle<irx_arrow_schema_handle>();
     handle->field = arrow::field("", array->array->type(), resolved.nullable);
-    handle->type_id = resolved.spec->type_id;
+    handle->type_id = resolved.spec ? resolved.spec->type_id : IRX_ARROW_TYPE_UNKNOWN;
     handle->nullable = resolved.nullable ? 1 : 0;
     *out_schema = handle.release();
     return kArrowOk;

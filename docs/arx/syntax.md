@@ -250,3 +250,11 @@ Constructors take an explicit row count, then arrays (batch) or chunked arrays
 proofs, optional unique builders and nullable instance fields are also
 supported. Variable-width/nested source values and source buffer/C Data
 constructors remain pending; legacy DataFrame/Series behavior is unchanged.
+
+Logical columnar values are also native builtins: `scalar[T]`, typed arrays,
+reusable builders, chunks, batches and tables need no Arrow import. See
+[built-in types](built-in-types.md#logical-scalars-and-nested-values) for
+strings, binary, temporal, decimal and nested construction, checked nullable
+extraction, `array_from_buffer`, and explicit `take_rows` selection. Legacy
+DataFrame/Series adapters and raw external C Data constructors remain
+unfinished.

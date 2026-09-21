@@ -529,6 +529,80 @@ def tabular_owners_program(*, fail: bool) -> astx.Module:
     return module
 
 
+def scalar_owners_program(*, fail: bool) -> astx.Module:
+    """
+    title: Exercise nullable scalar copies, array parents and failure cleanup.
+    parameters:
+      fail:
+        type: bool
+    returns:
+      type: astx.Module
+    """
+    logical = astx.LogicalType(astx.LogicalKind.STRING)
+    scalar = astx.ScalarType(logical)
+    optional = astx.NullableType(scalar)
+    array = astx.ArrayType(logical, nullable=True)
+    body = block(
+        astx.VariableDeclaration(
+            "parent",
+            astx.NullableType(array),
+            value=astx.ArrayLiteral(
+                array,
+                (
+                    astx.ScalarLiteral(scalar, (astx.LiteralString("owned"),)),
+                    astx.LiteralNone(),
+                ),
+            ),
+            mutability=astx.MutabilityKind.mutable,
+        ),
+        astx.VariableDeclaration(
+            "child",
+            optional,
+            value=astx.ArrayQuery(
+                astx.ArrayOperation.AT,
+                (
+                    astx.NullableQuery(
+                        astx.NullableOperation.EXPECT_VALID,
+                        astx.Identifier("parent"),
+                    ),
+                    astx.LiteralInt64(0),
+                ),
+            ),
+            mutability=astx.MutabilityKind.mutable,
+        ),
+        astx.VariableDeclaration(
+            "kept", optional, value=astx.Identifier("child")
+        ),
+        astx.BinaryOp("=", astx.Identifier("child"), astx.LiteralNone()),
+        astx.BinaryOp("=", astx.Identifier("parent"), astx.LiteralNone()),
+        astx.AssertStmt(
+            astx.BinaryOp(
+                "==",
+                astx.ScalarQuery(
+                    astx.ScalarOperation.TEXT,
+                    (
+                        astx.NullableQuery(
+                            astx.NullableOperation.EXPECT_VALID,
+                            astx.Identifier("kept"),
+                        ),
+                    ),
+                ),
+                astx.LiteralString("owned"),
+            )
+        ),
+    )
+    if fail:
+        body.append(
+            astx.NullableQuery(
+                astx.NullableOperation.EXPECT_VALID, astx.Identifier("child")
+            )
+        )
+    body.append(astx.FunctionReturn(astx.LiteralInt32(0)))
+    module = astx.Module()
+    module.block.append(main_function(body))
+    return module
+
+
 def ownership_programs() -> tuple[tuple[str, astx.Module, int], ...]:
     """
     title: Return independent generated programs and expected exit statuses.
@@ -536,6 +610,8 @@ def ownership_programs() -> tuple[tuple[str, astx.Module, int], ...]:
       type: tuple[tuple[str, astx.Module, int], Ellipsis]
     """
     return (
+        ("scalar_owners", scalar_owners_program(fail=False), 0),
+        ("scalar_failure", scalar_owners_program(fail=True), 1),
         ("tabular_owners", tabular_owners_program(fail=False), 0),
         ("tabular_failure", tabular_owners_program(fail=True), 1),
         ("container_owners", container_owners_program(fail=False), 0),

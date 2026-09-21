@@ -65,8 +65,8 @@
         "packages/arx/tests/python/test_tabular_values.py"
       ],
       "blocks": ["M2", "M3", "M5"],
-      "baseline": "Primitive nullable operators, compound predicate facts and numeric casts execute natively. Optional shared owners, unique primitive builders, primitive and managed instance fields, primitive struct fields, arrays, chunks and typed primitive batches/tables preserve validity and ownership.",
-      "completion": "Complete nullable strings, managed struct destruction, general nullable collections and safe source buffer/C Data constructors; variable-width/nested scalar and container values remain pending."
+      "baseline": "Primitive nullable operators, proofs and casts; optional shared opaque/class/scalar owners, unique builders and instance fields execute natively. Typed primitive and logical arrays, chunks, batches/tables, nested scalar children and buffer-to-array copying preserve ownership.",
+      "completion": "Complete nullable C strings, managed by-value struct destruction, general nullable language collections, extension value codecs, safe external C Data source constructors and legacy adapters."
     },
     {
       "id": "FND-003",
@@ -312,7 +312,7 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Primitive nullable scalars support explicit validity, checked unwrap, locals, defaults, calls and returns with separate LLVM validity. Primitive nullable operators, direct predicate narrowing and primitive array extraction are implemented; managed payloads and general nullable containers remain incomplete.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_schema_interop.py",
@@ -338,6 +338,11 @@
           "path": "packages/arx/tests/python/test_nullable_operations.py",
           "symbol": "test_kleene_truth_tables_and_short_circuit",
           "purpose": "Executes all three-valued Boolean truth-table cells and verifies decisive left operands skip the RHS."
+        },
+        {
+          "path": "packages/arx/tests/python/test_logical_scalar_values.py",
+          "symbol": "test_logical_value_examples",
+          "purpose": "Executes typed logical values, nullable/class owners, nested extraction, tables, row selection and buffer copying from Arx source."
         }
       ]
     },
@@ -356,7 +361,7 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Logical descriptors, validation, C Data and IPC schema interchange are implemented, including recursive metadata. This does not imply native values, builders, Arx syntax or compute support for the entire family. Existing primitive builders still exclude float16.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_schema_interop.py",
@@ -367,6 +372,11 @@
           "path": "packages/irx/tests/test_arrow_runtime.py",
           "symbol": "test_arrow_runtime_import_export_roundtrips_supported_primitives",
           "purpose": "Round-trips every currently supported primitive type through Arrow C Data."
+        },
+        {
+          "path": "packages/arx/tests/python/test_logical_scalar_values.py",
+          "symbol": "test_logical_value_examples",
+          "purpose": "Executes typed logical values, nullable/class owners, nested extraction, tables, row selection and buffer copying from Arx source."
         }
       ]
     },
@@ -380,12 +390,12 @@
         "native_runtime": "partial",
         "astx_model": "partial",
         "irx_semantics": "partial",
-        "llvm_lowering": "not_started",
-        "arx_surface": "not_started",
+        "llvm_lowering": "partial",
+        "arx_surface": "partial",
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Logical descriptors, validation, C Data and IPC schema interchange are implemented, including recursive metadata. This does not imply native values, builders, Arx syntax or compute support for the entire family.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_schema_interop.py",
@@ -396,6 +406,11 @@
           "path": "packages/irx/tests/test_arrow_capability_matrix.py",
           "symbol": "test_required_arrow_24_capabilities_are_classified",
           "purpose": "Keeps this required Arrow 24 family explicit until conformance tests replace inventory-only evidence."
+        },
+        {
+          "path": "packages/arx/tests/python/test_logical_scalar_values.py",
+          "symbol": "test_logical_value_examples",
+          "purpose": "Executes typed logical values, nullable/class owners, nested extraction, tables, row selection and buffer copying from Arx source."
         }
       ]
     },
@@ -409,12 +424,12 @@
         "native_runtime": "partial",
         "astx_model": "partial",
         "irx_semantics": "partial",
-        "llvm_lowering": "not_started",
+        "llvm_lowering": "partial",
         "arx_surface": "partial",
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Logical descriptors, validation, C Data and IPC schema interchange are implemented, including recursive metadata. This does not imply native values, builders, Arx syntax or compute support for the entire family.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_schema_interop.py",
@@ -429,7 +444,17 @@
         {
           "path": "packages/irx/tests/test_arrow_runtime.py",
           "symbol": "test_arrow_runtime_rejects_unsupported_string_arrays",
-          "purpose": "Proves the general native Array boundary still rejects string arrays explicitly."
+          "purpose": "The legacy primitive C Data import entry point still rejects strings; logical constructors and batch import are separate supported paths."
+        },
+        {
+          "path": "packages/arx/tests/python/test_logical_scalar_values.py",
+          "symbol": "test_logical_value_examples",
+          "purpose": "Executes typed logical values, nullable/class owners, nested extraction, tables, row selection and buffer copying from Arx source."
+        },
+        {
+          "path": "packages/irx/tests/test_logical_scalar_runtime.py",
+          "symbol": "test_scalar_builder_roundtrip",
+          "purpose": "Checks logical scalar publication, nulls, C Data/PyArrow export, independent children and reusable builders."
         }
       ]
     },
@@ -443,12 +468,12 @@
         "native_runtime": "partial",
         "astx_model": "partial",
         "irx_semantics": "partial",
-        "llvm_lowering": "not_started",
-        "arx_surface": "not_started",
+        "llvm_lowering": "partial",
+        "arx_surface": "partial",
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Logical descriptors, validation, C Data and IPC schema interchange are implemented, including recursive metadata. This does not imply native values, builders, Arx syntax or compute support for the entire family.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_schema_interop.py",
@@ -459,6 +484,11 @@
           "path": "packages/irx/tests/test_arrow_capability_matrix.py",
           "symbol": "test_required_arrow_24_capabilities_are_classified",
           "purpose": "Keeps this required Arrow 24 family explicit until feature conformance exists."
+        },
+        {
+          "path": "packages/arx/tests/python/test_logical_scalar_values.py",
+          "symbol": "test_logical_value_examples",
+          "purpose": "Executes typed logical values, nullable/class owners, nested extraction, tables, row selection and buffer copying from Arx source."
         }
       ]
     },
@@ -472,12 +502,12 @@
         "native_runtime": "partial",
         "astx_model": "partial",
         "irx_semantics": "partial",
-        "llvm_lowering": "not_started",
-        "arx_surface": "not_started",
+        "llvm_lowering": "partial",
+        "arx_surface": "partial",
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Logical descriptors, validation, C Data and IPC schema interchange are implemented, including recursive metadata. This does not imply native values, builders, Arx syntax or compute support for the entire family.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_schema_interop.py",
@@ -488,6 +518,11 @@
           "path": "packages/irx/tests/test_arrow_capability_matrix.py",
           "symbol": "test_required_arrow_24_capabilities_are_classified",
           "purpose": "Prevents reserved enum kinds from being reported as implemented decimal support."
+        },
+        {
+          "path": "packages/arx/tests/python/test_logical_scalar_values.py",
+          "symbol": "test_logical_value_examples",
+          "purpose": "Executes typed logical values, nullable/class owners, nested extraction, tables, row selection and buffer copying from Arx source."
         }
       ]
     },
@@ -501,12 +536,12 @@
         "native_runtime": "partial",
         "astx_model": "partial",
         "irx_semantics": "partial",
-        "llvm_lowering": "not_started",
+        "llvm_lowering": "partial",
         "arx_surface": "partial",
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Logical descriptors, validation, C Data and IPC schema interchange are implemented, including recursive metadata. This does not imply native values, builders, Arx syntax or compute support for the entire family.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_schema_interop.py",
@@ -522,6 +557,11 @@
           "path": "packages/irx/tests/test_record_batch.py",
           "symbol": "test_date32_overflow_rejected",
           "purpose": "Checks one existing temporal overflow boundary."
+        },
+        {
+          "path": "packages/arx/tests/python/test_logical_scalar_values.py",
+          "symbol": "test_logical_value_examples",
+          "purpose": "Executes typed logical values, nullable/class owners, nested extraction, tables, row selection and buffer copying from Arx source."
         }
       ]
     },
@@ -535,12 +575,12 @@
         "native_runtime": "partial",
         "astx_model": "partial",
         "irx_semantics": "partial",
-        "llvm_lowering": "not_started",
+        "llvm_lowering": "partial",
         "arx_surface": "partial",
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Logical descriptors, validation, C Data and IPC schema interchange are implemented, including recursive metadata. This does not imply native values, builders, Arx syntax or compute support for the entire family.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_schema_interop.py",
@@ -556,6 +596,11 @@
           "path": "packages/irx/tests/test_record_batch.py",
           "symbol": "test_unsupported_element_type_raises",
           "purpose": "Documents the current list child-type limitation."
+        },
+        {
+          "path": "packages/arx/tests/python/test_logical_scalar_values.py",
+          "symbol": "test_logical_value_examples",
+          "purpose": "Executes typed logical values, nullable/class owners, nested extraction, tables, row selection and buffer copying from Arx source."
         }
       ]
     },
@@ -569,12 +614,12 @@
         "native_runtime": "partial",
         "astx_model": "partial",
         "irx_semantics": "partial",
-        "llvm_lowering": "not_started",
+        "llvm_lowering": "partial",
         "arx_surface": "partial",
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Logical descriptors, validation, C Data and IPC schema interchange are implemented, including recursive metadata. This does not imply native values, builders, Arx syntax or compute support for the entire family.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_schema_interop.py",
@@ -590,6 +635,11 @@
           "path": "packages/irx/tests/test_record_batch.py",
           "symbol": "test_unsupported_field_type_raises",
           "purpose": "Documents the current struct field-type limitation."
+        },
+        {
+          "path": "packages/arx/tests/python/test_logical_scalar_values.py",
+          "symbol": "test_logical_value_examples",
+          "purpose": "Executes typed logical values, nullable/class owners, nested extraction, tables, row selection and buffer copying from Arx source."
         }
       ]
     },
@@ -603,12 +653,12 @@
         "native_runtime": "partial",
         "astx_model": "partial",
         "irx_semantics": "partial",
-        "llvm_lowering": "not_started",
+        "llvm_lowering": "partial",
         "arx_surface": "partial",
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Logical descriptors, validation, C Data and IPC schema interchange are implemented, including recursive metadata. This does not imply native values, builders, Arx syntax or compute support for the entire family.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_schema_interop.py",
@@ -619,6 +669,11 @@
           "path": "packages/irx/tests/test_arrow_capability_matrix.py",
           "symbol": "test_required_arrow_24_capabilities_are_classified",
           "purpose": "Keeps Arrow unions distinct from existing language union types."
+        },
+        {
+          "path": "packages/arx/tests/python/test_logical_scalar_values.py",
+          "symbol": "test_logical_value_examples",
+          "purpose": "Executes typed logical values, nullable/class owners, nested extraction, tables, row selection and buffer copying from Arx source."
         }
       ]
     },
@@ -632,12 +687,12 @@
         "native_runtime": "partial",
         "astx_model": "partial",
         "irx_semantics": "partial",
-        "llvm_lowering": "not_started",
-        "arx_surface": "not_started",
+        "llvm_lowering": "partial",
+        "arx_surface": "partial",
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Logical descriptors, validation, C Data and IPC schema interchange are implemented, including recursive metadata. This does not imply native values, builders, Arx syntax or compute support for the entire family.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_schema_interop.py",
@@ -648,6 +703,11 @@
           "path": "packages/irx/tests/test_arrow_capability_matrix.py",
           "symbol": "test_required_arrow_24_capabilities_are_classified",
           "purpose": "Keeps this required Arrow 24 family explicit until feature conformance exists."
+        },
+        {
+          "path": "packages/arx/tests/python/test_logical_scalar_values.py",
+          "symbol": "test_logical_value_examples",
+          "purpose": "Executes typed logical values, nullable/class owners, nested extraction, tables, row selection and buffer copying from Arx source."
         }
       ]
     },
@@ -661,12 +721,12 @@
         "native_runtime": "partial",
         "astx_model": "partial",
         "irx_semantics": "partial",
-        "llvm_lowering": "not_started",
-        "arx_surface": "not_started",
+        "llvm_lowering": "partial",
+        "arx_surface": "partial",
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Logical descriptors, validation, C Data and IPC schema interchange are implemented, including recursive metadata. This does not imply native values, builders, Arx syntax or compute support for the entire family.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_schema_interop.py",
@@ -677,6 +737,11 @@
           "path": "packages/irx/tests/test_arrow_capability_matrix.py",
           "symbol": "test_required_arrow_24_capabilities_are_classified",
           "purpose": "Keeps this required Arrow 24 family explicit until feature conformance exists."
+        },
+        {
+          "path": "packages/arx/tests/python/test_logical_scalar_values.py",
+          "symbol": "test_logical_value_examples",
+          "purpose": "Executes typed logical values, nullable/class owners, nested extraction, tables, row selection and buffer copying from Arx source."
         }
       ]
     },
@@ -720,16 +785,26 @@
         "astx_model": "partial",
         "irx_semantics": "partial",
         "llvm_lowering": "partial",
-        "arx_surface": "not_started",
+        "arx_surface": "partial",
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "IRx buffer views and owner retain/release exist, but first-class Arrow Scalar and Buffer value semantics are not exposed in Arx.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_buffer_view.py",
           "symbol": "test_buffer_runtime_owner_retain_release_harness",
           "purpose": "Exercises current native buffer owner lifetime operations."
+        },
+        {
+          "path": "packages/arx/tests/python/test_logical_scalar_values.py",
+          "symbol": "test_logical_value_examples",
+          "purpose": "Executes typed logical values, nullable/class owners, nested extraction, tables, row selection and buffer copying from Arx source."
+        },
+        {
+          "path": "packages/irx/tests/test_logical_scalar_runtime.py",
+          "symbol": "test_scalar_builder_roundtrip",
+          "purpose": "Checks logical scalar publication, nulls, C Data/PyArrow export, independent children and reusable builders."
         }
       ]
     },
@@ -748,7 +823,7 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "First-class primitive arrays, reusable unique builders, nullable shared owners and half-float storage execute natively in Arx. Source buffer/C Data constructors and variable-width/nested values remain incomplete.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_arrow_runtime.py",
@@ -774,6 +849,16 @@
           "path": "packages/arx/tests/python/test_nullable_owners.py",
           "symbol": "test_nullable_array_owners",
           "purpose": "Checks nullable shared owners across borrowing, copying, reassignment and return boundaries."
+        },
+        {
+          "path": "packages/arx/tests/python/test_logical_scalar_values.py",
+          "symbol": "test_logical_value_examples",
+          "purpose": "Executes typed logical values, nullable/class owners, nested extraction, tables, row selection and buffer copying from Arx source."
+        },
+        {
+          "path": "packages/irx/tests/test_logical_scalar_runtime.py",
+          "symbol": "test_scalar_builder_roundtrip",
+          "purpose": "Checks logical scalar publication, nulls, C Data/PyArrow export, independent children and reusable builders."
         }
       ]
     },
@@ -792,7 +877,7 @@
         "interop": "not_started"
       },
       "overall": "partial",
-      "notes": "Ambient primitive chunked_array values support construction, ownership, scalar access across chunks, slicing, concatenation, copying, value equality, explicit chunk iteration and combine_chunks. The legacy projected Series is distinct; nested values, complete Series APIs and whole-container interchange remain pending.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_dataframe.py",
@@ -808,6 +893,11 @@
           "path": "packages/irx/tests/test_chunked_value_runtime.py",
           "symbol": "test_chunk_views_outlive_all_parents",
           "purpose": "Verifies independent child owners and exported buffers after parent release."
+        },
+        {
+          "path": "packages/arx/tests/python/test_logical_scalar_values.py",
+          "symbol": "test_logical_value_examples",
+          "purpose": "Executes typed logical values, nullable/class owners, nested extraction, tables, row selection and buffer copying from Arx source."
         }
       ]
     },
@@ -826,7 +916,7 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Ambient typed record_batch/table constructors, primitive nullable columns, checked runtime projection, immutable structural transforms, metadata and shared owner lifetimes now execute through analysis and LLVM. Nested imported native views preserve metadata, but variable-width/nested source construction and legacy DataFrame/Series expansion remain incomplete.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_record_batch.py",
@@ -857,6 +947,11 @@
           "path": "packages/irx/tests/test_tabular_runtime.py",
           "symbol": "test_imported_nested_tabular_views",
           "purpose": "Checks metadata and nested native views outliving their producer; not Arx source nested-value support."
+        },
+        {
+          "path": "packages/arx/tests/python/test_logical_scalar_values.py",
+          "symbol": "test_logical_value_examples",
+          "purpose": "Executes typed logical values, nullable/class owners, nested extraction, tables, row selection and buffer copying from Arx source."
         }
       ]
     },
@@ -875,7 +970,7 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Ambient typed record_batch/table constructors, primitive nullable columns, checked runtime projection, immutable structural transforms, metadata and shared owner lifetimes now execute through analysis and LLVM. Nested imported native views preserve metadata, but variable-width/nested source construction and legacy DataFrame/Series expansion remain incomplete.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_dataframe.py",
@@ -901,6 +996,11 @@
           "path": "packages/irx/tests/test_tabular_runtime.py",
           "symbol": "test_imported_nested_tabular_views",
           "purpose": "Checks metadata and nested native views outliving their producer; not Arx source nested-value support."
+        },
+        {
+          "path": "packages/arx/tests/python/test_logical_scalar_values.py",
+          "symbol": "test_logical_value_examples",
+          "purpose": "Executes typed logical values, nullable/class owners, nested extraction, tables, row selection and buffer copying from Arx source."
         }
       ]
     },

@@ -35,14 +35,21 @@ class ArrayParser:
 
     def type(
         self, name: str = "array"
-    ) -> astx.ArrayType | astx.ArrayBuilderType | astx.ChunkedArrayType:
+    ) -> (
+        astx.ArrayType
+        | astx.ArrayBuilderType
+        | astx.ChunkedArrayType
+        | astx.ScalarType
+    ):
         """
         title: Parse the bracketed logical element and optional nullability.
         parameters:
           name:
             type: str
         returns:
-          type: astx.ArrayType | astx.ArrayBuilderType | astx.ChunkedArrayType
+          type: >-
+            astx.ArrayType | astx.ArrayBuilderType | astx.ChunkedArrayType |
+            astx.ScalarType
         """
         parser = self.parser
         parser._consume_operator("[")
@@ -59,8 +66,10 @@ class ArrayParser:
             str,
             type[astx.ArrayType]
             | type[astx.ArrayBuilderType]
-            | type[astx.ChunkedArrayType],
+            | type[astx.ChunkedArrayType]
+            | type[astx.ScalarType],
         ] = {
+            "scalar": astx.ScalarType,
             "array": astx.ArrayType,
             "array_builder": astx.ArrayBuilderType,
             "chunked_array": astx.ChunkedArrayType,
@@ -69,7 +78,7 @@ class ArrayParser:
 
     def literal(
         self, loc: astx.SourceLocation, name: str = "array"
-    ) -> astx.ArrayLiteral:
+    ) -> astx.ArrayLiteral | astx.ScalarLiteral:
         """
         title: Parse a typed scalar sequence, including an empty sequence.
         parameters:
@@ -78,7 +87,7 @@ class ArrayParser:
           name:
             type: str
         returns:
-          type: astx.ArrayLiteral
+          type: astx.ArrayLiteral | astx.ScalarLiteral
         """
         type_ = self.type(name)
         parser = self.parser
@@ -90,4 +99,6 @@ class ArrayParser:
                 break
             parser._consume_operator(",")
         parser._consume_operator(")")
+        if isinstance(type_, astx.ScalarType):
+            return astx.ScalarLiteral(type_, tuple(values), loc=loc)
         return astx.ArrayLiteral(type_, tuple(values), loc=loc)

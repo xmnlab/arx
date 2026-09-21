@@ -1599,7 +1599,8 @@ class VisitorCore(BuilderVisitor):
         if type_ is None:
             return None
         if managed_nullable(type_):
-            return self._llvm.OPAQUE_POINTER_TYPE
+            assert isinstance(type_, astx.NullableType)
+            return self._llvm_type_for_ast_type(type_.payload_type)
         if isinstance(type_, astx.NullableType):
             payload_type = self._llvm_type_for_ast_type(type_.payload_type)
             if payload_type is None or isinstance(payload_type, ir.VoidType):
@@ -1632,6 +1633,7 @@ class VisitorCore(BuilderVisitor):
                 astx.TypeDescriptorType,
                 astx.TableType,
                 astx.RecordBatchType,
+                astx.ScalarType,
                 astx.ArrayType,
                 astx.ArrayBuilderType,
                 astx.ChunkedArrayType,
@@ -2031,11 +2033,20 @@ class VisitorCore(BuilderVisitor):
             assert llvm_type is not None
             if isinstance(source_type, astx.NoneType) and value is None:
                 return ir.Constant(llvm_type, None)
-            if value is None or value.type != llvm_type:
+            if value is None:
                 raise_lowering_internal_error(
                     "invalid nullable owner injection"
                 )
-            return value
+            payload = (
+                source_type.payload_type
+                if isinstance(source_type, astx.NullableType)
+                else source_type
+            )
+            return self._cast_ast_value(
+                value,
+                source_type=payload,
+                target_type=target_type.payload_type,
+            )
         if not isinstance(llvm_type, ir.LiteralStructType):
             raise_lowering_internal_error("missing nullable aggregate type")
         empty = ir.Constant(llvm_type, None)

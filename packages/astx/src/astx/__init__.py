@@ -242,6 +242,7 @@ from astx.packages import (
     Program,
     Target,
 )
+from astx.scalar_expr import ScalarLiteral, ScalarOperation, ScalarQuery
 from astx.schema import (
     ArrayBuilderType,
     ArrayType,
@@ -583,6 +584,9 @@ __all__ = [
     "PrintExpr",
     "Program",
     "RecordBatchType",
+    "ScalarLiteral",
+    "ScalarOperation",
+    "ScalarQuery",
     "ScalarType",
     "Schema",
     "SchemaField",

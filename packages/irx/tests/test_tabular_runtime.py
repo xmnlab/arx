@@ -14,6 +14,7 @@ import pytest
 from .test_arrow_runtime import (
     ArrowArrayStruct,
     ArrowSchemaStruct,
+    _capsule_pointer,
     _load_arrow_runtime_library,
     _release_c_schema,
 )
@@ -21,6 +22,7 @@ from .test_arrow_runtime import (
 SCHEMA_MISMATCH = 104
 INDEX_OUT_OF_BOUNDS = 105
 OUT_OF_MEMORY = 200
+TYPE_MISMATCH = 103
 
 
 @pytest.fixture(scope="module")
@@ -83,6 +85,105 @@ def export_batch(
     return pa.RecordBatch._import_from_c(
         ctypes.addressof(array), ctypes.addressof(schema)
     )
+
+
+@pytest.mark.parametrize("as_table", [False, True])
+@pytest.mark.parametrize(
+    "indices,status",
+    [
+        (pa.array([], type=pa.int64()), 0),
+        (pa.array([9, 1, 0, 0], type=pa.int64()).slice(1), 0),
+        (pa.array([-1], type=pa.int64()), INDEX_OUT_OF_BOUNDS),
+        (pa.array([2], type=pa.int64()), INDEX_OUT_OF_BOUNDS),
+        (pa.array([None], type=pa.int64()), TYPE_MISMATCH),
+        (pa.array([0], type=pa.int32()), TYPE_MISMATCH),
+    ],
+)
+def test_tabular_take_checked_indices(
+    runtime: ctypes.CDLL,
+    as_table: bool,
+    indices: pa.Array,
+    status: int,
+) -> None:
+    """
+    title: Select repeated sliced indices or clear invalid selection output.
+    parameters:
+      runtime:
+        type: ctypes.CDLL
+      as_table:
+        type: bool
+      indices:
+        type: pa.Array
+      status:
+        type: int
+    """
+    source = pa.record_batch(
+        [pa.array(["λ", None]), pa.array([[1, None], []])],
+        schema=pa.schema(
+            [
+                pa.field("text", pa.string(), metadata={b"field": b"x"}),
+                pa.field("items", pa.list_(pa.int64())),
+            ],
+            metadata={b"origin": b"\0\xff"},
+        ),
+    )
+    batch = import_batch(runtime, source)
+    table, order, output, restored = (ctypes.c_void_p() for _ in range(4))
+    schema_capsule, array_capsule = indices.__arrow_c_array__()
+    kind = "table" if as_table else "batch"
+    release = (
+        runtime.irx_arrow_table_release
+        if as_table
+        else runtime.irx_arrow_record_batch_release
+    )
+    try:
+        assert (
+            runtime.irx_arrow_array_import_copy(
+                _capsule_pointer(array_capsule, b"arrow_array"),
+                _capsule_pointer(schema_capsule, b"arrow_schema"),
+                ctypes.byref(order),
+            )
+            == 0
+        )
+        if as_table:
+            assert (
+                runtime.irx_arrow_batch_to_table(batch, ctypes.byref(table))
+                == 0
+            )
+        output.value = 1
+        assert (
+            getattr(runtime, f"irx_arrow_{kind}_take")(
+                table if as_table else batch, order, ctypes.byref(output)
+            )
+            == status
+        )
+        if status:
+            assert not output.value
+            assert export_batch(runtime, batch).equals(
+                source, check_metadata=True
+            )
+            return
+        assert runtime.irx_arrow_record_batch_release(ctypes.byref(batch)) == 0
+        assert runtime.irx_arrow_table_release(ctypes.byref(table)) == 0
+        assert runtime.irx_arrow_array_release(ctypes.byref(order)) == 0
+        if as_table:
+            assert (
+                runtime.irx_arrow_table_to_batch(
+                    output, ctypes.byref(restored)
+                )
+                == 0
+            )
+            assert release(ctypes.byref(output)) == 0
+        result = export_batch(runtime, restored if as_table else output)
+        assert result.equals(source.take(indices), check_metadata=True)
+    finally:
+        assert runtime.irx_arrow_record_batch_release(ctypes.byref(batch)) == 0
+        assert runtime.irx_arrow_table_release(ctypes.byref(table)) == 0
+        assert runtime.irx_arrow_array_release(ctypes.byref(order)) == 0
+        assert release(ctypes.byref(output)) == 0
+        assert (
+            runtime.irx_arrow_record_batch_release(ctypes.byref(restored)) == 0
+        )
 
 
 def test_imported_nested_tabular_views(runtime: ctypes.CDLL) -> None:

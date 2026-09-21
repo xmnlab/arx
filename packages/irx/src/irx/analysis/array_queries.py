@@ -10,9 +10,11 @@ from public import private, public
 
 from irx.analysis.array_values import ResolvedArray, array_storage
 from irx.analysis.types import is_assignable, is_signed_integer_type, same_type
+from irx.builtins.collections.array_primitives import AST_LOGICAL_KINDS
 from irx.typecheck import typechecked
 
 ARRAY_ARITY = {
+    astx.ArrayOperation.FROM_BUFFER: 1,
     astx.ArrayOperation.APPEND: 2,
     astx.ArrayOperation.RESERVE: 2,
     astx.ArrayOperation.BUILDER_LENGTH: 1,
@@ -143,6 +145,52 @@ def value_signature(
     return f"{prefix}_{name}", result
 
 
+@private
+@typechecked
+def buffer_signature(base: astx.DataType) -> ResolvedArray:
+    """
+    title: Resolve safe copying from a one-dimensional primitive buffer view.
+    parameters:
+      base:
+        type: astx.DataType
+    returns:
+      type: ResolvedArray
+    """
+    if not isinstance(base, (astx.TensorType, astx.BufferViewType)):
+        raise ValueError(
+            "array_from_buffer requires a tensor or typed buffer view"
+        )
+    if (
+        isinstance(base, astx.TensorType)
+        and base.shape is not None
+        and len(base.shape) != 1
+    ):
+        raise ValueError("array_from_buffer requires a rank-one buffer")
+    if base.element_type is None:
+        raise ValueError("array_from_buffer requires a typed buffer element")
+    kind = AST_LOGICAL_KINDS.get(type(base.element_type))
+    if kind is None or kind in {
+        astx.LogicalKind.BOOL,
+        astx.LogicalKind.FLOAT16,
+    }:
+        raise ValueError(
+            "array_from_buffer requires byte-addressable numeric storage"
+        )
+    result = astx.ArrayType(astx.LogicalType(kind))
+    storage = array_storage(result)
+    assert storage is not None
+    element, abi_type, type_id, _suffix = storage
+    return ResolvedArray(
+        "irx_arrow_array_from_buffer",
+        result,
+        element,
+        abi_type,
+        type_id,
+        (base,),
+        astx.ArrayOperation.FROM_BUFFER,
+    )
+
+
 @public
 @typechecked
 def resolve_query(
@@ -161,6 +209,8 @@ def resolve_query(
     if len(arguments) != ARRAY_ARITY[operation]:
         raise ValueError("array query has invalid argument count")
     base = arguments[0]
+    if operation is astx.ArrayOperation.FROM_BUFFER:
+        return buffer_signature(base)
     if (
         not isinstance(
             base,
@@ -168,7 +218,7 @@ def resolve_query(
         )
         or (storage := array_storage(base)) is None
     ):
-        raise ValueError("array query requires a supported primitive array")
+        raise ValueError("array query requires an implemented Arrow array")
     element, abi_type, type_id, suffix = storage
     if operation in INDEX_OPERATIONS and not all(
         is_signed_integer_type(item) for item in arguments[1:]

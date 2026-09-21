@@ -1,5 +1,5 @@
 """
-title: Typed columnar array, chunk and builder expressions.
+title: Typed logical scalar expressions.
 """
 
 from __future__ import annotations
@@ -9,32 +9,32 @@ from enum import Enum
 from public import public
 
 from astx.base import DataType, Expr, ReprStruct, SourceLocation
-from astx.schema import ArrayBuilderType, ArrayType, ChunkedArrayType
+from astx.schema import ScalarType
 from astx.tools.typing import typechecked
 from astx.types import AnyType
 
 
 @public
 @typechecked
-class ArrayLiteral(DataType):
+class ScalarLiteral(DataType):
     """
-    title: Construct a typed array, builder or chunk sequence.
+    title: Construct a typed logical scalar.
     attributes:
       type_:
-        type: ArrayType | ArrayBuilderType | ChunkedArrayType
+        type: ScalarType
       values:
         type: tuple[Expr, Ellipsis]
       loc:
         type: SourceLocation
     """
 
-    type_: ArrayType | ArrayBuilderType | ChunkedArrayType
+    type_: ScalarType
     values: tuple[Expr, ...]
     loc: SourceLocation
 
     def __init__(
         self,
-        type_: ArrayType | ArrayBuilderType | ChunkedArrayType,
+        type_: ScalarType,
         values: tuple[Expr, ...],
         *,
         loc: SourceLocation | None = None,
@@ -43,7 +43,7 @@ class ArrayLiteral(DataType):
         title: Initialize an explicitly typed sequence of scalar expressions.
         parameters:
           type_:
-            type: ArrayType | ArrayBuilderType | ChunkedArrayType
+            type: ScalarType
           values:
             type: tuple[Expr, Ellipsis]
           loc:
@@ -65,7 +65,7 @@ class ArrayLiteral(DataType):
           type: ReprStruct
         """
         return self._prepare_struct(
-            "ArrayLiteral",
+            "ScalarLiteral",
             {
                 "type": self.type_.get_struct(simplified),
                 "values": [
@@ -78,37 +78,26 @@ class ArrayLiteral(DataType):
 
 @public
 @typechecked
-class ArrayOperation(Enum):
+class ScalarOperation(Enum):
     """
-    title: Closed array and builder primitives, independent of backend symbols.
+    title: Closed scalar primitives, independent of backend symbols.
     """
 
-    FROM_BUFFER = "array_from_buffer"
-    APPEND = "builder_append"
-    RESERVE = "builder_reserve"
-    BUILDER_LENGTH = "builder_length"
-    FINISH = "builder_finish"
-    CHUNK_COUNT = "chunk_count"
-    CHUNK_AT = "chunk_at"
-    COMBINE = "combine_chunks"
-    LENGTH = "array_length"
-    NULL_COUNT = "array_null_count"
-    OFFSET = "array_offset"
-    AT = "array_at"
-    SLICE = "array_slice"
-    CONCAT = "array_concat"
-    COPY = "array_copy"
-    EQUAL = "array_equal"
+    EQUAL = "scalar_equal"
+    TEXT = "scalar_text"
+    BYTES = "scalar_bytes"
+    VALUES = "scalar_values"
+    FIELD = "scalar_field"
 
 
 @public
 @typechecked
-class ArrayQuery(DataType):
+class ScalarQuery(DataType):
     """
-    title: Apply a typed array operation without selecting native storage.
+    title: Apply a typed scalar operation without selecting native storage.
     attributes:
       operation:
-        type: ArrayOperation
+        type: ScalarOperation
       arguments:
         type: tuple[Expr, Ellipsis]
       type_:
@@ -117,14 +106,14 @@ class ArrayQuery(DataType):
         type: SourceLocation
     """
 
-    operation: ArrayOperation
+    operation: ScalarOperation
     arguments: tuple[Expr, ...]
     type_: DataType
     loc: SourceLocation
 
     def __init__(
         self,
-        operation: ArrayOperation,
+        operation: ScalarOperation,
         arguments: tuple[Expr, ...],
         *,
         loc: SourceLocation | None = None,
@@ -133,7 +122,7 @@ class ArrayQuery(DataType):
         title: Initialize a closed query with ordered expression arguments.
         parameters:
           operation:
-            type: ArrayOperation
+            type: ScalarOperation
           arguments:
             type: tuple[Expr, Ellipsis]
           loc:
@@ -156,7 +145,7 @@ class ArrayQuery(DataType):
           type: ReprStruct
         """
         return self._prepare_struct(
-            "ArrayQuery",
+            "ScalarQuery",
             {
                 "operation": self.operation.value,
                 "arguments": [

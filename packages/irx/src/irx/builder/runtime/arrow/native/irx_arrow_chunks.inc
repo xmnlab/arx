@@ -66,6 +66,12 @@ irx_arrow_array_builder_reserve(irx_arrow_array_builder_handle *builder,
         if (additional < 0)
           return set_error(IRX_ARROW_STATUS_INVALID_ARGUMENT,
                            "negative reserve");
+        if (builder->logical_type) {
+          if (static_cast<uint64_t>(additional) > builder->values.max_size() - builder->values.size())
+            return set_error(IRX_ARROW_STATUS_OVERFLOW, "builder capacity overflow");
+          builder->values.reserve(builder->values.size() + static_cast<size_t>(additional));
+          return kArrowOk;
+        }
         if (additional >
             std::numeric_limits<int64_t>::max() - builder->builder->length())
           return set_error(IRX_ARROW_STATUS_OVERFLOW,
@@ -89,7 +95,7 @@ irx_arrow_array_builder_length(const irx_arrow_array_builder_handle *builder,
             builder, IRX_ARROW_HANDLE_KIND_ARRAY_BUILDER, "array builder");
         if (status != kArrowOk)
           return status;
-        *out_length = builder->builder->length();
+        *out_length = builder->logical_type ? static_cast<int64_t>(builder->values.size()) : builder->builder->length();
         return kArrowOk;
       });
 }
@@ -111,6 +117,7 @@ irx_arrow_array_builder_build(irx_arrow_array_builder_handle *builder,
         if (nullable != 0 && nullable != 1)
           return set_error(IRX_ARROW_STATUS_INVALID_ARGUMENT,
                            "invalid nullability");
+        if (builder->logical_type) return build_logical_array(builder, nullable, out_array);
         if (!nullable && builder->builder->null_count())
           return set_error(IRX_ARROW_STATUS_TYPE_MISMATCH,
                            "nulls in nonnullable array");
@@ -201,7 +208,7 @@ irx_arrow_chunked_null_count(const irx_arrow_chunked_array_handle *value,
     auto status = validate_chunks(value);
     if (status != kArrowOk)
       return status;
-    *output = value->column->null_count();
+    *output = logical_null_count(*value->column);
     return kArrowOk;
   });
 }
@@ -333,7 +340,7 @@ irx_arrow_chunked_concat(const irx_arrow_chunked_array_handle *lhs,
     status = validate_chunks(rhs);
     if (status != kArrowOk)
       return status;
-    if (!lhs->column->type()->Equals(rhs->column->type()))
+    if (!lhs->column->type()->Equals(rhs->column->type(), true))
       return set_error(IRX_ARROW_STATUS_TYPE_MISMATCH,
                        "incompatible chunk types");
     if (rhs->column->length() >
@@ -368,6 +375,11 @@ irx_arrow_chunked_copy(const irx_arrow_chunked_array_handle *value,
                                      irx_arrow_internal::builder_memory_pool());
       if (!copy.ok())
         return set_arrow_error("chunk copy", copy.status());
+      if (!type_spec_from_arrow_type_id(chunk->type_id())) {
+        copy = (*copy)->CopyTo(arrow::CPUDevice::memory_manager(
+            irx_arrow_internal::builder_memory_pool()));
+        if (!copy.ok()) return set_arrow_error("nested chunk copy", copy.status());
+      }
       copies.push_back(*copy);
     }
     auto result =

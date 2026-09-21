@@ -124,6 +124,7 @@ class LiteralVisitorMixin(VisitorMixinBase):
             type_,
             (
                 astx.NullableType,
+                astx.ScalarType,
                 astx.ArrayType,
                 astx.ArrayBuilderType,
                 astx.ChunkedArrayType,
@@ -524,7 +525,9 @@ class LiteralVisitorMixin(VisitorMixinBase):
         string_data_type = ir.ArrayType(
             self._llvm.INT8_TYPE, string_length + 1
         )
-        unique_name = f"str_utf8_{abs(hash(string_value))}_{id(expr)}"
+        # LiteralString lowers via a short-lived UTF8 node; Python may reuse
+        # its identity within the same translation. LLVM owns unique names.
+        unique_name = self._llvm.module.get_unique_name("str_utf8")
         string_data = ir.GlobalVariable(
             self._llvm.module, string_data_type, name=unique_name
         )

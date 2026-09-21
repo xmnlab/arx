@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "abi_version": "1.4.0",
+  "abi_version": "1.5.0",
   "handle_contract": {
     "retain_output": "A successful retain writes one new owner token to an output slot.",
     "release_input": "Release consumes one owner token through a pointer-to-slot and clears that slot.",
@@ -67,7 +67,7 @@
     {
       "id": 2,
       "name": "array",
-      "contract_version": "1.4.0",
+      "contract_version": "1.5.0",
       "availability": "implemented"
     },
     {
@@ -79,7 +79,7 @@
     {
       "id": 4,
       "name": "dataframe",
-      "contract_version": "1.1.0",
+      "contract_version": "1.2.0",
       "availability": "implemented"
     },
     {
@@ -126,7 +126,7 @@
       "c_type": "irx_arrow_scalar_handle",
       "ownership": "shared",
       "thread_safety": "immutable_shared",
-      "availability": "planned_m3",
+      "availability": "implemented",
       "retain": "irx_arrow_scalar_retain",
       "release": "irx_arrow_scalar_release"
     },
@@ -1487,6 +1487,232 @@
         ["table_pointer", "output"]
       ],
       "return": "status"
+    },
+    {
+      "name": "irx_arrow_scalar_retain",
+      "features": ["array"],
+      "parameters": [
+        ["const_scalar", "value"],
+        ["scalar_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_scalar_release",
+      "features": ["array"],
+      "parameters": [["scalar_pointer", "value"]],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_scalar_parse",
+      "features": ["array"],
+      "parameters": [
+        ["const_type", "type"],
+        ["c_string", "text"],
+        ["scalar_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_scalar_from_array",
+      "features": ["array"],
+      "parameters": [
+        ["const_type", "type"],
+        ["const_array", "value"],
+        ["scalar_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_scalar_from_fields",
+      "features": ["array"],
+      "parameters": [
+        ["const_type", "type"],
+        ["const_void_pointer", "values"],
+        ["int64", "count"],
+        ["scalar_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_scalar_dictionary",
+      "features": ["array"],
+      "parameters": [
+        ["const_type", "type"],
+        ["const_scalar", "index"],
+        ["const_array", "values"],
+        ["scalar_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_scalar_wrap",
+      "features": ["array"],
+      "parameters": [
+        ["const_type", "type"],
+        ["const_scalar", "value"],
+        ["scalar_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_scalar_union",
+      "features": ["array"],
+      "parameters": [
+        ["const_type", "type"],
+        ["c_string", "name"],
+        ["const_scalar", "value"],
+        ["scalar_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_scalar_interval",
+      "features": ["array"],
+      "parameters": [
+        ["const_type", "type"],
+        ["const_int64_pointer", "values"],
+        ["int64", "count"],
+        ["scalar_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_scalar_equal",
+      "features": ["array"],
+      "parameters": [
+        ["const_scalar", "left"],
+        ["const_scalar", "right"],
+        ["int32_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_scalar_text",
+      "features": ["array"],
+      "parameters": [
+        ["const_scalar", "value"],
+        ["c_string_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_scalar_values",
+      "features": ["array"],
+      "parameters": [
+        ["const_scalar", "value"],
+        ["array_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_scalar_field",
+      "features": ["array"],
+      "parameters": [
+        ["const_scalar", "value"],
+        ["c_string", "name"],
+        ["scalar_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_array_get_scalar",
+      "features": ["array"],
+      "parameters": [
+        ["const_array", "value"],
+        ["int64", "index"],
+        ["scalar_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_chunked_get_scalar",
+      "features": ["array"],
+      "parameters": [
+        ["const_chunked_array", "value"],
+        ["int64", "index"],
+        ["scalar_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_array_builder_new_logical",
+      "features": ["array"],
+      "parameters": [
+        ["const_type", "type"],
+        ["array_builder_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_array_builder_append_scalar",
+      "features": ["array"],
+      "parameters": [
+        ["array_builder", "builder"],
+        ["const_scalar", "value"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_chunked_new_logical",
+      "features": ["array"],
+      "parameters": [
+        ["const_type", "type"],
+        ["int32", "nullable"],
+        ["const_void_pointer", "chunks"],
+        ["int64", "count"],
+        ["chunked_array_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_scalar_from_bytes",
+      "features": ["array"],
+      "return": "status",
+      "parameters": [
+        ["const_type", "type"],
+        ["const_array", "value"],
+        ["scalar_pointer", "output"]
+      ]
+    },
+    {
+      "name": "irx_arrow_scalar_bytes",
+      "features": ["array"],
+      "return": "status",
+      "parameters": [
+        ["const_scalar", "value"],
+        ["array_pointer", "output"]
+      ]
+    },
+    {
+      "name": "irx_arrow_batch_take",
+      "features": ["dataframe"],
+      "return": "status",
+      "parameters": [
+        ["const_record_batch", "value"],
+        ["const_array", "indices"],
+        ["record_batch_pointer", "output"]
+      ]
+    },
+    {
+      "name": "irx_arrow_table_take",
+      "features": ["dataframe"],
+      "return": "status",
+      "parameters": [
+        ["const_table", "value"],
+        ["const_array", "indices"],
+        ["table_pointer", "output"]
+      ]
+    },
+    {
+      "name": "irx_arrow_array_from_buffer",
+      "features": ["array"],
+      "return": "status",
+      "parameters": [
+        ["int32", "type_id"],
+        ["buffer_view", "view"],
+        ["array_pointer", "output"]
+      ]
     }
   ]
 }

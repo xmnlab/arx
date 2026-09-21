@@ -14,9 +14,9 @@ LLVM_RUNTIME_FEATURE_IDS = {
 }
 LLVM_RUNTIME_FEATURE_VERSIONS = {
     "core": 65536,
-    "array": 66560,
+    "array": 66816,
     "tensor": 65536,
-    "dataframe": 65792,
+    "dataframe": 66048,
     "record_batch": 65536,
 }
 LLVM_HANDLE_TYPES = (
@@ -1204,6 +1204,211 @@ LLVM_SIGNATURES: dict[str, tuple[str, tuple[str, ...]]] = {
             "error_pointer",
         ),
     ),
+    "irx_arrow_scalar_retain": (
+        "status",
+        (
+            "const_scalar",
+            "scalar_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_scalar_release": (
+        "status",
+        (
+            "scalar_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_scalar_parse": (
+        "status",
+        (
+            "const_type",
+            "c_string",
+            "scalar_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_scalar_from_array": (
+        "status",
+        (
+            "const_type",
+            "const_array",
+            "scalar_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_scalar_from_fields": (
+        "status",
+        (
+            "const_type",
+            "const_void_pointer",
+            "int64",
+            "scalar_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_scalar_dictionary": (
+        "status",
+        (
+            "const_type",
+            "const_scalar",
+            "const_array",
+            "scalar_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_scalar_wrap": (
+        "status",
+        (
+            "const_type",
+            "const_scalar",
+            "scalar_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_scalar_union": (
+        "status",
+        (
+            "const_type",
+            "c_string",
+            "const_scalar",
+            "scalar_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_scalar_interval": (
+        "status",
+        (
+            "const_type",
+            "const_int64_pointer",
+            "int64",
+            "scalar_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_scalar_equal": (
+        "status",
+        (
+            "const_scalar",
+            "const_scalar",
+            "int32_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_scalar_text": (
+        "status",
+        (
+            "const_scalar",
+            "c_string_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_scalar_values": (
+        "status",
+        (
+            "const_scalar",
+            "array_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_scalar_field": (
+        "status",
+        (
+            "const_scalar",
+            "c_string",
+            "scalar_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_array_get_scalar": (
+        "status",
+        (
+            "const_array",
+            "int64",
+            "scalar_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_chunked_get_scalar": (
+        "status",
+        (
+            "const_chunked_array",
+            "int64",
+            "scalar_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_array_builder_new_logical": (
+        "status",
+        (
+            "const_type",
+            "array_builder_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_array_builder_append_scalar": (
+        "status",
+        (
+            "array_builder",
+            "const_scalar",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_chunked_new_logical": (
+        "status",
+        (
+            "const_type",
+            "int32",
+            "const_void_pointer",
+            "int64",
+            "chunked_array_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_scalar_from_bytes": (
+        "status",
+        (
+            "const_type",
+            "const_array",
+            "scalar_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_scalar_bytes": (
+        "status",
+        (
+            "const_scalar",
+            "array_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_batch_take": (
+        "status",
+        (
+            "const_record_batch",
+            "const_array",
+            "record_batch_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_table_take": (
+        "status",
+        (
+            "const_table",
+            "const_array",
+            "table_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_array_from_buffer": (
+        "status",
+        (
+            "int32",
+            "buffer_view",
+            "array_pointer",
+            "error_pointer",
+        ),
+    ),
 }
 LLVM_FEATURE_SYMBOLS: dict[str, tuple[str, ...]] = {
     "core": (
@@ -1296,6 +1501,27 @@ LLVM_FEATURE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "irx_arrow_chunked_copy",
         "irx_arrow_chunked_concat",
         "irx_arrow_chunked_equal",
+        "irx_arrow_scalar_retain",
+        "irx_arrow_scalar_release",
+        "irx_arrow_scalar_parse",
+        "irx_arrow_scalar_from_array",
+        "irx_arrow_scalar_from_fields",
+        "irx_arrow_scalar_dictionary",
+        "irx_arrow_scalar_wrap",
+        "irx_arrow_scalar_union",
+        "irx_arrow_scalar_interval",
+        "irx_arrow_scalar_equal",
+        "irx_arrow_scalar_text",
+        "irx_arrow_scalar_values",
+        "irx_arrow_scalar_field",
+        "irx_arrow_array_get_scalar",
+        "irx_arrow_chunked_get_scalar",
+        "irx_arrow_array_builder_new_logical",
+        "irx_arrow_array_builder_append_scalar",
+        "irx_arrow_chunked_new_logical",
+        "irx_arrow_scalar_from_bytes",
+        "irx_arrow_scalar_bytes",
+        "irx_arrow_array_from_buffer",
     ),
     "tensor": (
         "irx_arrow_tensor_builder_new",
@@ -1347,6 +1573,8 @@ LLVM_FEATURE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "irx_arrow_batch_to_table",
         "irx_arrow_table_to_batch",
         "irx_arrow_table_combine",
+        "irx_arrow_batch_take",
+        "irx_arrow_table_take",
     ),
     "record_batch": (
         "irx_arrow_record_batch_import_move",

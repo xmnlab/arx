@@ -81,11 +81,11 @@ def test_array_example_executes(tmp_path: Path) -> None:
         ("var a: array[i32] = array[i32](none)", "non-void"),
         ("var a: array[i32] = array[i32](true)", "incompatible"),
         ("array[i8](300)", "incompatible"),
-        ('array[string]("no")', "supported primitive"),
+        ("array[string](1)", "incompatible"),
         ("array[f16](1.0)", "incompatible"),
         ("array_at(array[i32](1), true)", "signed integers"),
         ("array_length()", "argument count"),
-        ("array_length(1)", "primitive array"),
+        ("array_length(1)", "implemented Arrow array"),
         ("array_concat(array[i32](), array[f32]())", "matching element"),
         (
             "array_concat(array[i32](), array[i32 | none]())",

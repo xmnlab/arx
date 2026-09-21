@@ -58,7 +58,7 @@ tabular_column_check(const std::shared_ptr<arrow::Field> &field,
   if (!column)
     return set_error(IRX_ARROW_STATUS_INVALID_STATE, "missing column");
   if (!field->type()->Equals(column->type()) ||
-      (!field->nullable() && column->null_count()))
+      (!field->nullable() && logical_null_count(*column)))
     return set_error(IRX_ARROW_STATUS_SCHEMA_MISMATCH,
                      "column type or nullability disagrees with schema");
   if (rows != column->length())
@@ -748,5 +748,107 @@ irx_arrow_status irx_arrow_table_combine(const irx_arrow_table_handle *value,
     if (!result.ok())
       return set_arrow_error("table_combine", result.status());
     return tabular_publish(*result, &irx_arrow_table_handle::table, output);
+  });
+}
+
+extern "C++" {
+namespace {
+irx_arrow_status selection_indices(const irx_arrow_array_handle *indices,
+                                   int64_t rows,
+                                   std::shared_ptr<arrow::Int64Array> *output) {
+  auto status =
+      validate_handle(indices, IRX_ARROW_HANDLE_KIND_ARRAY, "row indices");
+  if (status != kArrowOk)
+    return status;
+  if (!indices->array || indices->array->type_id() != arrow::Type::INT64 ||
+      indices->array->null_count())
+    return set_error(IRX_ARROW_STATUS_TYPE_MISMATCH,
+                     "row indices require nonnullable int64 values");
+  auto values = std::static_pointer_cast<arrow::Int64Array>(indices->array);
+  for (int64_t i = 0; i < values->length(); ++i)
+    if (values->Value(i) < 0 || values->Value(i) >= rows)
+      return set_error(IRX_ARROW_STATUS_INDEX_OUT_OF_BOUNDS,
+                       "row selection index out of bounds");
+  *output = std::move(values);
+  return kArrowOk;
+}
+} // namespace
+} // extern C++
+
+irx_arrow_status
+irx_arrow_batch_take(const irx_arrow_record_batch_handle *value,
+                     const irx_arrow_array_handle *indices,
+                     irx_arrow_record_batch_handle **output) {
+  if (output)
+    *output = nullptr;
+  return tabular_operation("batch_take", [&]() -> irx_arrow_status {
+    if (!output)
+      return set_error(IRX_ARROW_STATUS_NULL_POINTER, "missing batch output");
+    auto status =
+        validate_handle(value, IRX_ARROW_HANDLE_KIND_RECORD_BATCH, "batch");
+    if (status != kArrowOk)
+      return status;
+    if (!value->batch)
+      return set_error(IRX_ARROW_STATUS_INVALID_STATE, "missing batch");
+    std::shared_ptr<arrow::Int64Array> selected;
+    status = selection_indices(indices, value->batch->num_rows(), &selected);
+    if (status != kArrowOk)
+      return status;
+    arrow::ArrayVector columns;
+    for (const auto &column : value->batch->columns()) {
+      arrow::ArrayVector slices;
+      for (int64_t i = 0; i < selected->length(); ++i)
+        slices.push_back(column->Slice(selected->Value(i), 1));
+      auto result =
+          slices.empty()
+              ? arrow::Result<std::shared_ptr<arrow::Array>>(
+                    column->Slice(0, 0))
+              : arrow::Concatenate(slices,
+                                   irx_arrow_internal::builder_memory_pool());
+      if (!result.ok())
+        return set_arrow_error("batch row selection", result.status());
+      columns.push_back(*result);
+    }
+    return tabular_publish(arrow::RecordBatch::Make(value->batch->schema(),
+                                                    selected->length(),
+                                                    std::move(columns)),
+                           &irx_arrow_record_batch_handle::batch, output);
+  });
+}
+irx_arrow_status irx_arrow_table_take(const irx_arrow_table_handle *value,
+                                      const irx_arrow_array_handle *indices,
+                                      irx_arrow_table_handle **output) {
+  if (output)
+    *output = nullptr;
+  return tabular_operation("table_take", [&]() -> irx_arrow_status {
+    if (!output)
+      return set_error(IRX_ARROW_STATUS_NULL_POINTER, "missing table output");
+    auto status = validate_handle(value, IRX_ARROW_HANDLE_KIND_TABLE, "table");
+    if (status != kArrowOk)
+      return status;
+    if (!value->table)
+      return set_error(IRX_ARROW_STATUS_INVALID_STATE, "missing table");
+    std::shared_ptr<arrow::Int64Array> selected;
+    status = selection_indices(indices, value->table->num_rows(), &selected);
+    if (status != kArrowOk)
+      return status;
+    std::vector<std::shared_ptr<arrow::ChunkedArray>> columns;
+    for (const auto &column : value->table->columns()) {
+      arrow::ArrayVector chunks;
+      for (int64_t i = 0; i < selected->length(); ++i) {
+        auto slice = column->Slice(selected->Value(i), 1);
+        chunks.insert(chunks.end(), slice->chunks().begin(),
+                      slice->chunks().end());
+      }
+      auto result =
+          arrow::ChunkedArray::Make(std::move(chunks), column->type());
+      if (!result.ok())
+        return set_arrow_error("table row selection", result.status());
+      columns.push_back(*result);
+    }
+    return tabular_publish(arrow::Table::Make(value->table->schema(),
+                                              std::move(columns),
+                                              selected->length()),
+                           &irx_arrow_table_handle::table, output);
   });
 }

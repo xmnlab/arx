@@ -370,6 +370,8 @@ def resource_contract_for_type(
     if managed_nullable(type_):
         assert isinstance(type_, astx.NullableType)
         return resource_contract_for_type(type_.payload_type)
+    if isinstance(type_, astx.ScalarType):
+        return arrow_resource_contract(ResourceKind.SCALAR)
     if isinstance(type_, astx.TableType):
         return arrow_resource_contract(ResourceKind.TABLE)
     if isinstance(type_, astx.RecordBatchType):

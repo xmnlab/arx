@@ -300,3 +300,17 @@ def test_array_scalar_payload_load_is_validity_dominated() -> None:
     payload_load = output.index('load i64, i64* %"array.scalar.payload"')
     assert output.index("array.scalar.present:") < payload_load
     assert "nullable.proven_payload" in output
+
+
+def test_repeated_unicode_literals_have_unique_llvm_globals() -> None:
+    """
+    title: Temporary UTF-8 lowering nodes cannot collide through reused ids.
+    """
+    body = '  assert "λ" == "λ"\n' * 20
+    ArxIO.string_to_buffer(
+        "```\ntitle: Repeated UTF-8 literals\n```\n"
+        f"fn main() -> i32:\n{body}  return 0\n"
+    )
+    module = Parser().parse(Lexer().lex())
+    output = ArxBuilder().translate(module)
+    llvm.parse_assembly(output).verify()
