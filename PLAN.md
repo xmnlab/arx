@@ -1657,12 +1657,12 @@ language path works.
 
 ### Milestone 4 work items
 
-| ID     | Item                                                               | Status          | Evidence or blocker                                                                                                                            |
-| ------ | ------------------------------------------------------------------ | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| M4-001 | Primitive nullable scalar storage and explicit validity operations | **DONE**        | Normalized nullable types, independent validity, local/call/return conversion, checked unwrap, native execution and sanitizer cleanup coverage |
-| M4-002 | Nullable operators, predicate flow narrowing and managed payloads  | **PARTIAL**     | Primitive operators, predicate proofs and nullable shared owners implemented; unique/string payloads and aggregate fields pending              |
-| M4-003 | First-class primitive arrays and nullable scalar extraction        | **PARTIAL**     | Primitive arrays, reusable builders, half-float and chunked values implemented; source buffer/C Data constructors pending                      |
-| M4-004 | Variable-width and nested containers, batches and tables           | **NOT STARTED** | Requires array and aggregate lifetime foundations                                                                                              |
+| ID     | Item                                                               | Status      | Evidence or blocker                                                                                                                                                                      |
+| ------ | ------------------------------------------------------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M4-001 | Primitive nullable scalar storage and explicit validity operations | **DONE**    | Normalized nullable types, independent validity, local/call/return conversion, checked unwrap, native execution and sanitizer cleanup coverage                                           |
+| M4-002 | Nullable operators, predicate flow narrowing and managed payloads  | **PARTIAL** | Operators, compound proofs, numeric casts, shared/unique owners and instance fields implemented; strings, general nullable aggregates/collections and managed struct destruction pending |
+| M4-003 | First-class primitive arrays and nullable scalar extraction        | **PARTIAL** | Primitive arrays, reusable builders, half-float and chunked values implemented; source buffer/C Data constructors pending                                                                |
+| M4-004 | Variable-width and nested containers, batches and tables           | **PARTIAL** | Typed primitive batches/tables and structural transformations implemented; variable-width/nested source values and legacy adapters pending                                               |
 
 ### Arrays and scalars
 
@@ -2677,3 +2677,134 @@ from separate runs overlap and should not be summed as unique test coverage.
 **M4 remains PARTIAL, not complete.** The pending M4-002/003/004 work above is
 still required. No full repository CI, Quarto build, LSan, isolated release
 installation or Python 3.10–3.13 matrix was run in this continuation.
+
+### 2026-09-21 — M4 continuation: nullable foundations and typed tabular values
+
+**Overall M4 status: PARTIAL.** This entry supersedes earlier pending lists only
+for the items explicitly completed below. The milestone's all-core-types exit
+criterion has **not** been met; descriptor coverage and native-only imported
+nested-container transformations do not imply Arx source value support.
+
+| Subitem                                                                   | Status          | Implementation / remaining boundary                                                                                                                                                                                                                                |
+| ------------------------------------------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Repair native include formatting                                          | **DONE**        | Three committed handwritten `.inc` files were formatted as HTML/prose and failed native compilation. Restored their local wheel sources only after reproducing the committed bytes exactly with the formatter; all native `.inc` files now excluded from Prettier. |
+| Compound nullable predicate facts                                         | **DONE**        | Set-based AND/OR/negation proofs, conservative joins and side-effect exclusions; assignment invalidates facts. Mutable fields are not refined.                                                                                                                     |
+| Explicit primitive nullable casts                                         | **DONE**        | Preserve validity, convert only present payloads, permit explicit injection, reject implicit unwrap and managed casts. Numeric conversion behavior follows existing primitive `cast`.                                                                              |
+| Nullable unique array builders                                            | **DONE**        | Optional construction, borrowing, replacement and moved local returns; copying unique owners remains rejected.                                                                                                                                                     |
+| Nullable instance fields                                                  | **DONE**        | Primitive and implemented opaque-owner fields default to absence, support initialization/replacement, and use existing class destruction. Field extraction borrows; escaping shared owners retain.                                                                 |
+| Primitive nullable struct fields                                          | **DONE**        | By-value validity/payload layout, default absence, assignment and extraction. This is an ASTx/IRx path, not a claim of new Arx `struct` syntax.                                                                                                                    |
+| Nullable strings, other managed payloads and managed struct fields        | **NOT STARTED** | Strings need storage-class-aware ownership; other aggregate/collection payloads need explicit lifetime contracts; managed structs need recursive copy/destruction. Static nullable fields remain explicitly rejected.                                              |
+| Source buffer / external C Data constructors                              | **NOT STARTED** | Native interchange exists; a safe typed Arx producer/consumer boundary remains required.                                                                                                                                                                           |
+| Typed primitive RecordBatch/Table values                                  | **DONE**        | Ambient `record_batch`/`table`, explicit row count, static schemas, nullable primitive columns, empty schemas, calls/returns, optional shared owners.                                                                                                              |
+| Checked projection and structural transforms                              | **DONE**        | `column`, `column_as`, rows/columns/schema inspection, slice, select/reorder, rename, add/replace/remove, combine chunks, batch/table conversion; metadata retained.                                                                                               |
+| Variable-width, temporal, decimal, dictionary and recursive source values | **NOT STARTED** | Native imported nested batch/table views are tested, but source construction and scalar extraction for these families are not implemented.                                                                                                                         |
+| General row selection and legacy DataFrame/Series adapters                | **NOT STARTED** | Contiguous row slicing and explicit indexed iteration work. Noncontiguous selection and intentional compatibility adapters remain pending.                                                                                                                         |
+
+#### Decisions, assumptions, and top three alternatives
+
+1. **Native include formatting belongs to C++ tooling, not Prettier.** Local
+   wheel recovery was byte-verified against a reproduction of the corruption; no
+   remote tree was consulted and no implementation changes were inferred.
+   Alternatives: (1) rename includes to C++-recognized suffixes; (2) restrict
+   the Prettier hook to a positive extension allowlist; (3) move each included
+   implementation to a separate translation unit.
+2. **Nullable numeric casts preserve nullability rather than implicitly
+   unwrapping.** Narrowing has the existing scalar cast semantics; this is not a
+   new checked Arrow Compute cast API. Proofs are conservative set algebra over
+   side-effect-free conditions and direct local/argument predicates.
+   Alternatives: (1) checked/saturating casts with an error result; (2) explicit
+   `map_valid` application; (3) a separate nullable conversion intrinsic for
+   each numeric family.
+3. **Optional unique builders keep unique ownership.** They reserve null
+   pointers for absence, just like shared opaque owners, but may not be copied.
+   Managed nullable instance fields reuse class cleanup; primitive nullable
+   struct fields require no owner cleanup. Nullable string/storage-class support
+   and recursive managed struct destruction are not silently approximated.
+   Alternatives: (1) validity-plus-owner aggregates for every handle; (2)
+   consume optional builders on `builder_finish`; (3) disallow nullable
+   resources in fields until a generalized drop system.
+4. **Tabular constructors take row count first.** `record_batch[](5)` preserves
+   five zero-column rows. RecordBatch columns are arrays; Table columns are
+   chunked arrays. Construction validates shape, logical type and nullability
+   before publishing an owner. Tables are not aliases for legacy DataFrames; the
+   latter's existing grammar and semantics remain unchanged. Alternatives: (1)
+   infer rows and restrict empty schemas to zero rows; (2) infer rows except for
+   a dedicated empty-schema constructor; (3) introduce a mandatory builder for
+   every tabular container.
+5. **Static projection resolves names in analysis; dynamic projection checks a
+   complete expected field at runtime.** `runtime_schema` explicitly erases the
+   static schema; `column_as(value, index, field[...])` checks name, type,
+   nullability and metadata before producing a typed child. There is no unsafe
+   downcast based only on an opaque handle or a requested scalar width.
+   Alternatives: (1) dynamic variant/scalar results; (2) schema-pattern matching
+   that refines the whole container; (3) projection by expected datatype alone,
+   discarding name/metadata checks.
+6. **Transforms are immutable and preserve independent ownership.** Slices and
+   projections may share Arrow buffers; column edits create new containers;
+   rechunking/materialization is explicit. Selection names are unique, metadata
+   survives transforms, bounds are strict rather than clamped. Iteration stays
+   explicit: indexed rows via slices, columns via checked projection, scalars
+   via array access. No default row/batch iteration is introduced. Alternatives:
+   (1) mutable in-place tables; (2) copy-on-write containers; (3) lazy
+   relational/query-plan nodes, deferred to later compute work.
+7. **The tabular ABI extends the existing registered DataFrame capability.** ABI
+   **1.4.0**, DataFrame contract **1.1.0** add 23 status-returning operations;
+   existing signatures and the historical compatibility baseline are unchanged.
+   Batch lifecycle still belongs to the RecordBatch feature. Compiler sidecars
+   carry symbol, feature, minimum version, operands and projection indices;
+   lowering performs no schema/name resolution. Alternatives: (1) a new tabular
+   feature/artifact; (2) split every operation between RecordBatch and DataFrame
+   features; (3) move all tabular and chunked operations into the array feature.
+
+#### Verification
+
+Final checks executed for this continuation (Linux, Python **3.14**):
+
+- `pytest -q packages/astx/tests`: **542 passed**.
+- IRx analysis plus tabular, nullable, array/chunk, struct, descriptor and ABI
+  manifest/conformance tests: **448 passed**. Exact target set:
+  `packages/irx/tests/analysis`, `test_tabular_runtime.py`,
+  `test_nullable_runtime.py`, `test_arrow_abi_manifest.py`,
+  `test_arrow_abi_conformance.py`, `test_array_value_runtime.py`,
+  `test_chunked_value_runtime.py`, `test_struct_definition.py`, and
+  `test_descriptor_execution.py` under `packages/irx/tests/`.
+- Arx nullable syntax/operators/owners/refinement/fields, array/chunk/tabular,
+  codegen AST output, parser, lexer and DataFrame regressions: **698 passed**.
+  Exact Python targets: `test_nullable_syntax.py`,
+  `test_nullable_operations.py`, `test_nullable_owners.py`,
+  `test_nullable_refinement_casts.py`, `test_nullable_fields.py`,
+  `test_array_values.py`, `test_chunked_values.py`, `test_tabular_values.py`,
+  `test_codegen_ast_output.py`, `test_parser*.py`, `test_lexer*.py`, and
+  `test_dataframe.py` under `packages/arx/tests/python/`.
+- Additional descriptor/runtime ABI-version/capability-matrix checks: **73
+  passed** (overlaps the descriptor tests above).
+- `arx test packages/arx/tests/arx/test_columnar_tables.x`: **1 passed**. Direct
+  `pytest` does not collect `.x` files; the successful compiled-language check
+  used the repository's Arx test runner.
+- Six-package strict mypy: **passed** (ASTx 58, IRx 157, Arx 31, ArxPy 5, ArxJIT
+  10, AIX 21 source files).
+- Ruff check/format on **43** changed/new Python files: **passed** with each
+  owning package's configuration (ASTx/tools use the root configuration). Douki
+  synchronization: **0 updated**, idempotent.
+- `python scripts/check_arrow_ownership_sanitizers.py --skip-leak-detection`:
+  native harness and **13 generated programs passed** under ASan/UBSan,
+  including tabular success/failure and nullable class-owner destruction.
+  LeakSanitizer detection was explicitly disabled, not claimed as passed.
+- ASTx/IRx/Arx wheels and sdists rebuilt with local Poetry Core;
+  `python scripts/test_wheels.py --audit-only` and
+  `python scripts/test_wheels.py --current-environment`: **passed**, including
+  installed-wheel tabular source compilation/execution. This reuses installed
+  third-party dependencies; it is not the isolated release-install gate.
+- ABI and capability generators `--check`, syntax JSON validation and builtin
+  manifest parity, Prettier checks and `git diff --check`: **passed**. Prettier
+  reports the new native include as ignored, preventing the original corruption.
+
+The initial regression runs exposed obsolete negative expectations for now-valid
+nullable builders/descriptors/fields and a parser diagnostic wording mismatch;
+these were corrected and the relevant complete target sets rerun green. The
+native include compilation failure was fixed rather than skipped.
+
+Not run: full repository CI, Quarto build, Python 3.10–3.13, non-Linux
+toolchains, LeakSanitizer detection, or an isolated fresh dependency
+installation. The remaining M4 implementation gaps are listed above; none has
+been marked done based on this verification.

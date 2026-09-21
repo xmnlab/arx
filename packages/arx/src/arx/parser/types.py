@@ -24,6 +24,7 @@ from arx.lexer import TokenKind
 from arx.parser.arrays import ArrayParser
 from arx.parser.base import ParserMixinBase
 from arx.parser.state import TypeUseContext
+from arx.parser.tabular import TabularParser
 from arx.tensor import (
     binding_from_type,
     default_value,
@@ -74,6 +75,8 @@ _BUILTIN_TYPE_NAMES = frozenset(_BUILTIN_TYPE_MAP) | frozenset(
     {
         "array",
         "array_builder",
+        "table",
+        "record_batch",
         "chunked_array",
         "dataframe",
         "list",
@@ -292,7 +295,10 @@ class TypeParserMixin(ParserMixinBase):
             if allow_template_vars:
                 template_bound = self._lookup_template_bound(type_name)
 
-            if type_name in {"array", "array_builder", "chunked_array"}:
+            if type_name in {"table", "record_batch"}:
+                self.tokens.get_next_token()
+                type_ = TabularParser(self).type(type_name)
+            elif type_name in {"array", "array_builder", "chunked_array"}:
                 self.tokens.get_next_token()
                 type_ = ArrayParser(self).type(type_name)
             elif type_name == "list":

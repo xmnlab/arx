@@ -21,7 +21,7 @@ from irx.analysis.handlers.base import (
     SemanticVisitorMixinBase,
 )
 from irx.analysis.iterables import resolve_iteration_capability
-from irx.analysis.nullable_flow import nullable_branch_symbol
+from irx.analysis.nullable_flow import nullable_branch_symbols
 from irx.analysis.ownership import (
     list_resource_ownership,
     resource_contract_for_type,
@@ -804,16 +804,14 @@ class ControlFlowVisitorMixin(SemanticVisitorMixinBase):
         self.visit(node.condition)
         self._validate_boolean_condition(node.condition, label="if")
         incoming = self.context.valid_nullable_symbols.copy()
-        valid_then = nullable_branch_symbol(node.condition, True)
-        if valid_then is not None:
-            self.context.valid_nullable_symbols.add(valid_then)
+        valid_then = nullable_branch_symbols(node.condition, True)
+        self.context.valid_nullable_symbols.update(valid_then)
         self.visit(node.then)
         then_valid = self.context.valid_nullable_symbols.copy()
         self.context.valid_nullable_symbols = incoming.copy()
         if node.else_ is not None:
-            valid_else = nullable_branch_symbol(node.condition, False)
-            if valid_else is not None:
-                self.context.valid_nullable_symbols.add(valid_else)
+            valid_else = nullable_branch_symbols(node.condition, False)
+            self.context.valid_nullable_symbols.update(valid_else)
             self.visit(node.else_)
         self.context.valid_nullable_symbols.intersection_update(then_valid)
         self._set_type(node, None)
@@ -830,9 +828,8 @@ class ControlFlowVisitorMixin(SemanticVisitorMixinBase):
         self.visit(node.condition)
         self._validate_boolean_condition(node.condition, label="while")
         with self.context.in_loop():
-            valid_body = nullable_branch_symbol(node.condition, True)
-            if valid_body is not None:
-                self.context.valid_nullable_symbols.add(valid_body)
+            valid_body = nullable_branch_symbols(node.condition, True)
+            self.context.valid_nullable_symbols.update(valid_body)
             self.visit(node.body)
         self._set_type(node, None)
 

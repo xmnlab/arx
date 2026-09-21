@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "abi_version": "1.3.0",
+  "abi_version": "1.4.0",
   "handle_contract": {
     "retain_output": "A successful retain writes one new owner token to an output slot.",
     "release_input": "Release consumes one owner token through a pointer-to-slot and clears that slot.",
@@ -79,7 +79,7 @@
     {
       "id": 4,
       "name": "dataframe",
-      "contract_version": "1.0.0",
+      "contract_version": "1.1.0",
       "availability": "implemented"
     },
     {
@@ -1250,6 +1250,241 @@
         ["const_chunked_array", "lhs"],
         ["const_chunked_array", "rhs"],
         ["int32_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_batch_new_typed",
+      "features": ["dataframe"],
+      "parameters": [
+        ["const_schema", "schema"],
+        ["const_void_pointer", "columns"],
+        ["int64", "count"],
+        ["int64", "rows"],
+        ["record_batch_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_batch_rows",
+      "features": ["dataframe"],
+      "parameters": [
+        ["const_record_batch", "value"],
+        ["int64_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_batch_columns",
+      "features": ["dataframe"],
+      "parameters": [
+        ["const_record_batch", "value"],
+        ["int64_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_batch_schema",
+      "features": ["dataframe"],
+      "parameters": [
+        ["const_record_batch", "value"],
+        ["schema_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_batch_column_checked",
+      "features": ["dataframe"],
+      "parameters": [
+        ["const_record_batch", "value"],
+        ["int64", "index"],
+        ["const_field", "expected"],
+        ["array_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_batch_slice",
+      "features": ["dataframe"],
+      "parameters": [
+        ["const_record_batch", "value"],
+        ["int64", "offset"],
+        ["int64", "length"],
+        ["record_batch_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_batch_select",
+      "features": ["dataframe"],
+      "parameters": [
+        ["const_record_batch", "value"],
+        ["const_int64_pointer", "indices"],
+        ["int64", "count"],
+        ["record_batch_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_batch_with_schema",
+      "features": ["dataframe"],
+      "parameters": [
+        ["const_record_batch", "value"],
+        ["const_schema", "schema"],
+        ["record_batch_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_batch_set_column",
+      "features": ["dataframe"],
+      "parameters": [
+        ["const_record_batch", "value"],
+        ["int64", "index"],
+        ["const_field", "field"],
+        ["const_array", "column"],
+        ["record_batch_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_batch_remove",
+      "features": ["dataframe"],
+      "parameters": [
+        ["const_record_batch", "value"],
+        ["int64", "index"],
+        ["record_batch_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_table_new_typed",
+      "features": ["dataframe"],
+      "parameters": [
+        ["const_schema", "schema"],
+        ["const_void_pointer", "columns"],
+        ["int64", "count"],
+        ["int64", "rows"],
+        ["table_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_table_rows",
+      "features": ["dataframe"],
+      "parameters": [
+        ["const_table", "value"],
+        ["int64_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_table_columns",
+      "features": ["dataframe"],
+      "parameters": [
+        ["const_table", "value"],
+        ["int64_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_table_schema",
+      "features": ["dataframe"],
+      "parameters": [
+        ["const_table", "value"],
+        ["schema_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_table_column_checked",
+      "features": ["dataframe"],
+      "parameters": [
+        ["const_table", "value"],
+        ["int64", "index"],
+        ["const_field", "expected"],
+        ["chunked_array_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_table_slice",
+      "features": ["dataframe"],
+      "parameters": [
+        ["const_table", "value"],
+        ["int64", "offset"],
+        ["int64", "length"],
+        ["table_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_table_select",
+      "features": ["dataframe"],
+      "parameters": [
+        ["const_table", "value"],
+        ["const_int64_pointer", "indices"],
+        ["int64", "count"],
+        ["table_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_table_with_schema",
+      "features": ["dataframe"],
+      "parameters": [
+        ["const_table", "value"],
+        ["const_schema", "schema"],
+        ["table_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_table_set_column",
+      "features": ["dataframe"],
+      "parameters": [
+        ["const_table", "value"],
+        ["int64", "index"],
+        ["const_field", "field"],
+        ["const_chunked_array", "column"],
+        ["table_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_table_remove",
+      "features": ["dataframe"],
+      "parameters": [
+        ["const_table", "value"],
+        ["int64", "index"],
+        ["table_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_batch_to_table",
+      "features": ["dataframe"],
+      "parameters": [
+        ["const_record_batch", "value"],
+        ["table_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_table_to_batch",
+      "features": ["dataframe"],
+      "parameters": [
+        ["const_table", "value"],
+        ["record_batch_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_table_combine",
+      "features": ["dataframe"],
+      "parameters": [
+        ["const_table", "value"],
+        ["table_pointer", "output"]
       ],
       "return": "status"
     }

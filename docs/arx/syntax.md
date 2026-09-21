@@ -240,3 +240,13 @@ Both support the same primitive logical types and `T | none` element syntax as
 iteration uses an explicit index loop rather than an implicitly selected unit.
 `array[T] | none` and `chunked_array[T] | none` describe nullable **owners**,
 not nullable elements; both forms can be combined when needed.
+
+Typed `record_batch` and `table` values now expose primitive nullable columns,
+checked projection and immutable structural transformations as ambient builtins.
+Constructors take an explicit row count, then arrays (batch) or chunked arrays
+(table); no Arrow import is needed. See
+[built-in types](built-in-types.md#record-batches-and-tables) and
+`examples/columnar_tables.x`. Nullable primitive casts, compound validity
+proofs, optional unique builders and nullable instance fields are also
+supported. Variable-width/nested source values and source buffer/C Data
+constructors remain pending; legacy DataFrame/Series behavior is unchanged.

@@ -30,6 +30,7 @@ from arx.parser.descriptors import (
     DescriptorParser,
 )
 from arx.parser.state import TypeUseContext
+from arx.parser.tabular import TabularParser
 from arx.tensor import attach_binding, infer_literal
 
 
@@ -329,6 +330,8 @@ class ExpressionParserMixin(ParserMixinBase):
 
         self.tokens.get_next_token()  # eat identifier
 
+        if id_name in {"table", "record_batch"} and self._is_operator("["):
+            return TabularParser(self).literal(id_loc, id_name)
         if id_name in {
             "array",
             "array_builder",
@@ -370,9 +373,17 @@ class ExpressionParserMixin(ParserMixinBase):
             target_type = self.parse_type(
                 allow_union=True, type_context=TypeUseContext.EXPRESSION
             )
-            if isinstance(target_type, astx.UnionType):
+            if isinstance(target_type, astx.UnionType) and not (
+                len(target_type.members) == 2
+                and sum(
+                    isinstance(member, astx.NoneType)
+                    for member in target_type.members
+                )
+                == 1
+            ):
                 raise ParserException(
-                    "Builtin 'cast' does not support union target types yet."
+                    "Builtin 'cast' rejects general union target types; "
+                    "only nullable unions are supported."
                 )
             self._consume_operator(")")
             return builtins.build_cast(
@@ -452,6 +463,16 @@ class ExpressionParserMixin(ParserMixinBase):
                     "class construction does not accept arguments"
                 )
             return astx.ClassConstruct(id_name)
+
+        tabular_queries = {item.value: item for item in astx.TabularOperation}
+        if id_name in tabular_queries:
+            if template_args is not None:
+                raise ParserException(
+                    "Tabular queries reject template arguments."
+                )
+            return astx.TabularQuery(
+                tabular_queries[id_name], tuple(args), loc=id_loc
+            )
 
         array_queries = {item.value: item for item in astx.ArrayOperation}
         if id_name in array_queries:

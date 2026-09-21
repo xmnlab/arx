@@ -285,12 +285,19 @@ Direct `is_valid(x)` and `!is_null(x)` true branches, and `is_null(x)` false
 branches, refine a local or argument to its payload type. Assignment invalidates
 the proof; joins intersect surviving facts and loop backedges discard inherited
 facts. `while is_valid(x)` re-establishes its proof on every iteration. Guarded
-right operands such as `is_valid(x) and x > 0` are supported; arbitrary compound
-predicates are not used to infer branch-body facts.
+right operands such as `is_valid(x) and x > 0` are supported. Pure compound
+AND/OR/negation conditions combine guaranteed facts: a true conjunction proves
+both sides, while a true disjunction retains only facts shared by both paths.
+Opaque calls and mutation expressions do not establish compound proofs.
 
-String and unique-owner nullable payloads, nullable class/struct fields, general
-nullable collection elements, explicit nullable casts and C FFI nullable
-signatures remain unsupported. These limitations are diagnosed before lowering.
+`cast(value, T | none)` preserves validity while explicitly converting primitive
+payloads. A null payload is never converted. `cast(none, T | none)` constructs
+an absent primitive value. Use `expect_valid` to remove nullability before
+casting to a non-nullable type. Narrowing follows existing primitive cast rules,
+not a new checked Arrow Compute cast policy.
+
+Nullable strings, general nullable collection elements, managed struct fields
+and C FFI nullable signatures remain unsupported and fail before lowering.
 
 ## First-class primitive arrays
 
@@ -363,7 +370,7 @@ See [`examples/columnar_builders.x`](../../examples/columnar_builders.x).
 `chunked_array` is currently distinct from the legacy DataFrame `series` type;
 no implicit conversion or complete Series API is claimed.
 
-## Nullable shared owners
+## Nullable resource owners
 
 `array[T] | none`, `chunked_array[T] | none`, `datatype | none`, `field | none`,
 and `schema | none` support local storage, reassignment, default arguments,
@@ -374,6 +381,76 @@ empty slot, so cleanup remains safe on both paths. Primitive scalar nullable
 values retain their independent validity/payload representation.
 
 Use `expect_valid` or a direct predicate refinement before querying the owner.
-Borrowed extraction does not invalidate its parent, and copying or returning
-that extraction retains independent ownership. This does not yet enable nullable
-strings, unique builders, class/struct fields or general nested owners.
+Borrowed extraction does not invalidate its parent, and copying or returning a
+shared extraction retains independent ownership. `array_builder[T] | none` also
+supports absence, borrowing, replacement and moved local returns, but retains
+unique ownership: copying a borrowed builder is rejected.
+
+Nullable primitives and supported opaque owners can be instance fields. Defaults
+are absent, assignment releases a replaced owner, and class destruction cleans
+up remaining owners. Mutable field predicates do not refine subsequent reads;
+use `expect_valid` on the field. Static nullable fields are rejected. IRx also
+supports by-value primitive nullable struct fields; this does not introduce Arx
+`struct` syntax or managed struct destruction. Nullable strings remain pending.
+
+## Record batches and tables
+
+`record_batch[fields]` owns equal-length array columns; `table[fields]` owns
+chunked columns. Both are ambient builtins, accept schema/field metadata, and
+support all currently executable primitive array element types, including
+nullable values and half-floats. Constructors require the row count first:
+
+````arx
+```
+title: Native typed tabular values
+```
+fn main() -> i32:
+  ```
+  title: Keep column types and validity explicit.
+  ```
+  var batch: record_batch[a: i32 | none] = record_batch[a: i32 | none](2, array[i32 | none](1, none))
+  var data: table[a: i32 | none] = to_table(batch)
+  assert num_rows(data) == 2
+  assert is_null(array_at(column(data, "a"), 1))
+  var dynamic: table = runtime_schema(data)
+  var checked: chunked_array[i32 | none] = column_as(dynamic, 0, field[a: i32 | none])
+  assert array_length(checked) == 2
+  return 0
+````
+
+The explicit count permits nonzero rows with no columns: `record_batch[](5)`.
+Shape mismatches, negative counts and out-of-range slices fail through the
+checked native diagnostic boundary, not by reading an invalid output slot.
+
+| Operation                                       | Contract                                                                                            |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `num_rows(value)`, `num_columns(value)`         | Checked dimensions for batches and tables.                                                          |
+| `container_schema(value)`                       | Independently owned schema descriptor, retaining metadata.                                          |
+| `column(value, "name")`                         | Resolve a literal name in a static schema; return an array for batches or chunked array for tables. |
+| `runtime_schema(value)`                         | Retain an owner while explicitly erasing static schema facts.                                       |
+| `column_as(value, index, field[...])`           | Check field name, type, nullability and metadata at runtime before returning a typed column.        |
+| `slice_rows(value, offset, length)`             | Strict bounded row slice; does not silently clamp.                                                  |
+| `select_columns(value, "b", "a")`               | Project/reorder unique static fields; selecting no fields preserves row count.                      |
+| `rename_columns(value, "new_a", "new_b")`       | Supply one unique name per field; preserve metadata.                                                |
+| `add_column(value, field[new: T], column)`      | Append a column with checked type, nullability and row count.                                       |
+| `replace_column(value, field[name: T], column)` | Replace the named field and column; type changes are explicit in the new field.                     |
+| `remove_column(value, "name")`                  | Remove one static field without changing row count.                                                 |
+| `to_table(batch)`, `to_record_batch(table)`     | Explicit conversion; table-to-batch may materialize chunks.                                         |
+| `table_combine_chunks(table)`                   | Explicitly coalesce table chunks.                                                                   |
+
+Transforms are immutable: child views and returned containers remain usable
+after parent release or replacement. `table[...] | none` and
+`record_batch[...] | none` support optional shared ownership. Iteration remains
+explicit through row slices, columns, chunks or scalar indices; there is no
+implicit iteration axis.
+
+`table` is **not** a new spelling for legacy `dataframe`, nor is `chunked_array`
+a new spelling for `series`. Existing DataFrame/Series syntax is unchanged;
+compatibility adapters and expanded column families remain pending. Descriptor
+support and native imported nested-table transformations do not imply Arx source
+construction of string, binary, temporal, decimal, dictionary or nested columns.
+Those value paths, source buffer/C Data constructors, and noncontiguous row
+selection are not implemented yet.
+
+See `examples/columnar_tables.x` and `examples/columnar_table_owners.x` for
+executable transformation and lifetime examples.

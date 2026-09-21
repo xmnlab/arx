@@ -107,6 +107,9 @@ def is_builtin(name: str) -> bool:
     return name in {
         "array",
         "array_builder",
+        "table",
+        "record_batch",
+        *(operation.value for operation in astx.TabularOperation),
         "chunked_array",
         *(operation.value for operation in astx.ArrayOperation),
         *(operation.value for operation in astx.NullableOperation),

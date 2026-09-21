@@ -59,11 +59,14 @@
         "packages/arx/tests/python/test_array_values.py",
         "packages/irx/tests/test_array_value_runtime.py",
         "packages/arx/tests/python/test_nullable_owners.py",
-        "packages/arx/tests/python/test_chunked_values.py"
+        "packages/arx/tests/python/test_chunked_values.py",
+        "packages/arx/tests/python/test_nullable_refinement_casts.py",
+        "packages/arx/tests/python/test_nullable_fields.py",
+        "packages/arx/tests/python/test_tabular_values.py"
       ],
       "blocks": ["M2", "M3", "M5"],
-      "baseline": "Primitive nullable operators and predicate refinement, nullable shared array/descriptor owners, primitive array extraction, reusable builders and explicit chunking execute natively.",
-      "completion": "Complete unique/string nullable payloads, aggregate fields, explicit casts, source buffer/C Data constructors and variable-width/nested values."
+      "baseline": "Primitive nullable operators, compound predicate facts and numeric casts execute natively. Optional shared owners, unique primitive builders, primitive and managed instance fields, primitive struct fields, arrays, chunks and typed primitive batches/tables preserve validity and ownership.",
+      "completion": "Complete nullable strings, managed struct destruction, general nullable collections and safe source buffer/C Data constructors; variable-width/nested scalar and container values remain pending."
     },
     {
       "id": "FND-003",
@@ -813,17 +816,17 @@
       "category": "Containers",
       "name": "RecordBatch",
       "scope": "core",
-      "target_milestone": "M3",
+      "target_milestone": "M4",
       "stages": {
         "native_runtime": "partial",
-        "astx_model": "not_started",
-        "irx_semantics": "not_started",
-        "llvm_lowering": "not_started",
-        "arx_surface": "not_started",
+        "astx_model": "partial",
+        "irx_semantics": "partial",
+        "llvm_lowering": "partial",
+        "arx_surface": "partial",
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "The deprecated Python/native irx_rb API supports selected types and IPC over the canonical shared RecordBatch handle. Stable irx_arrow retain, release, shape, and C Data interchange exist, but semantic analysis, lowering, and an Arx language value do not.",
+      "notes": "Ambient typed record_batch/table constructors, primitive nullable columns, checked runtime projection, immutable structural transforms, metadata and shared owner lifetimes now execute through analysis and LLVM. Nested imported native views preserve metadata, but variable-width/nested source construction and legacy DataFrame/Series expansion remain incomplete.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_record_batch.py",
@@ -839,6 +842,21 @@
           "path": "packages/irx/tests/test_record_batch_compatibility.py",
           "symbol": "test_legacy_batches_are_unified_handles_across_both_abis",
           "purpose": "Proves legacy construction and access share the canonical handle, owner token, and C Data path."
+        },
+        {
+          "path": "packages/arx/tests/python/test_tabular_values.py",
+          "symbol": "test_tabular_translation_contract",
+          "purpose": "Verifies generated LLVM and tabular ABI activation."
+        },
+        {
+          "path": "packages/arx/tests/python/test_tabular_values.py",
+          "symbol": "test_tabular_execution",
+          "purpose": "Builds and runs typed construction, projections, transforms and conversions."
+        },
+        {
+          "path": "packages/irx/tests/test_tabular_runtime.py",
+          "symbol": "test_imported_nested_tabular_views",
+          "purpose": "Checks metadata and nested native views outliving their producer; not Arx source nested-value support."
         }
       ]
     },
@@ -847,17 +865,17 @@
       "category": "Containers",
       "name": "Table and DataFrame",
       "scope": "core",
-      "target_milestone": "M3",
+      "target_milestone": "M4",
       "stages": {
         "native_runtime": "partial",
         "astx_model": "partial",
         "irx_semantics": "partial",
         "llvm_lowering": "partial",
         "arx_surface": "partial",
-        "interop": "not_started"
+        "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Static numeric and Boolean DataFrames lower through Arrow Table handles; nullable, variable-width, nested, dynamic-schema, and interchange behavior is incomplete.",
+      "notes": "Ambient typed record_batch/table constructors, primitive nullable columns, checked runtime projection, immutable structural transforms, metadata and shared owner lifetimes now execute through analysis and LLVM. Nested imported native views preserve metadata, but variable-width/nested source construction and legacy DataFrame/Series expansion remain incomplete.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_dataframe.py",
@@ -868,6 +886,21 @@
           "path": "packages/arx/tests/python/test_dataframe.py",
           "symbol": "test_dataframe_mvp_rejects_string_columns",
           "purpose": "Documents the current public DataFrame column-type limitation."
+        },
+        {
+          "path": "packages/arx/tests/python/test_tabular_values.py",
+          "symbol": "test_tabular_translation_contract",
+          "purpose": "Verifies generated LLVM and tabular ABI activation."
+        },
+        {
+          "path": "packages/arx/tests/python/test_tabular_values.py",
+          "symbol": "test_tabular_execution",
+          "purpose": "Builds and runs typed construction, projections, transforms and conversions."
+        },
+        {
+          "path": "packages/irx/tests/test_tabular_runtime.py",
+          "symbol": "test_imported_nested_tabular_views",
+          "purpose": "Checks metadata and nested native views outliving their producer; not Arx source nested-value support."
         }
       ]
     },

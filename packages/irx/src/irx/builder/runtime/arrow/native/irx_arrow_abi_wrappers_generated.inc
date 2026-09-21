@@ -117,6 +117,29 @@
 #undef irx_arrow_chunked_copy
 #undef irx_arrow_chunked_concat
 #undef irx_arrow_chunked_equal
+#undef irx_arrow_batch_new_typed
+#undef irx_arrow_batch_rows
+#undef irx_arrow_batch_columns
+#undef irx_arrow_batch_schema
+#undef irx_arrow_batch_column_checked
+#undef irx_arrow_batch_slice
+#undef irx_arrow_batch_select
+#undef irx_arrow_batch_with_schema
+#undef irx_arrow_batch_set_column
+#undef irx_arrow_batch_remove
+#undef irx_arrow_table_new_typed
+#undef irx_arrow_table_rows
+#undef irx_arrow_table_columns
+#undef irx_arrow_table_schema
+#undef irx_arrow_table_column_checked
+#undef irx_arrow_table_slice
+#undef irx_arrow_table_select
+#undef irx_arrow_table_with_schema
+#undef irx_arrow_table_set_column
+#undef irx_arrow_table_remove
+#undef irx_arrow_batch_to_table
+#undef irx_arrow_table_to_batch
+#undef irx_arrow_table_combine
 
 #if defined(__GNUC__) || defined(__clang__)
 #pragma GCC visibility pop
@@ -3043,6 +3066,540 @@ irx_arrow_status irx_arrow_chunked_equal(
   return finish_generated_call(
       status,
       "irx_arrow_chunked_equal",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_DATAFRAME)
+irx_arrow_status irx_arrow_batch_new_typed(
+    const irx_arrow_schema_handle* schema,
+    const void** columns,
+    int64_t count,
+    int64_t rows,
+    irx_arrow_record_batch_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_batch_new_typed");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_batch_new_typed(schema, columns, count, rows, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_batch_new_typed",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_DATAFRAME)
+irx_arrow_status irx_arrow_batch_rows(
+    const irx_arrow_record_batch_handle* value,
+    int64_t* output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_batch_rows");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_batch_rows(value, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_batch_rows",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_DATAFRAME)
+irx_arrow_status irx_arrow_batch_columns(
+    const irx_arrow_record_batch_handle* value,
+    int64_t* output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_batch_columns");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_batch_columns(value, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_batch_columns",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_DATAFRAME)
+irx_arrow_status irx_arrow_batch_schema(
+    const irx_arrow_record_batch_handle* value,
+    irx_arrow_schema_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_batch_schema");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_batch_schema(value, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_batch_schema",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_DATAFRAME)
+irx_arrow_status irx_arrow_batch_column_checked(
+    const irx_arrow_record_batch_handle* value,
+    int64_t index,
+    const irx_arrow_field_handle* expected,
+    irx_arrow_array_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_batch_column_checked");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_batch_column_checked(value, index, expected, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_batch_column_checked",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_DATAFRAME)
+irx_arrow_status irx_arrow_batch_slice(
+    const irx_arrow_record_batch_handle* value,
+    int64_t offset,
+    int64_t length,
+    irx_arrow_record_batch_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_batch_slice");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_batch_slice(value, offset, length, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_batch_slice",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_DATAFRAME)
+irx_arrow_status irx_arrow_batch_select(
+    const irx_arrow_record_batch_handle* value,
+    const int64_t* indices,
+    int64_t count,
+    irx_arrow_record_batch_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_batch_select");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_batch_select(value, indices, count, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_batch_select",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_DATAFRAME)
+irx_arrow_status irx_arrow_batch_with_schema(
+    const irx_arrow_record_batch_handle* value,
+    const irx_arrow_schema_handle* schema,
+    irx_arrow_record_batch_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_batch_with_schema");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_batch_with_schema(value, schema, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_batch_with_schema",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_DATAFRAME)
+irx_arrow_status irx_arrow_batch_set_column(
+    const irx_arrow_record_batch_handle* value,
+    int64_t index,
+    const irx_arrow_field_handle* field,
+    const irx_arrow_array_handle* column,
+    irx_arrow_record_batch_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_batch_set_column");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_batch_set_column(value, index, field, column, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_batch_set_column",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_DATAFRAME)
+irx_arrow_status irx_arrow_batch_remove(
+    const irx_arrow_record_batch_handle* value,
+    int64_t index,
+    irx_arrow_record_batch_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_batch_remove");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_batch_remove(value, index, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_batch_remove",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_DATAFRAME)
+irx_arrow_status irx_arrow_table_new_typed(
+    const irx_arrow_schema_handle* schema,
+    const void** columns,
+    int64_t count,
+    int64_t rows,
+    irx_arrow_table_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_table_new_typed");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_table_new_typed(schema, columns, count, rows, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_table_new_typed",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_DATAFRAME)
+irx_arrow_status irx_arrow_table_rows(
+    const irx_arrow_table_handle* value,
+    int64_t* output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_table_rows");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_table_rows(value, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_table_rows",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_DATAFRAME)
+irx_arrow_status irx_arrow_table_columns(
+    const irx_arrow_table_handle* value,
+    int64_t* output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_table_columns");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_table_columns(value, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_table_columns",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_DATAFRAME)
+irx_arrow_status irx_arrow_table_schema(
+    const irx_arrow_table_handle* value,
+    irx_arrow_schema_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_table_schema");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_table_schema(value, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_table_schema",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_DATAFRAME)
+irx_arrow_status irx_arrow_table_column_checked(
+    const irx_arrow_table_handle* value,
+    int64_t index,
+    const irx_arrow_field_handle* expected,
+    irx_arrow_chunked_array_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_table_column_checked");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_table_column_checked(value, index, expected, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_table_column_checked",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_DATAFRAME)
+irx_arrow_status irx_arrow_table_slice(
+    const irx_arrow_table_handle* value,
+    int64_t offset,
+    int64_t length,
+    irx_arrow_table_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_table_slice");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_table_slice(value, offset, length, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_table_slice",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_DATAFRAME)
+irx_arrow_status irx_arrow_table_select(
+    const irx_arrow_table_handle* value,
+    const int64_t* indices,
+    int64_t count,
+    irx_arrow_table_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_table_select");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_table_select(value, indices, count, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_table_select",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_DATAFRAME)
+irx_arrow_status irx_arrow_table_with_schema(
+    const irx_arrow_table_handle* value,
+    const irx_arrow_schema_handle* schema,
+    irx_arrow_table_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_table_with_schema");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_table_with_schema(value, schema, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_table_with_schema",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_DATAFRAME)
+irx_arrow_status irx_arrow_table_set_column(
+    const irx_arrow_table_handle* value,
+    int64_t index,
+    const irx_arrow_field_handle* field,
+    const irx_arrow_chunked_array_handle* column,
+    irx_arrow_table_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_table_set_column");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_table_set_column(value, index, field, column, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_table_set_column",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_DATAFRAME)
+irx_arrow_status irx_arrow_table_remove(
+    const irx_arrow_table_handle* value,
+    int64_t index,
+    irx_arrow_table_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_table_remove");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_table_remove(value, index, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_table_remove",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_DATAFRAME)
+irx_arrow_status irx_arrow_batch_to_table(
+    const irx_arrow_record_batch_handle* value,
+    irx_arrow_table_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_batch_to_table");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_batch_to_table(value, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_batch_to_table",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_DATAFRAME)
+irx_arrow_status irx_arrow_table_to_batch(
+    const irx_arrow_table_handle* value,
+    irx_arrow_record_batch_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_table_to_batch");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_table_to_batch(value, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_table_to_batch",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_DATAFRAME)
+irx_arrow_status irx_arrow_table_combine(
+    const irx_arrow_table_handle* value,
+    irx_arrow_table_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_table_combine");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_table_combine(value, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_table_combine",
       out_failure);
 }
 

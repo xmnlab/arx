@@ -61,7 +61,9 @@ class DeclarationClassMemberVisitorMixin(DeclarationClassMethodVisitorMixin):
           member:
             type: SemanticClassMember
         """
-        contract = resource_contract_for_type(attribute.type_)
+        declared = normalize_nullable(attribute.type_)
+        assert declared is not None
+        contract = resource_contract_for_type(declared)
         if contract is None:
             return
         value = attribute.value
@@ -83,7 +85,7 @@ class DeclarationClassMemberVisitorMixin(DeclarationClassMethodVisitorMixin):
             self._set_resource_ownership(
                 attribute,
                 typed_resource_ownership(
-                    attribute.type_,
+                    declared,
                     OwnershipKind.OWNED,
                     owner_symbol_id=member.symbol_id,
                 ),
@@ -91,6 +93,12 @@ class DeclarationClassMemberVisitorMixin(DeclarationClassMethodVisitorMixin):
             return
 
         value_ownership = resource_ownership(value)
+        if isinstance(
+            normalize_nullable(attribute.type_), astx.NullableType
+        ) and isinstance(value, astx.LiteralNone):
+            value_ownership = typed_resource_ownership(
+                declared, OwnershipKind.OWNED
+            )
         if value_ownership is None:
             self.context.diagnostics.add(
                 f"class field initializer '{member.owner_name}."
@@ -133,7 +141,7 @@ class DeclarationClassMemberVisitorMixin(DeclarationClassMethodVisitorMixin):
         self._set_resource_ownership(
             attribute,
             typed_resource_ownership(
-                attribute.type_,
+                declared,
                 OwnershipKind.OWNED,
                 owner_symbol_id=member.symbol_id,
                 source_symbol_id=value_ownership.source_symbol_id,
@@ -184,12 +192,12 @@ class DeclarationClassMemberVisitorMixin(DeclarationClassMethodVisitorMixin):
                 node=attribute,
                 unknown_message="Unknown attribute type '{name}'",
             )
-            if isinstance(
+            if self._attribute_is_static(attribute) and isinstance(
                 normalize_nullable(attribute.type_), astx.NullableType
             ):
                 self.context.diagnostics.add(
-                    "nullable class and struct fields are not implemented; "
-                    "use a local or parameter value",
+                    "static nullable fields require module initialization; "
+                    "use an instance field or local value",
                     node=attribute,
                     code=DiagnosticCodes.SEMANTIC_TYPE_MISMATCH,
                 )
@@ -215,6 +223,9 @@ class DeclarationClassMemberVisitorMixin(DeclarationClassMethodVisitorMixin):
                     attribute.value,
                     context=(
                         f"Initializer for '{class_.name}.{attribute.name}'"
+                    ),
+                    allow_none=isinstance(
+                        normalize_nullable(attribute.type_), astx.NullableType
                     ),
                 ):
                     validate_assignment(

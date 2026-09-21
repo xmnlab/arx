@@ -71,6 +71,7 @@ REQUIRED_IRX_NATIVE_ASSETS = (
     "irx/builder/runtime/arrow/native/irx_arrow_descriptors.inc",
     "irx/builder/runtime/arrow/native/irx_arrow_array_values.inc",
     "irx/builder/runtime/arrow/native/irx_arrow_chunks.inc",
+    "irx/builder/runtime/arrow/native/irx_arrow_tabular.inc",
     "irx/builder/runtime/arrow/native/irx_arrow_feature_query_generated.inc",
     "irx/builder/runtime/arrow/native/irx_arrow_record_batch_runtime.cc",
     "irx/builder/runtime/arrow/native/irx_arrow_tensor_runtime.cc",
@@ -179,6 +180,13 @@ fn main() -> i32:
   optional = none
   assert array_length(expect_valid(alias)) == 2
   assert expect_valid(array_at(chunks, 1)) == cast(1.5, f16)
+  var rb: record_batch[a: i32 | none] = record_batch[a: i32 | none](3, values)
+  var table_value: table[a: i32 | none] = to_table(rb)
+  assert num_rows(table_value) == 3
+  var dynamic: table = runtime_schema(table_value)
+  assert array_length(column_as(dynamic, 0, field[a: i32 | none])) == 3
+  var recovered: schema = container_schema(to_record_batch(table_value))
+  assert descriptor_equal(recovered, schema[a: i32 | none])
   return 0
 """
 

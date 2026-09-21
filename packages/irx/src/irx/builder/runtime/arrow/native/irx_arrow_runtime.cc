@@ -26,6 +26,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <unordered_set>
 
 #if !defined(IRX_ARROW_RUNTIME_BUILD_CORE) && \
     !defined(IRX_ARROW_RUNTIME_BUILD_ARRAY) && \
@@ -2779,6 +2780,8 @@ void irx_arrow_tensor_release_callback(void* tensor) {
 #endif
 
 #if defined(IRX_ARROW_RUNTIME_BUILD_DATAFRAME)
+
+#include "irx_arrow_tabular.inc"
 
 irx_arrow_status irx_arrow_table_new_from_arrays(
     int64_t column_count,

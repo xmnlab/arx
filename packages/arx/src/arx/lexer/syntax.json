@@ -1,5 +1,5 @@
 {
-  "syntax_pack_version": "0.6.0",
+  "syntax_pack_version": "0.7.0",
   "language": "arx",
   "status": "draft",
   "source_of_truth": "Canonical lexical source for editor tooling and lexer tables.",
@@ -221,7 +221,9 @@
       "uint32",
       "uint64",
       "array_builder",
-      "chunked_array"
+      "chunked_array",
+      "table",
+      "record_batch"
     ],
     "functions": [
       "cast",
@@ -260,7 +262,24 @@
       "builder_finish",
       "chunk_count",
       "chunk_at",
-      "combine_chunks"
+      "combine_chunks",
+      "table",
+      "record_batch",
+      "num_rows",
+      "num_columns",
+      "container_schema",
+      "column",
+      "column_as",
+      "slice_rows",
+      "select_columns",
+      "rename_columns",
+      "add_column",
+      "replace_column",
+      "remove_column",
+      "to_table",
+      "to_record_batch",
+      "table_combine_chunks",
+      "runtime_schema"
     ]
   },
   "descriptor_syntax": {
@@ -276,9 +295,11 @@
   },
   "nullable_syntax": {
     "type": "T | none",
-    "payloads": "bool, signed and unsigned 8/16/32/64-bit integers, f16/f32/f64; shared primitive array, chunked_array, datatype, field and schema owners",
+    "payloads": "bool, signed and unsigned 8/16/32/64-bit integers, f16/f32/f64; shared primitive array, chunked_array, datatype, field and schema owners; unique primitive builders and shared table/record_batch owners",
     "queries": ["is_null(value)", "is_valid(value)", "expect_valid(value)"],
-    "operators": "primitive arithmetic and comparisons propagate null; Boolean and/or use short-circuit Kleene logic"
+    "operators": "primitive arithmetic and comparisons propagate null; Boolean and/or use short-circuit Kleene logic",
+    "casts": "cast(value, T | none) preserves validity for primitive payloads; expect_valid is required to unwrap",
+    "fields": "nullable instance fields and primitive IRx struct fields; no nullable strings or static fields"
   },
   "array_syntax": {
     "type": "array[T] or array[T | none]",
@@ -287,5 +308,18 @@
     "iteration": "explicit indexed scalar access with array_at; no implicit iteration",
     "builders": "array_builder[T]() owns a reusable unique builder; builder_finish resets it.",
     "chunks": "chunked_array[T](array[T], ...) has explicit chunk_at and combine_chunks."
+  },
+  "tabular_syntax": {
+    "types": [
+      "record_batch[fields]{metadata}",
+      "table[fields]{metadata}",
+      "record_batch",
+      "table"
+    ],
+    "constructors": "A static schema, an explicit signed row count, then ordered array columns for batches or chunked_array columns for tables.",
+    "projection": "column(value, literal_name) requires a static schema; column_as(value, index, field[...]) checks a runtime field exactly.",
+    "runtime_schema": "Explicitly erase static schema facts while retaining an independent owner.",
+    "iteration": "Explicit indexed column, row-slice, chunk and scalar operations; no implicit iteration axis.",
+    "value_coverage": "Primitive numeric and Boolean columns, including nullable and half-float; other logical source values remain unsupported."
   }
 }

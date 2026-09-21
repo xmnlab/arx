@@ -373,7 +373,9 @@ class DeclarationParserMixin(ParserMixinBase):
             )
 
         self._consume_operator(":")
-        field_type = self.parse_type(type_context=TypeUseContext.FIELD)
+        field_type = self.parse_type(
+            allow_union=True, type_context=TypeUseContext.FIELD
+        )
 
         initializer: astx.Expr | None = None
         if self._is_operator("="):

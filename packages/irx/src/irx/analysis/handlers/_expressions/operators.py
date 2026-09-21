@@ -26,8 +26,8 @@ from irx.analysis.handlers.base import (
 )
 from irx.analysis.handlers.nullable import analyze_nullable_operator
 from irx.analysis.normalization import normalize_flags, normalize_operator
-from irx.analysis.nullability import normalize_nullable
-from irx.analysis.nullable_flow import nullable_branch_symbol
+from irx.analysis.nullability import PRIMITIVE_PAYLOADS, normalize_nullable
+from irx.analysis.nullable_flow import nullable_branch_symbols
 from irx.analysis.ownership import (
     resource_ownership,
     string_resource_ownership,
@@ -48,6 +48,8 @@ from irx.diagnostics import DiagnosticCodes
 from irx.typecheck import typechecked
 
 COLUMNAR_OPERATOR_TYPES = (
+    astx.TableType,
+    astx.RecordBatchType,
     astx.ArrayType,
     astx.ArrayBuilderType,
     astx.ChunkedArrayType,
@@ -159,11 +161,10 @@ class ExpressionOperatorVisitorMixin(SemanticVisitorMixinBase):
         self.visit(node.lhs)
         incoming_valid = self.context.valid_nullable_symbols.copy()
         if node.op_code in {"and", "&&", "or", "||"}:
-            proof = nullable_branch_symbol(
+            proof = nullable_branch_symbols(
                 node.lhs, node.op_code in {"and", "&&"}
             )
-            if proof is not None:
-                self.context.valid_nullable_symbols.add(proof)
+            self.context.valid_nullable_symbols.update(proof)
         self.visit(node.rhs)
         self.context.valid_nullable_symbols.intersection_update(incoming_valid)
         lhs_type = self._expr_type(node.lhs)
@@ -337,25 +338,20 @@ class ExpressionOperatorVisitorMixin(SemanticVisitorMixinBase):
           node:
             type: astx.Cast
         """
+        target_type = normalize_nullable(node.target_type)
         self.visit(node.value)
         if not self._require_value_expression(
             node.value,
             context="Cast",
+            allow_none=isinstance(target_type, astx.NullableType),
         ):
             self._set_type(node, cast(astx.DataType | None, node.target_type))
             return
         source_type = self._expr_type(node.value)
-        target_type = cast(astx.DataType | None, node.target_type)
         if isinstance(source_type, astx.NullableType) or isinstance(
-            normalize_nullable(target_type), astx.NullableType
+            target_type, astx.NullableType
         ):
-            self.context.diagnostics.add(
-                "nullable casts are not implemented; use implicit injection "
-                "or expect_valid",
-                node=node,
-                code=DiagnosticCodes.SEMANTIC_TYPE_MISMATCH,
-            )
-            self._set_type(node, None)
+            self.resolve_nullable_cast(node, source_type, target_type)
             return
         validate_cast(
             self.context.diagnostics,
@@ -388,6 +384,52 @@ class ExpressionOperatorVisitorMixin(SemanticVisitorMixinBase):
             node,
             string_resource_ownership(OwnershipKind.OWNED),
         )
+
+    def resolve_nullable_cast(
+        self,
+        node: astx.Cast,
+        source: astx.DataType | None,
+        target: astx.DataType | None,
+    ) -> None:
+        """
+        title: Cast primitive payloads without implicitly discarding validity.
+        parameters:
+          node:
+            type: astx.Cast
+          source:
+            type: astx.DataType | None
+          target:
+            type: astx.DataType | None
+        """
+        payload = (
+            source.payload_type
+            if isinstance(source, astx.NullableType)
+            else source
+        )
+        if (
+            not isinstance(target, astx.NullableType)
+            or type(target.payload_type) not in PRIMITIVE_PAYLOADS
+            or (
+                type(payload) not in PRIMITIVE_PAYLOADS
+                and not isinstance(source, astx.NoneType)
+            )
+        ):
+            self.context.diagnostics.add(
+                "nullable casts require primitive payloads and a nullable "
+                "target; use expect_valid to remove nullability",
+                node=node,
+                code=DiagnosticCodes.SEMANTIC_TYPE_MISMATCH,
+            )
+            self._set_type(node, None)
+            return
+        if not isinstance(source, astx.NoneType):
+            validate_cast(
+                self.context.diagnostics,
+                source_type=payload,
+                target_type=target.payload_type,
+                node=node,
+            )
+        self._set_type(node, target)
 
     @SemanticAnalyzerCore.visit.dispatch
     def visit(self, node: astx.IsInstanceExpr) -> None:

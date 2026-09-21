@@ -320,6 +320,17 @@ def columnar_type_diagnostic(
         elif isinstance(type_, astx.SchemaValueType):
             if type_.schema is not None:
                 canonical_schema(type_.schema)
+            if isinstance(type_, (astx.TableType, astx.RecordBatchType)):
+                if depth:
+                    return (
+                        "tabular owners cannot be nested in value containers"
+                    )
+                for field in (
+                    () if type_.schema is None else type_.schema.fields
+                ):
+                    if array_storage(astx.ArrayType(field.type_)) is None:
+                        return "tabular values require primitive columns"
+                return None
         elif isinstance(
             type_, (astx.SchemaType, astx.FieldType, astx.TypeDescriptorType)
         ):

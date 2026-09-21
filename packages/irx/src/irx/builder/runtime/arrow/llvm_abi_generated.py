@@ -16,7 +16,7 @@ LLVM_RUNTIME_FEATURE_VERSIONS = {
     "core": 65536,
     "array": 66560,
     "tensor": 65536,
-    "dataframe": 65536,
+    "dataframe": 65792,
     "record_batch": 65536,
 }
 LLVM_HANDLE_TYPES = (
@@ -992,6 +992,218 @@ LLVM_SIGNATURES: dict[str, tuple[str, tuple[str, ...]]] = {
             "error_pointer",
         ),
     ),
+    "irx_arrow_batch_new_typed": (
+        "status",
+        (
+            "const_schema",
+            "const_void_pointer",
+            "int64",
+            "int64",
+            "record_batch_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_batch_rows": (
+        "status",
+        (
+            "const_record_batch",
+            "int64_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_batch_columns": (
+        "status",
+        (
+            "const_record_batch",
+            "int64_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_batch_schema": (
+        "status",
+        (
+            "const_record_batch",
+            "schema_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_batch_column_checked": (
+        "status",
+        (
+            "const_record_batch",
+            "int64",
+            "const_field",
+            "array_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_batch_slice": (
+        "status",
+        (
+            "const_record_batch",
+            "int64",
+            "int64",
+            "record_batch_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_batch_select": (
+        "status",
+        (
+            "const_record_batch",
+            "const_int64_pointer",
+            "int64",
+            "record_batch_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_batch_with_schema": (
+        "status",
+        (
+            "const_record_batch",
+            "const_schema",
+            "record_batch_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_batch_set_column": (
+        "status",
+        (
+            "const_record_batch",
+            "int64",
+            "const_field",
+            "const_array",
+            "record_batch_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_batch_remove": (
+        "status",
+        (
+            "const_record_batch",
+            "int64",
+            "record_batch_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_table_new_typed": (
+        "status",
+        (
+            "const_schema",
+            "const_void_pointer",
+            "int64",
+            "int64",
+            "table_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_table_rows": (
+        "status",
+        (
+            "const_table",
+            "int64_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_table_columns": (
+        "status",
+        (
+            "const_table",
+            "int64_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_table_schema": (
+        "status",
+        (
+            "const_table",
+            "schema_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_table_column_checked": (
+        "status",
+        (
+            "const_table",
+            "int64",
+            "const_field",
+            "chunked_array_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_table_slice": (
+        "status",
+        (
+            "const_table",
+            "int64",
+            "int64",
+            "table_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_table_select": (
+        "status",
+        (
+            "const_table",
+            "const_int64_pointer",
+            "int64",
+            "table_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_table_with_schema": (
+        "status",
+        (
+            "const_table",
+            "const_schema",
+            "table_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_table_set_column": (
+        "status",
+        (
+            "const_table",
+            "int64",
+            "const_field",
+            "const_chunked_array",
+            "table_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_table_remove": (
+        "status",
+        (
+            "const_table",
+            "int64",
+            "table_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_batch_to_table": (
+        "status",
+        (
+            "const_record_batch",
+            "table_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_table_to_batch": (
+        "status",
+        (
+            "const_table",
+            "record_batch_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_table_combine": (
+        "status",
+        (
+            "const_table",
+            "table_pointer",
+            "error_pointer",
+        ),
+    ),
 }
 LLVM_FEATURE_SYMBOLS: dict[str, tuple[str, ...]] = {
     "core": (
@@ -1112,6 +1324,29 @@ LLVM_FEATURE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "irx_arrow_table_release",
         "irx_arrow_chunked_array_retain",
         "irx_arrow_chunked_array_release",
+        "irx_arrow_batch_new_typed",
+        "irx_arrow_batch_rows",
+        "irx_arrow_batch_columns",
+        "irx_arrow_batch_schema",
+        "irx_arrow_batch_column_checked",
+        "irx_arrow_batch_slice",
+        "irx_arrow_batch_select",
+        "irx_arrow_batch_with_schema",
+        "irx_arrow_batch_set_column",
+        "irx_arrow_batch_remove",
+        "irx_arrow_table_new_typed",
+        "irx_arrow_table_rows",
+        "irx_arrow_table_columns",
+        "irx_arrow_table_schema",
+        "irx_arrow_table_column_checked",
+        "irx_arrow_table_slice",
+        "irx_arrow_table_select",
+        "irx_arrow_table_with_schema",
+        "irx_arrow_table_set_column",
+        "irx_arrow_table_remove",
+        "irx_arrow_batch_to_table",
+        "irx_arrow_table_to_batch",
+        "irx_arrow_table_combine",
     ),
     "record_batch": (
         "irx_arrow_record_batch_import_move",

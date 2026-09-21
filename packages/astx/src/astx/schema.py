@@ -13,7 +13,7 @@ from enum import Enum
 
 from public import public
 
-from astx.base import DataType, ReprStruct
+from astx.base import ReprStruct
 from astx.tools.typing import typechecked
 from astx.types.base import AnyType
 
@@ -419,7 +419,7 @@ class ChunkedArrayType(LogicalValueType):
 
 @public
 @typechecked
-class SchemaValueType(DataType):
+class SchemaValueType(AnyType):
     """
     title: Base for statically or dynamically schematized row containers.
     attributes:

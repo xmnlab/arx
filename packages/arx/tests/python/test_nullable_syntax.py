@@ -221,9 +221,9 @@ def test_null_unwrap_reports_and_cleans_current_owners(tmp_path: Path) -> None:
     assert "expect_valid received a null value" in completed.stderr
 
 
-def test_nullable_class_fields_fail_in_analysis() -> None:
+def test_nullable_class_fields_resolve_aliases() -> None:
     """
-    title: A type alias cannot bypass the initial nullable field boundary.
+    title: Normalize aliased nullable instance fields before layout.
     """
     source = (
         "type Maybe = i32 | none\n"
@@ -231,10 +231,8 @@ def test_nullable_class_fields_fail_in_analysis() -> None:
         "  @[public, mutable]\n"
         "  value: Maybe = none\n"
     )
-    with pytest.raises(
-        SemanticError, match="nullable class and struct fields"
-    ):
-        analyze(parse(source))
+    analyzed = analyze(parse(source))
+    assert analyzed is not None
 
 
 def test_nullable_ffi_signature_is_not_c_compatible() -> None:

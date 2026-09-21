@@ -1630,6 +1630,8 @@ class VisitorCore(BuilderVisitor):
                 astx.SchemaType,
                 astx.FieldType,
                 astx.TypeDescriptorType,
+                astx.TableType,
+                astx.RecordBatchType,
                 astx.ArrayType,
                 astx.ArrayBuilderType,
                 astx.ChunkedArrayType,
@@ -2013,7 +2015,7 @@ class VisitorCore(BuilderVisitor):
         target_type: astx.NullableType,
     ) -> ir.Value:
         """
-        title: Inject or widen a semantically validated nullable scalar.
+        title: Inject or convert a semantically validated nullable scalar.
         parameters:
           value:
             type: ir.Value | None
@@ -2070,7 +2072,7 @@ class VisitorCore(BuilderVisitor):
     ) -> ir.Value:
         """
         title: >-
-          Widen only valid payloads and merge with initialized null storage.
+          Convert only valid payloads and merge with initialized null storage.
         parameters:
           value:
             type: ir.Value

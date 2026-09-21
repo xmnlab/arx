@@ -286,6 +286,7 @@ from astx.system import (
     PrintExpr,
     TypeOfExpr,
 )
+from astx.tabular_expr import TabularLiteral, TabularOperation, TabularQuery
 from astx.templates import (
     TemplateParam,
     add_generated_template_node,
@@ -609,6 +610,9 @@ __all__ = [
     "SubscriptExpr",
     "SwitchStmt",
     "TableType",
+    "TabularLiteral",
+    "TabularOperation",
+    "TabularQuery",
     "Target",
     "TemplateParam",
     "TemplateTypeVar",

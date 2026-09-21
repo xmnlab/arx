@@ -146,7 +146,9 @@ class DescriptorLoweringMixin(VisitorMixinBase):
         schema.initializer = ir.Constant(schema_type, values)
         return schema.bitcast(ptr)
 
-    def guard_descriptor_contract(self, node: astx.AST, version: int) -> None:
+    def guard_descriptor_contract(
+        self, node: astx.AST, version: int, feature: str = "array"
+    ) -> None:
         """
         title: >-
           Check the resolved minimum runtime contract before descriptor calls.
@@ -155,6 +157,8 @@ class DescriptorLoweringMixin(VisitorMixinBase):
             type: astx.AST
           version:
             type: int
+          feature:
+            type: str
         """
         i32 = ir.IntType(32)
         available = self._llvm.ir_builder.alloca(i32)
@@ -166,7 +170,7 @@ class DescriptorLoweringMixin(VisitorMixinBase):
             self,
             function,
             [
-                ir.Constant(i32, RUNTIME_FEATURE_IDS["array"]),
+                ir.Constant(i32, RUNTIME_FEATURE_IDS[feature]),
                 ir.Constant(i32, version),
                 available,
                 supported,

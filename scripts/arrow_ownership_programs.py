@@ -70,7 +70,36 @@ def class_program() -> astx.Module:
                     astx.TensorType(astx.Int32(), shape=(1,)),
                     mutability=astx.MutabilityKind.mutable,
                     value=tensor(7),
-                )
+                ),
+                astx.VariableDeclaration(
+                    "maybe",
+                    astx.NullableType(
+                        astx.ArrayType(
+                            astx.LogicalType(astx.LogicalKind.INT32)
+                        )
+                    ),
+                    mutability=astx.MutabilityKind.mutable,
+                    value=astx.ArrayLiteral(
+                        astx.ArrayType(
+                            astx.LogicalType(astx.LogicalKind.INT32)
+                        ),
+                        (astx.LiteralInt32(2),),
+                    ),
+                ),
+                astx.VariableDeclaration(
+                    "builder",
+                    astx.NullableType(
+                        astx.ArrayBuilderType(
+                            astx.LogicalType(astx.LogicalKind.INT32)
+                        )
+                    ),
+                    value=astx.ArrayLiteral(
+                        astx.ArrayBuilderType(
+                            astx.LogicalType(astx.LogicalKind.INT32)
+                        ),
+                        (),
+                    ),
+                ),
             ],
         )
     )
@@ -99,6 +128,11 @@ def class_program() -> astx.Module:
                     "=",
                     astx.FieldAccess(astx.Identifier("second"), "values"),
                     tensor(9),
+                ),
+                astx.BinaryOp(
+                    "=",
+                    astx.FieldAccess(astx.Identifier("second"), "maybe"),
+                    astx.LiteralNone(),
                 ),
                 astx.FunctionReturn(astx.LiteralInt32(0)),
             )
@@ -428,6 +462,73 @@ def container_owners_program(*, fail: bool) -> astx.Module:
     return module
 
 
+def tabular_owners_program(*, fail: bool) -> astx.Module:
+    """
+    title: Exercise tabular conversion, optional parents and detached children.
+    parameters:
+      fail:
+        type: bool
+    returns:
+      type: astx.Module
+    """
+    logical = astx.LogicalType(astx.LogicalKind.INT32)
+    schema = astx.Schema((astx.SchemaField("a", logical, nullable=False),))
+    batch_type = astx.RecordBatchType(schema)
+    optional = astx.NullableType(astx.TableType(schema))
+    array = astx.ArrayLiteral(astx.ArrayType(logical), (astx.LiteralInt32(7),))
+    body = block(
+        astx.VariableDeclaration(
+            "batch",
+            batch_type,
+            value=astx.TabularLiteral(
+                batch_type, (astx.LiteralInt64(1), array)
+            ),
+        ),
+        astx.VariableDeclaration(
+            "table",
+            optional,
+            value=astx.TabularQuery(
+                astx.TabularOperation.TO_TABLE, (astx.Identifier("batch"),)
+            ),
+            mutability=astx.MutabilityKind.mutable,
+        ),
+        astx.VariableDeclaration(
+            "kept",
+            astx.ChunkedArrayType(logical),
+            value=astx.TabularQuery(
+                astx.TabularOperation.COLUMN,
+                (
+                    astx.NullableQuery(
+                        astx.NullableOperation.EXPECT_VALID,
+                        astx.Identifier("table"),
+                    ),
+                    astx.LiteralString("a"),
+                ),
+            ),
+        ),
+        astx.BinaryOp("=", astx.Identifier("table"), astx.LiteralNone()),
+        astx.ArrayQuery(
+            astx.ArrayOperation.AT,
+            (astx.Identifier("kept"), astx.LiteralInt64(0)),
+        ),
+    )
+    if fail:
+        body.append(
+            astx.TabularQuery(
+                astx.TabularOperation.SLICE,
+                (
+                    astx.Identifier("batch"),
+                    astx.LiteralInt64(0),
+                    astx.LiteralInt64(2),
+                ),
+            )
+        )
+    body.append(astx.FunctionReturn(astx.LiteralInt32(0)))
+    module = astx.Module()
+    module.block.append(main_function(body))
+    return module
+
+
 def ownership_programs() -> tuple[tuple[str, astx.Module, int], ...]:
     """
     title: Return independent generated programs and expected exit statuses.
@@ -435,6 +536,8 @@ def ownership_programs() -> tuple[tuple[str, astx.Module, int], ...]:
       type: tuple[tuple[str, astx.Module, int], Ellipsis]
     """
     return (
+        ("tabular_owners", tabular_owners_program(fail=False), 0),
+        ("tabular_failure", tabular_owners_program(fail=True), 1),
         ("container_owners", container_owners_program(fail=False), 0),
         ("container_failure", container_owners_program(fail=True), 1),
         ("array_owners", array_program(fail=False), 0),

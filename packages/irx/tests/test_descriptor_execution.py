@@ -428,7 +428,6 @@ def test_conversion_classification_and_unresolved_lowering_fail_closed() -> (
     [
         astx.ListType([astx.SchemaType()]),
         astx.TupleType([astx.FieldType()]),
-        astx.UnionType((astx.SchemaType(), astx.NoneType())),
         astx.GeneratorType(astx.TypeDescriptorType()),
         astx.PointerType(astx.FieldType()),
     ],
@@ -445,10 +444,7 @@ def test_descriptor_value_wrappers_fail_before_lowering(
     module = module_with(astx.VariableDeclaration("unsupported", type_))
     with pytest.raises(
         SemanticError,
-        match=(
-            r"descriptor values cannot be nested|"
-            r"nullable values currently require"
-        ),
+        match="descriptor values cannot be nested",
     ):
         analyze(module)
 

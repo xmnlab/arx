@@ -19,7 +19,7 @@ from irx.analysis.handlers.base import (
     SemanticAnalyzerCore,
     SemanticVisitorMixinBase,
 )
-from irx.analysis.nullability import normalize_nullable
+from irx.analysis.nullability import managed_nullable, normalize_nullable
 from irx.analysis.resolved_nodes import SemanticStruct, SemanticStructField
 from irx.analysis.types import clone_type
 from irx.diagnostics import DiagnosticCodes
@@ -69,12 +69,21 @@ class DeclarationStructVisitorMixin(SemanticVisitorMixinBase):
                 node=attr,
                 unknown_message="Unknown field type '{name}'",
             )
-            if isinstance(normalize_nullable(attr.type_), astx.NullableType):
+            if managed_nullable(normalize_nullable(attr.type_)) or isinstance(
+                attr.type_,
+                (
+                    astx.ArrayType,
+                    astx.ArrayBuilderType,
+                    astx.ChunkedArrayType,
+                    astx.TableType,
+                    astx.RecordBatchType,
+                ),
+            ):
                 self.context.diagnostics.add(
-                    "nullable class and struct fields are not implemented; "
-                    "use a local or parameter value",
+                    "managed struct fields require destruction; "
+                    "use a managed class field instead",
                     node=attr,
-                    code=DiagnosticCodes.SEMANTIC_TYPE_MISMATCH,
+                    code=DiagnosticCodes.SEMANTIC_INVALID_OWNERSHIP,
                 )
             if isinstance(attr.type_, astx.ListType):
                 self.context.diagnostics.add(

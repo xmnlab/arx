@@ -237,6 +237,52 @@
   irx_arrow_internal_chunked_concat
 #define irx_arrow_chunked_equal \
   irx_arrow_internal_chunked_equal
+#define irx_arrow_batch_new_typed \
+  irx_arrow_internal_batch_new_typed
+#define irx_arrow_batch_rows \
+  irx_arrow_internal_batch_rows
+#define irx_arrow_batch_columns \
+  irx_arrow_internal_batch_columns
+#define irx_arrow_batch_schema \
+  irx_arrow_internal_batch_schema
+#define irx_arrow_batch_column_checked \
+  irx_arrow_internal_batch_column_checked
+#define irx_arrow_batch_slice \
+  irx_arrow_internal_batch_slice
+#define irx_arrow_batch_select \
+  irx_arrow_internal_batch_select
+#define irx_arrow_batch_with_schema \
+  irx_arrow_internal_batch_with_schema
+#define irx_arrow_batch_set_column \
+  irx_arrow_internal_batch_set_column
+#define irx_arrow_batch_remove \
+  irx_arrow_internal_batch_remove
+#define irx_arrow_table_new_typed \
+  irx_arrow_internal_table_new_typed
+#define irx_arrow_table_rows \
+  irx_arrow_internal_table_rows
+#define irx_arrow_table_columns \
+  irx_arrow_internal_table_columns
+#define irx_arrow_table_schema \
+  irx_arrow_internal_table_schema
+#define irx_arrow_table_column_checked \
+  irx_arrow_internal_table_column_checked
+#define irx_arrow_table_slice \
+  irx_arrow_internal_table_slice
+#define irx_arrow_table_select \
+  irx_arrow_internal_table_select
+#define irx_arrow_table_with_schema \
+  irx_arrow_internal_table_with_schema
+#define irx_arrow_table_set_column \
+  irx_arrow_internal_table_set_column
+#define irx_arrow_table_remove \
+  irx_arrow_internal_table_remove
+#define irx_arrow_batch_to_table \
+  irx_arrow_internal_batch_to_table
+#define irx_arrow_table_to_batch \
+  irx_arrow_internal_table_to_batch
+#define irx_arrow_table_combine \
+  irx_arrow_internal_table_combine
 
 uint32_t irx_arrow_abi_version(void);
 
@@ -712,6 +758,126 @@ irx_arrow_status irx_arrow_chunked_equal(
     const irx_arrow_chunked_array_handle* lhs,
     const irx_arrow_chunked_array_handle* rhs,
     int32_t* output);
+
+irx_arrow_status irx_arrow_batch_new_typed(
+    const irx_arrow_schema_handle* schema,
+    const void** columns,
+    int64_t count,
+    int64_t rows,
+    irx_arrow_record_batch_handle** output);
+
+irx_arrow_status irx_arrow_batch_rows(
+    const irx_arrow_record_batch_handle* value,
+    int64_t* output);
+
+irx_arrow_status irx_arrow_batch_columns(
+    const irx_arrow_record_batch_handle* value,
+    int64_t* output);
+
+irx_arrow_status irx_arrow_batch_schema(
+    const irx_arrow_record_batch_handle* value,
+    irx_arrow_schema_handle** output);
+
+irx_arrow_status irx_arrow_batch_column_checked(
+    const irx_arrow_record_batch_handle* value,
+    int64_t index,
+    const irx_arrow_field_handle* expected,
+    irx_arrow_array_handle** output);
+
+irx_arrow_status irx_arrow_batch_slice(
+    const irx_arrow_record_batch_handle* value,
+    int64_t offset,
+    int64_t length,
+    irx_arrow_record_batch_handle** output);
+
+irx_arrow_status irx_arrow_batch_select(
+    const irx_arrow_record_batch_handle* value,
+    const int64_t* indices,
+    int64_t count,
+    irx_arrow_record_batch_handle** output);
+
+irx_arrow_status irx_arrow_batch_with_schema(
+    const irx_arrow_record_batch_handle* value,
+    const irx_arrow_schema_handle* schema,
+    irx_arrow_record_batch_handle** output);
+
+irx_arrow_status irx_arrow_batch_set_column(
+    const irx_arrow_record_batch_handle* value,
+    int64_t index,
+    const irx_arrow_field_handle* field,
+    const irx_arrow_array_handle* column,
+    irx_arrow_record_batch_handle** output);
+
+irx_arrow_status irx_arrow_batch_remove(
+    const irx_arrow_record_batch_handle* value,
+    int64_t index,
+    irx_arrow_record_batch_handle** output);
+
+irx_arrow_status irx_arrow_table_new_typed(
+    const irx_arrow_schema_handle* schema,
+    const void** columns,
+    int64_t count,
+    int64_t rows,
+    irx_arrow_table_handle** output);
+
+irx_arrow_status irx_arrow_table_rows(
+    const irx_arrow_table_handle* value,
+    int64_t* output);
+
+irx_arrow_status irx_arrow_table_columns(
+    const irx_arrow_table_handle* value,
+    int64_t* output);
+
+irx_arrow_status irx_arrow_table_schema(
+    const irx_arrow_table_handle* value,
+    irx_arrow_schema_handle** output);
+
+irx_arrow_status irx_arrow_table_column_checked(
+    const irx_arrow_table_handle* value,
+    int64_t index,
+    const irx_arrow_field_handle* expected,
+    irx_arrow_chunked_array_handle** output);
+
+irx_arrow_status irx_arrow_table_slice(
+    const irx_arrow_table_handle* value,
+    int64_t offset,
+    int64_t length,
+    irx_arrow_table_handle** output);
+
+irx_arrow_status irx_arrow_table_select(
+    const irx_arrow_table_handle* value,
+    const int64_t* indices,
+    int64_t count,
+    irx_arrow_table_handle** output);
+
+irx_arrow_status irx_arrow_table_with_schema(
+    const irx_arrow_table_handle* value,
+    const irx_arrow_schema_handle* schema,
+    irx_arrow_table_handle** output);
+
+irx_arrow_status irx_arrow_table_set_column(
+    const irx_arrow_table_handle* value,
+    int64_t index,
+    const irx_arrow_field_handle* field,
+    const irx_arrow_chunked_array_handle* column,
+    irx_arrow_table_handle** output);
+
+irx_arrow_status irx_arrow_table_remove(
+    const irx_arrow_table_handle* value,
+    int64_t index,
+    irx_arrow_table_handle** output);
+
+irx_arrow_status irx_arrow_batch_to_table(
+    const irx_arrow_record_batch_handle* value,
+    irx_arrow_table_handle** output);
+
+irx_arrow_status irx_arrow_table_to_batch(
+    const irx_arrow_table_handle* value,
+    irx_arrow_record_batch_handle** output);
+
+irx_arrow_status irx_arrow_table_combine(
+    const irx_arrow_table_handle* value,
+    irx_arrow_table_handle** output);
 
 
 #endif

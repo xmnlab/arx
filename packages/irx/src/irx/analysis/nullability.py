@@ -1,5 +1,5 @@
 """
-title: Nullable normalization and supported scalar or shared owner payloads.
+title: Nullable normalization and supported scalar or opaque owner payloads.
 """
 
 from __future__ import annotations
@@ -134,8 +134,9 @@ def nullable_diagnostic(type_: astx.NullableType) -> str | None:
         return None
     if type(type_.payload_type) not in PRIMITIVE_PAYLOADS:
         return (
-            "nullable values currently require primitive numeric or Boolean "
-            "payloads; managed and nested payloads are not implemented"
+            "nullable values require primitive numeric or Boolean payloads "
+            "or implemented opaque owners; this payload has no native "
+            "lifetime contract"
         )
     return None
 
@@ -144,7 +145,7 @@ def nullable_diagnostic(type_: astx.NullableType) -> str | None:
 @typechecked
 def managed_nullable(type_: astx.DataType | None) -> bool:
     """
-    title: Identify nullable shared owners with a reserved null-pointer niche.
+    title: Identify nullable opaque owners with a reserved null-pointer niche.
     parameters:
       type_:
         type: astx.DataType | None
@@ -154,11 +155,15 @@ def managed_nullable(type_: astx.DataType | None) -> bool:
     if not isinstance(type_, astx.NullableType):
         return False
     payload = type_.payload_type
-    if isinstance(payload, (astx.ArrayType, astx.ChunkedArrayType)):
+    if isinstance(
+        payload, (astx.ArrayType, astx.ArrayBuilderType, astx.ChunkedArrayType)
+    ):
         return array_storage(payload) is not None
     return isinstance(
         payload,
         (
+            astx.TableType,
+            astx.RecordBatchType,
             astx.SchemaType,
             astx.FieldType,
             astx.TypeDescriptorType,

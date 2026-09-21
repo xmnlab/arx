@@ -83,7 +83,7 @@ def _load_handles() -> list[dict[str, object]]:
         dict[str, object],
         json.loads(ABI_MANIFEST_PATH.read_text(encoding="utf-8")),
     )
-    assert manifest["abi_version"] == "1.3.0"
+    assert manifest["abi_version"] == "1.4.0"
     return cast(list[dict[str, object]], manifest["handles"])
 
 
@@ -173,7 +173,9 @@ def test_arrow_abi_manifest_defines_versioned_runtime_features() -> None:
     } == EXPECTED_RUNTIME_FEATURES
     assert all(
         feature["contract_version"]
-        == ("1.4.0" if feature["name"] == "array" else "1.0.0")
+        == {"array": "1.4.0", "dataframe": "1.1.0"}.get(
+            feature["name"], "1.0.0"
+        )
         for feature in features
     )
     assert all(
@@ -181,11 +183,13 @@ def test_arrow_abi_manifest_defines_versioned_runtime_features() -> None:
     )
     assert RUNTIME_FEATURE_IDS == EXPECTED_RUNTIME_FEATURES
     assert RUNTIME_FEATURE_VERSIONS == {
-        name: (1, 4 if name == "array" else 0, 0)
+        name: (1, {"array": 4, "dataframe": 1}.get(name, 0), 0)
         for name in EXPECTED_RUNTIME_FEATURES
     }
     assert RUNTIME_FEATURE_PACKED_VERSIONS == {
-        name: 0x00010400 if name == "array" else 0x00010000
+        name: {"array": 0x00010400, "dataframe": 0x00010100}.get(
+            name, 0x00010000
+        )
         for name in EXPECTED_RUNTIME_FEATURES
     }
     assert LLVM_RUNTIME_FEATURE_IDS == RUNTIME_FEATURE_IDS
@@ -222,6 +226,7 @@ def test_arrow_abi_declaration_sets_have_exact_symbol_parity() -> None:
         "irx_arrow_descriptors.inc",
         "irx_arrow_array_values.inc",
         "irx_arrow_chunks.inc",
+        "irx_arrow_tabular.inc",
     ):
         source += (ABI_SOURCE_PATH.parent / include).read_text(
             encoding="utf-8"

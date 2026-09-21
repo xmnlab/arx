@@ -90,7 +90,7 @@ class SupportedPrimitiveMetadata(TypedDict):
 PrimitiveValue = int | float | bool | None
 BuilderValue = int | float | None
 ArrowSchemaFactory = Callable[[], object]
-EXPECTED_ARROW_ABI_VERSION = 0x00010300
+EXPECTED_ARROW_ABI_VERSION = 0x00010400
 ARROW_STATUS_OK = 0
 ARROW_STATUS_INVALID_ARGUMENT = 100
 ARROW_STATUS_NULL_POINTER = 101
@@ -1212,7 +1212,7 @@ def test_arrow_runtime_reports_stable_abi_and_feature_versions() -> None:
         """
         #include "irx_arrow_runtime.h"
 
-        #if IRX_ARROW_ABI_VERSION != UINT32_C(0x00010300)
+        #if IRX_ARROW_ABI_VERSION != UINT32_C(0x00010400)
         #error "unexpected packed Arrow ABI version"
         #endif
 
@@ -1227,7 +1227,7 @@ def test_arrow_runtime_reports_stable_abi_and_feature_versions() -> None:
           uint32_t supported = UINT32_MAX;
 
           if (IRX_ARROW_ABI_VERSION_MAJOR != 1) return 11;
-          if (IRX_ARROW_ABI_VERSION_MINOR != 3) return 12;
+          if (IRX_ARROW_ABI_VERSION_MINOR != 4) return 12;
           if (IRX_ARROW_ABI_VERSION_PATCH != 0) return 13;
           if (irx_arrow_abi_version() != IRX_ARROW_ABI_VERSION) return 14;
           if (IRX_ARROW_RUNTIME_FEATURE_CORE != 1) return 22;

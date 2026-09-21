@@ -123,6 +123,12 @@ class LiteralVisitorMixin(VisitorMixinBase):
         if isinstance(
             type_,
             (
+                astx.NullableType,
+                astx.ArrayType,
+                astx.ArrayBuilderType,
+                astx.ChunkedArrayType,
+                astx.TableType,
+                astx.RecordBatchType,
                 astx.SchemaType,
                 astx.FieldType,
                 astx.TypeDescriptorType,
@@ -297,11 +303,6 @@ class LiteralVisitorMixin(VisitorMixinBase):
             else:
                 self.visit_child(initializer.value)
                 raw_value = safe_pop(self.result_stack)
-                if raw_value is None:
-                    raise_lowering_internal_error(
-                        "class field initializer did not lower to a value",
-                        node=initializer.value,
-                    )
                 field_value = self._cast_ast_value(
                     raw_value,
                     source_type=self._resolved_ast_type(initializer.value),

@@ -29,7 +29,7 @@ extern "C" {
 #endif
 
 #define IRX_ARROW_ABI_VERSION_MAJOR UINT32_C(1)
-#define IRX_ARROW_ABI_VERSION_MINOR UINT32_C(3)
+#define IRX_ARROW_ABI_VERSION_MINOR UINT32_C(4)
 #define IRX_ARROW_ABI_VERSION_PATCH UINT32_C(0)
 #define IRX_ARROW_ABI_VERSION \
   ((IRX_ARROW_ABI_VERSION_MAJOR << 16) | \
@@ -115,7 +115,7 @@ enum irx_arrow_runtime_feature_id_code {
    IRX_ARROW_RUNTIME_FEATURE_TENSOR_CONTRACT_VERSION_PATCH)
 
 #define IRX_ARROW_RUNTIME_FEATURE_DATAFRAME_CONTRACT_VERSION_MAJOR UINT32_C(1)
-#define IRX_ARROW_RUNTIME_FEATURE_DATAFRAME_CONTRACT_VERSION_MINOR UINT32_C(0)
+#define IRX_ARROW_RUNTIME_FEATURE_DATAFRAME_CONTRACT_VERSION_MINOR UINT32_C(1)
 #define IRX_ARROW_RUNTIME_FEATURE_DATAFRAME_CONTRACT_VERSION_PATCH UINT32_C(0)
 #define IRX_ARROW_RUNTIME_FEATURE_DATAFRAME_CONTRACT_VERSION \
   ((IRX_ARROW_RUNTIME_FEATURE_DATAFRAME_CONTRACT_VERSION_MAJOR << 16) | \
@@ -806,6 +806,149 @@ IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_chunked_equal(
     const irx_arrow_chunked_array_handle* lhs,
     const irx_arrow_chunked_array_handle* rhs,
     int32_t* output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_batch_new_typed(
+    const irx_arrow_schema_handle* schema,
+    const void** columns,
+    int64_t count,
+    int64_t rows,
+    irx_arrow_record_batch_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_batch_rows(
+    const irx_arrow_record_batch_handle* value,
+    int64_t* output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_batch_columns(
+    const irx_arrow_record_batch_handle* value,
+    int64_t* output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_batch_schema(
+    const irx_arrow_record_batch_handle* value,
+    irx_arrow_schema_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_batch_column_checked(
+    const irx_arrow_record_batch_handle* value,
+    int64_t index,
+    const irx_arrow_field_handle* expected,
+    irx_arrow_array_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_batch_slice(
+    const irx_arrow_record_batch_handle* value,
+    int64_t offset,
+    int64_t length,
+    irx_arrow_record_batch_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_batch_select(
+    const irx_arrow_record_batch_handle* value,
+    const int64_t* indices,
+    int64_t count,
+    irx_arrow_record_batch_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_batch_with_schema(
+    const irx_arrow_record_batch_handle* value,
+    const irx_arrow_schema_handle* schema,
+    irx_arrow_record_batch_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_batch_set_column(
+    const irx_arrow_record_batch_handle* value,
+    int64_t index,
+    const irx_arrow_field_handle* field,
+    const irx_arrow_array_handle* column,
+    irx_arrow_record_batch_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_batch_remove(
+    const irx_arrow_record_batch_handle* value,
+    int64_t index,
+    irx_arrow_record_batch_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_table_new_typed(
+    const irx_arrow_schema_handle* schema,
+    const void** columns,
+    int64_t count,
+    int64_t rows,
+    irx_arrow_table_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_table_rows(
+    const irx_arrow_table_handle* value,
+    int64_t* output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_table_columns(
+    const irx_arrow_table_handle* value,
+    int64_t* output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_table_schema(
+    const irx_arrow_table_handle* value,
+    irx_arrow_schema_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_table_column_checked(
+    const irx_arrow_table_handle* value,
+    int64_t index,
+    const irx_arrow_field_handle* expected,
+    irx_arrow_chunked_array_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_table_slice(
+    const irx_arrow_table_handle* value,
+    int64_t offset,
+    int64_t length,
+    irx_arrow_table_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_table_select(
+    const irx_arrow_table_handle* value,
+    const int64_t* indices,
+    int64_t count,
+    irx_arrow_table_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_table_with_schema(
+    const irx_arrow_table_handle* value,
+    const irx_arrow_schema_handle* schema,
+    irx_arrow_table_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_table_set_column(
+    const irx_arrow_table_handle* value,
+    int64_t index,
+    const irx_arrow_field_handle* field,
+    const irx_arrow_chunked_array_handle* column,
+    irx_arrow_table_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_table_remove(
+    const irx_arrow_table_handle* value,
+    int64_t index,
+    irx_arrow_table_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_batch_to_table(
+    const irx_arrow_record_batch_handle* value,
+    irx_arrow_table_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_table_to_batch(
+    const irx_arrow_table_handle* value,
+    irx_arrow_record_batch_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_table_combine(
+    const irx_arrow_table_handle* value,
+    irx_arrow_table_handle** output,
     irx_arrow_error_handle** out_failure);
 
 #ifdef __cplusplus

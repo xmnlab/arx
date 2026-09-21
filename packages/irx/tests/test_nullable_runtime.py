@@ -111,7 +111,6 @@ def test_nullable_widening_is_lossless_and_one_way() -> None:
     "payload",
     [
         astx.String(),
-        astx.ArrayBuilderType(astx.LogicalType(astx.LogicalKind.INT32)),
         astx.NullableType(astx.Int32()),
     ],
 )
@@ -223,12 +222,46 @@ def test_every_primitive_nullable_executes_natively(tmp_path: Path) -> None:
     assert completed.returncode == 0, completed.stderr
 
 
-def test_nullable_struct_fields_fail_before_layout() -> None:
+def test_nullable_struct_fields_have_native_layout(tmp_path: Path) -> None:
     """
-    title: >-
-      Nullable aggregate fields need a separately validated layout contract.
+    title: Copy primitive nullable fields by value without dropping validity.
+    parameters:
+      tmp_path:
+        type: Path
     """
-    module = module_with()
+
+    def field() -> astx.FieldAccess:
+        """
+        title: Read the same struct slot using a fresh expression node.
+        returns:
+          type: astx.FieldAccess
+        """
+        return astx.FieldAccess(astx.Identifier("box"), "value")
+
+    module = module_with(
+        astx.VariableDeclaration(
+            "box",
+            astx.StructType("Box"),
+            mutability=astx.MutabilityKind.mutable,
+        ),
+        astx.AssertStmt(
+            astx.NullableQuery(astx.NullableOperation.IS_NULL, field())
+        ),
+        astx.BinaryOp("=", field(), astx.LiteralInt32(7)),
+        astx.AssertStmt(
+            astx.BinaryOp(
+                "==",
+                astx.NullableQuery(
+                    astx.NullableOperation.EXPECT_VALID, field()
+                ),
+                astx.LiteralInt32(7),
+            )
+        ),
+        astx.BinaryOp("=", field(), astx.LiteralNone()),
+        astx.AssertStmt(
+            astx.NullableQuery(astx.NullableOperation.IS_NULL, field())
+        ),
+    )
     module.block.insert(
         0,
         astx.StructDefStmt(
@@ -240,10 +273,15 @@ def test_nullable_struct_fields_fail_before_layout() -> None:
             ],
         ),
     )
-    with pytest.raises(
-        SemanticError, match="nullable class and struct fields"
-    ):
-        analyze(module)
+    builder = Builder()
+    text = builder.translate(module)
+    llvm.parse_assembly(text).verify()
+    executable = tmp_path / "nullable-struct"
+    builder._build_from_ir(text, str(executable))
+    completed = subprocess.run(
+        [str(executable)], capture_output=True, text=True, check=False
+    )
+    assert completed.returncode == 0, completed.stderr
 
 
 @pytest.mark.parametrize(

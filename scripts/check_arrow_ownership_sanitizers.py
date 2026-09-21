@@ -30,6 +30,7 @@ from irx.builder.runtime.features import NativeArtifact
 from irx.builder.runtime.linking import compile_native_artifacts
 
 FAILURE_MARKERS = {
+    "tabular_failure": "ARX-RUNTIME-ARROW-001",
     "container_failure": "ARX-RUNTIME-NULL-001",
     "array_failure": "ARX_RUNTIME_FAIL|ARX-RUNTIME-NULL-001|",
     "descriptor_failure": "ARX_RUNTIME_FAIL|ARX-RUNTIME-ARROW-001|",
@@ -41,7 +42,13 @@ SANITIZER_FLAGS = (
     "-fno-omit-frame-pointer",
     "-O1",
 )
-SANITIZER_CAPABILITIES = ("core", "array", "tensor", "dataframe")
+SANITIZER_CAPABILITIES = (
+    "core",
+    "array",
+    "tensor",
+    "dataframe",
+    "record_batch",
+)
 HARNESS_SOURCE = r"""
 #include "irx_arrow_abi_generated.h"
 
