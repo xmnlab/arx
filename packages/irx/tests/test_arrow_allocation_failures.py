@@ -407,7 +407,7 @@ def test_tensor_pool_failure_does_not_publish_partial_builder(
 
 def test_cpp_allocation_failure_sweep(tmp_path: Path) -> None:
     """
-    title: Fail each C++ allocation in real finish operations and retry.
+    title: Fail C++ finish and descriptor import allocations and retry.
     parameters:
       tmp_path:
         type: Path
@@ -438,3 +438,65 @@ def test_cpp_allocation_failure_sweep(tmp_path: Path) -> None:
         [str(executable)], capture_output=True, text=True, check=False
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("failure_index", [0, 1])
+def test_reusable_finish_pool_failure_preserves_builder(
+    failure_runtime: ctypes.CDLL,
+    monkeypatch: pytest.MonkeyPatch,
+    failure_index: int,
+) -> None:
+    """
+    title: Snapshot finish keeps reusable builder data intact until success.
+    parameters:
+      failure_runtime:
+        type: ctypes.CDLL
+      monkeypatch:
+        type: pytest.MonkeyPatch
+      failure_index:
+        type: int
+    """
+    library = failure_runtime
+    builder, array = ctypes.c_void_p(), ctypes.c_void_p()
+    _assert_arrow_ok(
+        library,
+        library.irx_arrow_array_builder_new(
+            IRX_ARROW_TYPE_INT32, ctypes.byref(builder)
+        ),
+    )
+    try:
+        _assert_arrow_ok(
+            library, library.irx_arrow_array_builder_append_int(builder, 7)
+        )
+        _assert_arrow_ok(
+            library, library.irx_arrow_array_builder_append_null(builder, 1)
+        )
+        original = builder.value
+        monkeypatch.setenv(POOL_FAILURE, str(failure_index))
+        assert (
+            library.irx_arrow_array_builder_build(
+                builder, 1, ctypes.byref(array)
+            )
+            == OUT_OF_MEMORY
+        )
+        assert array.value is None
+        assert builder.value == original
+        monkeypatch.delenv(POOL_FAILURE)
+        _assert_arrow_ok(
+            library,
+            library.irx_arrow_array_builder_build(
+                builder, 1, ctypes.byref(array)
+            ),
+        )
+        assert export_values(library, array) == [7, None]
+        length = ctypes.c_int64(-1)
+        _assert_arrow_ok(
+            library,
+            library.irx_arrow_array_builder_length(
+                builder, ctypes.byref(length)
+            ),
+        )
+        assert length.value == 0
+    finally:
+        library.irx_arrow_array_builder_release(ctypes.byref(builder))
+        library.irx_arrow_array_release(ctypes.byref(array))

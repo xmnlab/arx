@@ -18,6 +18,7 @@ from irx.analysis.bindings import VisibleBindings
 from irx.analysis.context import SemanticContext
 from irx.analysis.factories import SemanticEntityFactory
 from irx.analysis.module_interfaces import ModuleKey, ParsedModule
+from irx.analysis.nullability import normalize_nullable
 from irx.analysis.ownership import (
     resource_contract_for_type,
     resource_ownership,
@@ -771,6 +772,7 @@ class SemanticVisitorMixinTypingBase:
         node: astx.AST | None,
         *,
         context: str,
+        allow_none: bool = False,
     ) -> bool:
         """
         title: Require one expression context to receive a non-void value.
@@ -779,6 +781,8 @@ class SemanticVisitorMixinTypingBase:
             type: astx.AST | None
           context:
             type: str
+          allow_none:
+            type: bool
         returns:
           type: bool
         """
@@ -980,7 +984,18 @@ class SemanticAnalyzerCore(BaseVisitor):
           type: astx.DataType | None
         """
         info = self._semantic(node)
+        type_ = normalize_nullable(type_)
         info.resolved_type = type_
+        # Inferred expression types need the same fail-closed check as declared
+        # types, including otherwise unannotated descriptor container literals.
+        if type_ is not None:
+            error = columnar_type_diagnostic(type_)
+            if error is not None:
+                self.context.diagnostics.add(
+                    error,
+                    node=node,
+                    code=DiagnosticCodes.SEMANTIC_TYPE_MISMATCH,
+                )
         if type_ is not None and hasattr(node, "type_"):
             try:
                 setattr(node, "type_", clone_type(type_))
@@ -1360,6 +1375,7 @@ class SemanticAnalyzerCore(BaseVisitor):
             info.resolved_assignment = None
             return
         info.resolved_assignment = ResolvedAssignment(symbol)
+        self.context.valid_nullable_symbols.discard(symbol.symbol_id)
 
     def _set_field_access(
         self,
@@ -1781,6 +1797,14 @@ class SemanticAnalyzerCore(BaseVisitor):
             for index, argument in enumerate(visible_arguments):
                 if self._argument_has_default(argument):
                     self.visit(argument.default)
+                    self._require_value_expression(
+                        argument.default,
+                        context="parameter default",
+                        allow_none=isinstance(
+                            normalize_nullable(argument.type_),
+                            astx.NullableType,
+                        ),
+                    )
                     default_type = self._expr_type(argument.default)
                     if not is_assignable(argument.type_, default_type):
                         self.context.diagnostics.add(
@@ -1817,6 +1841,7 @@ class SemanticAnalyzerCore(BaseVisitor):
         node: astx.AST | None,
         *,
         context: str,
+        allow_none: bool = False,
     ) -> bool:
         """
         title: Require one expression context to receive a non-void value.
@@ -1825,10 +1850,14 @@ class SemanticAnalyzerCore(BaseVisitor):
             type: astx.AST | None
           context:
             type: str
+          allow_none:
+            type: bool
         returns:
           type: bool
         """
         if node is None:
+            return True
+        if allow_none and isinstance(node, astx.LiteralNone):
             return True
         resolved_type = self._expr_type(node)
         if not isinstance(resolved_type, astx.NoneType):

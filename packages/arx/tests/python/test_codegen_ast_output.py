@@ -207,3 +207,96 @@ def test_assertion_reports_before_owner_cleanup() -> None:
     cleanup = ir_text.index('call void @"free"', report)
     terminate = ir_text.index('call void @"exit"', cleanup)
     assert report < cleanup < terminate
+
+
+def test_descriptor_literals_use_resolved_native_operations() -> None:
+    """
+    title: Translate builtin descriptors with checked opaque native calls.
+    """
+    source = dedent(
+        """\
+        ```
+        title: Descriptor translation regression
+        ```
+        fn main() -> i32:
+          var layout: schema = schema[id: i64 | none]
+          var column: field = schema_field(layout, 0)
+          assert field_nullable(column)
+          assert type_bit_width(field_type(column)) == 64
+          return 0
+        """
+    )
+    ArxIO.string_to_buffer(source)
+    module = Parser().parse(Lexer().lex())
+    ir_text = ArxBuilder().translate(module)
+    llvm.parse_assembly(ir_text).verify()
+    assert 'call i32 @"irx_arrow_schema_import_copy"' in ir_text
+    assert 'call i32 @"irx_arrow_field_release"' in ir_text
+    assert 'call i32 @"irx_arrow_runtime_has_feature"' in ir_text
+
+
+def test_nullable_payload_reads_follow_validity_checks() -> None:
+    """
+    title: >-
+      Translate normalized nullable storage without sentinel payload reads.
+    """
+    source = (
+        "```\ntitle: Nullable translation\n```\n"
+        "fn widen(value: i32 | none) -> i64 | none:\n"
+        "  return value\n"
+        "fn main() -> i32:\n"
+        "  var value: i32 | none = none\n"
+        "  value = 0\n"
+        "  assert expect_valid(widen(value)) == 0\n"
+        "  return 0\n"
+    )
+    ArxIO.string_to_buffer(source)
+    module = Parser().parse(Lexer().lex())
+    output = ArxBuilder().translate(module)
+    llvm.parse_assembly(output).verify()
+    assert "irx_arrow_" not in output
+    assert "{i1, i32}" in output
+    assert "nullable.convert.valid:" in output
+    assert "nullable.unwrap.pass:" in output
+
+
+def test_numeric_prefix_and_fallthrough_return() -> None:
+    """
+    title: Lower resolved scalar signs after a non-exhaustive source branch.
+    """
+    ArxIO.string_to_buffer(
+        "```\ntitle: Scalar prefix and branch regression\n```\n"
+        "fn choose(flag: bool) -> i32:\n"
+        "  if flag:\n"
+        "    return -1\n"
+        "  return +2\n"
+        "fn main() -> i32:\n"
+        "  var real: f32 = -0.5\n"
+        "  assert real < 0.0\n"
+        "  assert choose(true) < 0\n"
+        "  return choose(false)\n"
+    )
+    output = ArxBuilder().translate(Parser().parse(Lexer().lex()))
+    llvm.parse_assembly(output).verify()
+    assert "fneg float" in output
+    assert "sub i32 0," in output
+
+
+def test_array_scalar_payload_load_is_validity_dominated() -> None:
+    """
+    title: Keep typed native output reads behind status and validity branches.
+    """
+    ArxIO.string_to_buffer(
+        "```\ntitle: Array scalar output ordering\n```\n"
+        "fn main() -> i32:\n"
+        "  var values: array[i32 | none] = array[i32 | none](none)\n"
+        "  var item: i32 | none = array_at(values, 0)\n"
+        "  if is_valid(item):\n    return item\n"
+        "  return 0\n"
+    )
+    output = ArxBuilder().translate(Parser().parse(Lexer().lex()))
+    llvm.parse_assembly(output).verify()
+    assert 'call i32 @"irx_arrow_array_get_int"' in output
+    payload_load = output.index('load i64, i64* %"array.scalar.payload"')
+    assert output.index("array.scalar.present:") < payload_load
+    assert "nullable.proven_payload" in output

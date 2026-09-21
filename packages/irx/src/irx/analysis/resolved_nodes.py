@@ -15,7 +15,14 @@ import astx
 
 from public import public
 
+from irx.analysis.array_values import ResolvedArray
 from irx.analysis.module_interfaces import ModuleKey
+from irx.analysis.nullability import (
+    ResolvedNullableOperator,
+    ResolvedNullableQuery,
+)
+from irx.analysis.schema_conversions import SchemaConversion
+from irx.analysis.schema_descriptors import ResolvedDescriptor
 from irx.typecheck import typechecked
 
 
@@ -74,6 +81,7 @@ class ResourceKind(str, Enum):
     GENERATOR_FRAME = "generator_frame"
     ERROR = "error"
     TYPE = "type"
+    FIELD = "field"
     SCHEMA = "schema"
     SCALAR = "scalar"
     ARRAY_BUILDER = "array_builder"
@@ -1807,6 +1815,18 @@ class SemanticInfo:
       Aggregate all semantic sidecar fields that analysis may attach to a
       single AST node.
     attributes:
+      resolved_array:
+        type: ResolvedArray | None
+      resolved_nullable_query:
+        type: ResolvedNullableQuery | None
+      resolved_nullable_operator:
+        type: ResolvedNullableOperator | None
+      nullable_refined:
+        type: bool
+      resolved_descriptor:
+        type: ResolvedDescriptor | None
+      resolved_descriptor_conversion:
+        type: SchemaConversion | None
       resolved_type:
         type: astx.DataType | None
       resolved_symbol:
@@ -1863,6 +1883,12 @@ class SemanticInfo:
         type: dict[str, Any]
     """
 
+    resolved_array: ResolvedArray | None = None
+    resolved_nullable_query: ResolvedNullableQuery | None = None
+    resolved_nullable_operator: ResolvedNullableOperator | None = None
+    nullable_refined: bool = False
+    resolved_descriptor: ResolvedDescriptor | None = None
+    resolved_descriptor_conversion: SchemaConversion | None = None
     resolved_type: astx.DataType | None = None
     resolved_symbol: SemanticSymbol | None = None
     resolved_function: SemanticFunction | None = None

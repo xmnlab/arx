@@ -13,6 +13,7 @@ import astx
 
 from public import public
 
+from irx.analysis.nullability import normalize_nullable
 from irx.analysis.schema_types import same_columnar_type
 from irx.typecheck import typechecked
 
@@ -233,6 +234,12 @@ def clone_type(type_: astx.DataType) -> astx.DataType:
             setattr(cloned, "alias_name", alias_name)
         return cloned
 
+    normalized = normalize_nullable(type_)
+    if isinstance(normalized, astx.NullableType):
+        return astx.NullableType(
+            clone_type(normalized.payload_type),
+            alias_name=normalized.alias_name,
+        )
     if isinstance(type_, astx.LogicalValueType):
         return with_alias(
             type(type_)(type_.element_type, nullable=type_.nullable)
@@ -383,6 +390,8 @@ def display_type_name(type_: astx.DataType | None) -> str:
     alias_name = getattr(type_, "alias_name", None)
     if isinstance(alias_name, str):
         return alias_name
+    if isinstance(type_, astx.NullableType):
+        return display_type_name(type_.payload_type) + " | none"
     if isinstance(type_, astx.UnionType):
         if type_.alias_name is not None:
             return type_.alias_name
@@ -484,6 +493,15 @@ def same_type(lhs: astx.DataType | None, rhs: astx.DataType | None) -> bool:
     returns:
       type: bool
     """
+    lhs, rhs = normalize_nullable(lhs), normalize_nullable(rhs)
+    if isinstance(lhs, astx.NullableType) or isinstance(
+        rhs, astx.NullableType
+    ):
+        return (
+            isinstance(lhs, astx.NullableType)
+            and isinstance(rhs, astx.NullableType)
+            and same_type(lhs.payload_type, rhs.payload_type)
+        )
     if lhs is None or rhs is None:
         return False
     if isinstance(lhs, (astx.LogicalValueType, astx.SchemaValueType)):
@@ -769,6 +787,18 @@ def is_type_member(
     returns:
       type: bool
     """
+    target, value = normalize_nullable(target), normalize_nullable(value)
+    if isinstance(target, astx.NullableType):
+        if isinstance(value, astx.NoneType):
+            return True
+        payload = (
+            value.payload_type
+            if isinstance(value, astx.NullableType)
+            else value
+        )
+        return is_type_member(target.payload_type, payload)
+    if isinstance(value, astx.NullableType):
+        return False
     if target is None or value is None:
         return False
     if isinstance(target, astx.UnionType) and isinstance(
@@ -1042,6 +1072,18 @@ def is_assignable(
     returns:
       type: bool
     """
+    target, value = normalize_nullable(target), normalize_nullable(value)
+    if isinstance(target, astx.NullableType):
+        if isinstance(value, astx.NoneType):
+            return True
+        payload = (
+            value.payload_type
+            if isinstance(value, astx.NullableType)
+            else value
+        )
+        return is_assignable(target.payload_type, payload)
+    if isinstance(value, astx.NullableType):
+        return False
     if target is None or value is None:
         return True
     if not _metadata_assignment_compatible(target, value):

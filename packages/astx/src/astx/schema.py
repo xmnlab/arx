@@ -15,6 +15,7 @@ from public import public
 
 from astx.base import DataType, ReprStruct
 from astx.tools.typing import typechecked
+from astx.types.base import AnyType
 
 Metadata = tuple[tuple[bytes, bytes], ...]
 
@@ -317,7 +318,7 @@ class Schema:
 
 @public
 @typechecked
-class LogicalValueType(DataType):
+class LogicalValueType(AnyType):
     """
     title: Base for typed scalar and one-dimensional columnar values.
     attributes:
@@ -382,6 +383,19 @@ class ScalarType(LogicalValueType):
 class ArrayType(LogicalValueType):
     """
     title: A contiguous one-dimensional columnar array.
+    attributes:
+      element_type:
+        type: LogicalType
+      nullable:
+        type: bool
+    """
+
+
+@public
+@typechecked
+class ArrayBuilderType(LogicalValueType):
+    """
+    title: A unique mutable builder for a declared logical element type.
     attributes:
       element_type:
         type: LogicalType
@@ -480,7 +494,7 @@ class StreamType(SchemaValueType):
 
 @public
 @typechecked
-class SchemaType(DataType):
+class SchemaType(AnyType):
     """
     title: The type of a runtime schema descriptor value.
     """
@@ -488,7 +502,15 @@ class SchemaType(DataType):
 
 @public
 @typechecked
-class FieldType(DataType):
+class FieldType(AnyType):
     """
     title: The type of a runtime field descriptor value.
+    """
+
+
+@public
+@typechecked
+class TypeDescriptorType(AnyType):
+    """
+    title: The type of an immutable runtime logical type descriptor.
     """

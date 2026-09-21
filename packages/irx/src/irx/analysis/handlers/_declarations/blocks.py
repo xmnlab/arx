@@ -17,6 +17,7 @@ from irx.analysis.handlers.base import (
     SemanticAnalyzerCore,
     SemanticVisitorMixinBase,
 )
+from irx.analysis.nullability import normalize_nullable
 from irx.analysis.ownership import (
     list_resource_ownership,
     resource_contract_for_type,
@@ -101,6 +102,12 @@ class DeclarationBlockVisitorMixin(SemanticVisitorMixinBase):
             return
 
         initializer_ownership = resource_ownership(value)
+        if isinstance(node.type_, astx.NullableType) and isinstance(
+            value, astx.LiteralNone
+        ):
+            initializer_ownership = typed_resource_ownership(
+                node.type_, OwnershipKind.OWNED
+            )
         if initializer_ownership is None:
             self.context.diagnostics.add(
                 f"list initializer for '{node.name}' is missing ownership "
@@ -188,6 +195,12 @@ class DeclarationBlockVisitorMixin(SemanticVisitorMixinBase):
             return
 
         initializer_ownership = resource_ownership(value)
+        if isinstance(node.type_, astx.NullableType) and isinstance(
+            value, astx.LiteralNone
+        ):
+            initializer_ownership = typed_resource_ownership(
+                node.type_, OwnershipKind.OWNED
+            )
         if initializer_ownership is None:
             self.context.diagnostics.add(
                 f"resource initializer for '{node.name}' is missing "
@@ -302,6 +315,12 @@ class DeclarationBlockVisitorMixin(SemanticVisitorMixinBase):
             return
 
         initializer_ownership = resource_ownership(value)
+        if isinstance(node.type_, astx.NullableType) and isinstance(
+            value, astx.LiteralNone
+        ):
+            initializer_ownership = typed_resource_ownership(
+                node.type_, OwnershipKind.OWNED
+            )
         if initializer_ownership is None:
             self.context.diagnostics.add(
                 f"string initializer for '{node.name}' is missing ownership "
@@ -421,6 +440,9 @@ class DeclarationBlockVisitorMixin(SemanticVisitorMixinBase):
             if self._require_value_expression(
                 node.value,
                 context=f"Initializer for '{node.name}'",
+                allow_none=isinstance(
+                    normalize_nullable(node.type_), astx.NullableType
+                ),
             ):
                 validate_assignment(
                     self.context.diagnostics,
@@ -454,6 +476,9 @@ class DeclarationBlockVisitorMixin(SemanticVisitorMixinBase):
             if self._require_value_expression(
                 node.value,
                 context=f"Initializer for '{node.name}'",
+                allow_none=isinstance(
+                    normalize_nullable(node.type_), astx.NullableType
+                ),
             ):
                 validate_assignment(
                     self.context.diagnostics,

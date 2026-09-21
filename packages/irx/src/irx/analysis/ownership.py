@@ -15,6 +15,7 @@ import astx
 
 from public import public
 
+from irx.analysis.nullability import managed_nullable
 from irx.analysis.resolved_nodes import (
     OwnershipEscapeKind,
     OwnershipKind,
@@ -46,6 +47,13 @@ ARROW_RESOURCE_CONTRACTS: Mapping[ResourceKind, ResourceContract] = (
                 ResourceMutability.IMMUTABLE,
                 "irx_arrow_type_release",
                 "irx_arrow_type_retain",
+            ),
+            ResourceKind.FIELD: ResourceContract(
+                ResourceKind.FIELD,
+                ResourceSharingKind.SHARED,
+                ResourceMutability.IMMUTABLE,
+                "irx_arrow_field_release",
+                "irx_arrow_field_retain",
             ),
             ResourceKind.SCHEMA: ResourceContract(
                 ResourceKind.SCHEMA,
@@ -359,6 +367,21 @@ def resource_contract_for_type(
     """
     if type_ is None:
         return None
+    if managed_nullable(type_):
+        assert isinstance(type_, astx.NullableType)
+        return resource_contract_for_type(type_.payload_type)
+    if isinstance(type_, astx.ArrayBuilderType):
+        return arrow_resource_contract(ResourceKind.ARRAY_BUILDER)
+    if isinstance(type_, astx.ChunkedArrayType):
+        return arrow_resource_contract(ResourceKind.CHUNKED_ARRAY)
+    if isinstance(type_, astx.ArrayType):
+        return arrow_resource_contract(ResourceKind.ARRAY)
+    if isinstance(type_, astx.SchemaType):
+        return arrow_resource_contract(ResourceKind.SCHEMA)
+    if isinstance(type_, astx.FieldType):
+        return arrow_resource_contract(ResourceKind.FIELD)
+    if isinstance(type_, astx.TypeDescriptorType):
+        return arrow_resource_contract(ResourceKind.TYPE)
     if isinstance(type_, astx.ListType):
         return LIST_RESOURCE_CONTRACT
     if isinstance(type_, astx.String):

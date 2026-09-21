@@ -22,7 +22,13 @@ from arx.dataframe import (
 )
 from arx.exceptions import ParserException
 from arx.lexer import TokenKind
+from arx.parser.arrays import ArrayParser
 from arx.parser.base import ParserMixinBase
+from arx.parser.descriptors import (
+    DESCRIPTOR_LITERALS,
+    DESCRIPTOR_QUERIES,
+    DescriptorParser,
+)
 from arx.parser.state import TypeUseContext
 from arx.tensor import attach_binding, infer_literal
 
@@ -323,6 +329,16 @@ class ExpressionParserMixin(ParserMixinBase):
 
         self.tokens.get_next_token()  # eat identifier
 
+        if id_name in {
+            "array",
+            "array_builder",
+            "chunked_array",
+        } and self._is_operator("["):
+            return ArrayParser(self).literal(id_loc, id_name)
+
+        if id_name in DESCRIPTOR_LITERALS and self._is_operator("["):
+            return DescriptorParser(self).literal(id_name, id_loc)
+
         template_args = self._parse_template_args_for_call()
 
         if not self._is_operator("("):
@@ -437,6 +453,60 @@ class ExpressionParserMixin(ParserMixinBase):
                 )
             return astx.ClassConstruct(id_name)
 
+        array_queries = {item.value: item for item in astx.ArrayOperation}
+        if id_name in array_queries:
+            if template_args is not None:
+                raise ParserException(
+                    "Array queries reject template arguments."
+                )
+            return astx.ArrayQuery(
+                array_queries[id_name], tuple(args), loc=id_loc
+            )
+
+        nullable_queries = {
+            item.value: item for item in astx.NullableOperation
+        }
+        if id_name in nullable_queries:
+            if template_args is not None or len(args) != 1:
+                raise ParserException(
+                    f"{id_name} expects one value and no template arguments."
+                )
+            return astx.NullableQuery(
+                nullable_queries[id_name], args[0], loc=id_loc
+            )
+        if id_name == "conversion_kind":
+            if (
+                template_args is not None
+                or len(args) != 2
+                or not all(
+                    isinstance(
+                        arg, (astx.TypeDescriptorLiteral, astx.SchemaLiteral)
+                    )
+                    for arg in args
+                )
+            ):
+                raise ParserException(
+                    "conversion_kind expects two datatype or schema literals."
+                )
+            left = cast(
+                astx.TypeDescriptorLiteral | astx.SchemaLiteral, args[0]
+            )
+            right = cast(
+                astx.TypeDescriptorLiteral | astx.SchemaLiteral, args[1]
+            )
+            return astx.DescriptorCompatibility(
+                left.value, right.value, loc=id_loc
+            )
+        if id_name in DESCRIPTOR_QUERIES:
+            if template_args is not None:
+                raise ParserException(
+                    "Descriptor queries do not accept template arguments."
+                )
+            return astx.DescriptorQuery(
+                DESCRIPTOR_QUERIES[id_name],
+                tuple(args),
+                loc=id_loc,
+            )
         call = astx.FunctionCall(id_name, args, loc=id_loc)
         if template_args is not None:
             astx.set_template_args(call, template_args)

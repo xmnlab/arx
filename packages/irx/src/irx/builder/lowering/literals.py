@@ -123,6 +123,9 @@ class LiteralVisitorMixin(VisitorMixinBase):
         if isinstance(
             type_,
             (
+                astx.SchemaType,
+                astx.FieldType,
+                astx.TypeDescriptorType,
                 astx.StructType,
                 astx.BufferViewType,
                 astx.TensorType,

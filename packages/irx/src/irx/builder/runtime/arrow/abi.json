@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "abi_version": "1.0.0",
+  "abi_version": "1.3.0",
   "handle_contract": {
     "retain_output": "A successful retain writes one new owner token to an output slot.",
     "release_input": "Release consumes one owner token through a pointer-to-slot and clears that slot.",
@@ -54,7 +54,8 @@
     ["UINT64", 8],
     ["FLOAT32", 9],
     ["FLOAT64", 10],
-    ["BOOL", 11]
+    ["BOOL", 11],
+    ["FLOAT16", 12]
   ],
   "runtime_features": [
     {
@@ -66,7 +67,7 @@
     {
       "id": 2,
       "name": "array",
-      "contract_version": "1.1.0",
+      "contract_version": "1.4.0",
       "availability": "implemented"
     },
     {
@@ -105,7 +106,7 @@
       "c_type": "irx_arrow_type_handle",
       "ownership": "shared",
       "thread_safety": "immutable_shared",
-      "availability": "planned_m3",
+      "availability": "implemented",
       "retain": "irx_arrow_type_retain",
       "release": "irx_arrow_type_release"
     },
@@ -228,6 +229,16 @@
       "availability": "planned_m8",
       "retain": null,
       "release": "irx_arrow_execution_plan_release"
+    },
+    {
+      "id": 15,
+      "name": "field",
+      "c_type": "irx_arrow_field_handle",
+      "ownership": "shared",
+      "thread_safety": "immutable_shared",
+      "availability": "implemented",
+      "retain": "irx_arrow_field_retain",
+      "release": "irx_arrow_field_release"
     }
   ],
   "functions": [
@@ -324,7 +335,6 @@
       "return": "status",
       "parameters": [["error_pointer", "error"]]
     },
-
     {
       "name": "irx_arrow_schema_import_copy",
       "features": ["array"],
@@ -372,7 +382,6 @@
       "return": "status",
       "parameters": [["schema_pointer", "schema"]]
     },
-
     {
       "name": "irx_arrow_array_builder_new",
       "features": ["array"],
@@ -743,7 +752,6 @@
       "return": "status",
       "parameters": [["tensor_pointer", "tensor"]]
     },
-
     {
       "name": "irx_arrow_table_new_from_arrays",
       "features": ["dataframe"],
@@ -819,7 +827,6 @@
       "return": "status",
       "parameters": [["chunked_array_pointer", "column"]]
     },
-
     {
       "name": "irx_arrow_tensor_release_callback",
       "features": ["tensor"],
@@ -833,6 +840,418 @@
       "return": "c_string",
       "parameters": [],
       "fallible": false
+    },
+    {
+      "name": "irx_arrow_type_import_copy",
+      "features": ["array"],
+      "parameters": [
+        ["const_arrow_schema", "schema"],
+        ["type_pointer", "out_value"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_type_export",
+      "features": ["array"],
+      "parameters": [
+        ["const_type", "value"],
+        ["arrow_schema", "out_schema"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_type_retain",
+      "features": ["array"],
+      "parameters": [
+        ["const_type", "value"],
+        ["type_pointer", "out_value"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_type_release",
+      "features": ["array"],
+      "parameters": [["type_pointer", "value"]],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_field_import_copy",
+      "features": ["array"],
+      "parameters": [
+        ["const_arrow_schema", "schema"],
+        ["field_pointer", "out_value"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_field_export",
+      "features": ["array"],
+      "parameters": [
+        ["const_field", "value"],
+        ["arrow_schema", "out_schema"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_field_retain",
+      "features": ["array"],
+      "parameters": [
+        ["const_field", "value"],
+        ["field_pointer", "out_value"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_field_release",
+      "features": ["array"],
+      "parameters": [["field_pointer", "value"]],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_type_equals",
+      "features": ["array"],
+      "parameters": [
+        ["const_type", "left"],
+        ["const_type", "right"],
+        ["int32_pointer", "out_equal"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_field_equals",
+      "features": ["array"],
+      "parameters": [
+        ["const_field", "left"],
+        ["const_field", "right"],
+        ["int32_pointer", "out_equal"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_schema_equals",
+      "features": ["array"],
+      "parameters": [
+        ["const_schema", "left"],
+        ["const_schema", "right"],
+        ["int32_pointer", "out_equal"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_type_num_fields",
+      "features": ["array"],
+      "parameters": [
+        ["const_type", "value"],
+        ["int64_pointer", "out_count"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_type_field",
+      "features": ["array"],
+      "parameters": [
+        ["const_type", "value"],
+        ["int64", "index"],
+        ["field_pointer", "out_field"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_schema_num_fields",
+      "features": ["array"],
+      "parameters": [
+        ["const_schema", "value"],
+        ["int64_pointer", "out_count"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_schema_field",
+      "features": ["array"],
+      "parameters": [
+        ["const_schema", "value"],
+        ["int64", "index"],
+        ["field_pointer", "out_field"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_field_type",
+      "features": ["array"],
+      "parameters": [
+        ["const_field", "value"],
+        ["type_pointer", "out_type"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_field_nullable",
+      "features": ["array"],
+      "parameters": [
+        ["const_field", "value"],
+        ["int32_pointer", "out_nullable"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_type_bit_width",
+      "features": ["array"],
+      "parameters": [
+        ["const_type", "value"],
+        ["int64_pointer", "out_width"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_field_name_copy",
+      "features": ["array"],
+      "return": "status",
+      "parameters": [
+        ["const_field", "value"],
+        ["c_string_pointer", "out_name"]
+      ]
+    },
+    {
+      "name": "irx_arrow_array_get_int",
+      "features": ["array"],
+      "return": "status",
+      "parameters": [
+        ["const_array", "array"],
+        ["int64", "index"],
+        ["int32_pointer", "out_valid"],
+        ["int64_pointer", "out_value"]
+      ]
+    },
+    {
+      "name": "irx_arrow_array_get_uint",
+      "features": ["array"],
+      "return": "status",
+      "parameters": [
+        ["const_array", "array"],
+        ["int64", "index"],
+        ["int32_pointer", "out_valid"],
+        ["uint64_pointer", "out_value"]
+      ]
+    },
+    {
+      "name": "irx_arrow_array_get_double",
+      "features": ["array"],
+      "return": "status",
+      "parameters": [
+        ["const_array", "array"],
+        ["int64", "index"],
+        ["int32_pointer", "out_valid"],
+        ["double_pointer", "out_value"]
+      ]
+    },
+    {
+      "name": "irx_arrow_array_slice",
+      "features": ["array"],
+      "return": "status",
+      "parameters": [
+        ["const_array", "array"],
+        ["int64", "offset"],
+        ["int64", "length"],
+        ["array_pointer", "out_array"]
+      ]
+    },
+    {
+      "name": "irx_arrow_array_concat",
+      "features": ["array"],
+      "return": "status",
+      "parameters": [
+        ["const_array", "lhs"],
+        ["const_array", "rhs"],
+        ["array_pointer", "out_array"]
+      ]
+    },
+    {
+      "name": "irx_arrow_array_copy",
+      "features": ["array"],
+      "return": "status",
+      "parameters": [
+        ["const_array", "array"],
+        ["array_pointer", "out_array"]
+      ]
+    },
+    {
+      "name": "irx_arrow_array_equal",
+      "features": ["array"],
+      "return": "status",
+      "parameters": [
+        ["const_array", "lhs"],
+        ["const_array", "rhs"],
+        ["int32_pointer", "out_equal"]
+      ]
+    },
+    {
+      "name": "irx_arrow_array_builder_finish_typed",
+      "features": ["array"],
+      "return": "status",
+      "parameters": [
+        ["array_builder_pointer", "builder"],
+        ["int32", "nullable"],
+        ["array_pointer", "out_array"]
+      ]
+    },
+    {
+      "name": "irx_arrow_array_builder_reserve",
+      "features": ["array"],
+      "parameters": [
+        ["array_builder", "builder"],
+        ["int64", "additional"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_array_builder_length",
+      "features": ["array"],
+      "parameters": [
+        ["const_array_builder", "builder"],
+        ["int64_pointer", "out_length"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_array_builder_build",
+      "features": ["array"],
+      "parameters": [
+        ["array_builder", "builder"],
+        ["int32", "nullable"],
+        ["array_pointer", "out_array"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_chunked_new",
+      "features": ["array"],
+      "parameters": [
+        ["int32", "type_id"],
+        ["int32", "nullable"],
+        ["const_void_pointer", "chunks"],
+        ["int64", "count"],
+        ["chunked_array_pointer", "out_value"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_chunked_length",
+      "features": ["array"],
+      "parameters": [
+        ["const_chunked_array", "value"],
+        ["int64_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_chunked_null_count",
+      "features": ["array"],
+      "parameters": [
+        ["const_chunked_array", "value"],
+        ["int64_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_chunked_num_chunks",
+      "features": ["array"],
+      "parameters": [
+        ["const_chunked_array", "value"],
+        ["int64_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_chunked_get_int",
+      "features": ["array"],
+      "parameters": [
+        ["const_chunked_array", "value"],
+        ["int64", "index"],
+        ["int32_pointer", "valid"],
+        ["int64_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_chunked_get_uint",
+      "features": ["array"],
+      "parameters": [
+        ["const_chunked_array", "value"],
+        ["int64", "index"],
+        ["int32_pointer", "valid"],
+        ["uint64_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_chunked_get_double",
+      "features": ["array"],
+      "parameters": [
+        ["const_chunked_array", "value"],
+        ["int64", "index"],
+        ["int32_pointer", "valid"],
+        ["double_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_chunked_chunk",
+      "features": ["array"],
+      "parameters": [
+        ["const_chunked_array", "value"],
+        ["int64", "index"],
+        ["array_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_chunked_combine",
+      "features": ["array"],
+      "parameters": [
+        ["const_chunked_array", "value"],
+        ["array_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_chunked_slice",
+      "features": ["array"],
+      "parameters": [
+        ["const_chunked_array", "value"],
+        ["int64", "offset"],
+        ["int64", "length"],
+        ["chunked_array_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_chunked_copy",
+      "features": ["array"],
+      "parameters": [
+        ["const_chunked_array", "value"],
+        ["chunked_array_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_chunked_concat",
+      "features": ["array"],
+      "parameters": [
+        ["const_chunked_array", "lhs"],
+        ["const_chunked_array", "rhs"],
+        ["chunked_array_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_chunked_equal",
+      "features": ["array"],
+      "parameters": [
+        ["const_chunked_array", "lhs"],
+        ["const_chunked_array", "rhs"],
+        ["int32_pointer", "output"]
+      ],
+      "return": "status"
     }
   ]
 }

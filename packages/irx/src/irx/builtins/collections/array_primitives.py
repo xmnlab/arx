@@ -41,6 +41,7 @@ IRX_ARROW_TYPE_UINT64 = 8
 IRX_ARROW_TYPE_FLOAT32 = 9
 IRX_ARROW_TYPE_FLOAT64 = 10
 IRX_ARROW_TYPE_BOOL = 11
+IRX_ARROW_TYPE_FLOAT16 = 12
 
 
 @typechecked
@@ -71,6 +72,7 @@ class ArrayPrimitiveTypeSpec:
 ARRAY_PRIMITIVE_TYPE_SPECS = {
     spec.name: spec
     for spec in (
+        ArrayPrimitiveTypeSpec("float16", IRX_ARROW_TYPE_FLOAT16, 0, 2, False),
         ArrayPrimitiveTypeSpec(
             "int8",
             IRX_ARROW_TYPE_INT8,
@@ -192,6 +194,7 @@ def logical_type_for_scalar(type_: astx.DataType) -> LogicalType | None:
 __all__ = [
     "ARRAY_PRIMITIVE_TYPE_SPECS",
     "IRX_ARROW_TYPE_BOOL",
+    "IRX_ARROW_TYPE_FLOAT16",
     "IRX_ARROW_TYPE_FLOAT32",
     "IRX_ARROW_TYPE_FLOAT64",
     "IRX_ARROW_TYPE_INT8",

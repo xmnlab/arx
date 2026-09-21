@@ -284,11 +284,13 @@ def test_modeled_container_types_have_structural_identity_and_fail_early() -> (
     module.block.append(
         astx.FunctionPrototype(
             "future",
-            astx.Arguments(astx.Argument("values", first)),
+            astx.Arguments(astx.Argument("values", second)),
             return_type=astx.Int32(),
         )
     )
-    with pytest.raises(SemanticError, match="native value construction"):
+    with pytest.raises(
+        SemanticError, match=r"native value construction|array owners"
+    ):
         analyze(module)
 
 
@@ -445,7 +447,9 @@ def test_modeled_only_types_are_rejected_inside_annotations(
             astx.Int32(),
         )
     )
-    with pytest.raises(SemanticError, match="native value construction"):
+    with pytest.raises(
+        SemanticError, match=r"native value construction|array owners"
+    ):
         analyze(module)
 
 

@@ -351,8 +351,6 @@ class VariableVisitorMixin(VisitorMixinBase):
 
         self.visit_child(expr.value)
         llvm_value = safe_pop(self.result_stack)
-        if llvm_value is None:
-            raise Exception("codegen: Invalid value in VariableAssignment.")
         llvm_value = self._cast_ast_value(
             llvm_value,
             source_type=self._resolved_ast_type(expr.value),
@@ -425,6 +423,12 @@ class VariableVisitorMixin(VisitorMixinBase):
         expr_var = self.named_values.get(symbol_key)
         if expr_var:
             result = self._llvm.ir_builder.load(expr_var, node.name)
+            if getattr(
+                getattr(node, "semantic", None), "nullable_refined", False
+            ) and isinstance(result.type, ir.LiteralStructType):
+                result = self._llvm.ir_builder.extract_value(
+                    result, 1, name="nullable.proven_payload"
+                )
             self.result_stack.append(result)
             return
 
@@ -541,8 +545,6 @@ class VariableVisitorMixin(VisitorMixinBase):
         ):
             self.visit_child(node.value)
             init_val = safe_pop(self.result_stack)
-            if init_val is None:
-                raise Exception("Initializer code generation failed.")
             init_val = self._cast_ast_value(
                 init_val,
                 source_type=self._resolved_ast_type(node.value),
@@ -614,7 +616,9 @@ class VariableVisitorMixin(VisitorMixinBase):
                     if existing_storage is not None
                     else self.create_entry_block_alloca(node.name, llvm_type)
                 )
-            elif isinstance(node.type_, astx.GeneratorType):
+            elif isinstance(
+                node.type_, (astx.GeneratorType, astx.NullableType)
+            ):
                 init_val = ir.Constant(llvm_type, None)
                 alloca = (
                     existing_storage
@@ -626,6 +630,9 @@ class VariableVisitorMixin(VisitorMixinBase):
                 (
                     astx.BufferViewType,
                     astx.DataFrameType,
+                    astx.SchemaType,
+                    astx.FieldType,
+                    astx.TypeDescriptorType,
                     astx.SeriesType,
                     astx.TensorType,
                 ),
@@ -683,8 +690,6 @@ class VariableVisitorMixin(VisitorMixinBase):
         if node.value is not None:
             self.visit_child(node.value)
             init_val = safe_pop(self.result_stack)
-            if init_val is None:
-                raise Exception("Initializer code generation failed.")
             init_val = self._cast_ast_value(
                 init_val,
                 source_type=self._resolved_ast_type(node.value),
@@ -703,13 +708,16 @@ class VariableVisitorMixin(VisitorMixinBase):
             )
         elif isinstance(node.type_, astx.ClassType):
             init_val = ir.Constant(llvm_type, None)
-        elif isinstance(node.type_, astx.GeneratorType):
+        elif isinstance(node.type_, (astx.GeneratorType, astx.NullableType)):
             init_val = ir.Constant(llvm_type, None)
         elif isinstance(
             node.type_,
             (
                 astx.BufferViewType,
                 astx.DataFrameType,
+                astx.SchemaType,
+                astx.FieldType,
+                astx.TypeDescriptorType,
                 astx.SeriesType,
                 astx.TensorType,
             ),

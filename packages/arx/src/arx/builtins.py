@@ -105,6 +105,16 @@ def is_builtin(name: str) -> bool:
       type: bool
     """
     return name in {
+        "array",
+        "array_builder",
+        "chunked_array",
+        *(operation.value for operation in astx.ArrayOperation),
+        *(operation.value for operation in astx.NullableOperation),
+        "conversion_kind",
+        "datatype",
+        "field",
+        "schema",
+        *(operation.value for operation in astx.DescriptorOperation),
         BUILTIN_CAST,
         BUILTIN_DATAFRAME,
         BUILTIN_ISINSTANCE,

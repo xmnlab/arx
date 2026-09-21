@@ -140,4 +140,67 @@ static bool sweep_tensor_finish() {
   CHECK(false);
 }
 
-int main() { return sweep_array_finish() && sweep_tensor_finish() ? 0 : 1; }
+static void release_descriptor_source(ArrowSchema* schema) {
+  schema->release = nullptr;
+}
+
+template <typename Handle, typename Import, typename Export, typename Release>
+static bool sweep_descriptor_import(Import import, Export export_value,
+                                    Release release) {
+  ArrowSchema child{};
+  child.format = "l";
+  child.name = "value";
+  child.flags = 2;
+  child.release = release_descriptor_source;
+  ArrowSchema* children[] = {&child};
+  ArrowSchema source{};
+  source.format = "+s";
+  source.name = "descriptor";
+  source.n_children = 1;
+  source.children = children;
+  source.release = release_descriptor_source;
+  constexpr int kLimit = 128;
+  for (int index = 0; index < kLimit; ++index) {
+    Handle* owner = nullptr;
+    irx_arrow_error_handle* error = nullptr;
+    injected = false;
+    allocations_before_failure = index;
+    const auto status = import(&source, &owner, &error);
+    allocations_before_failure = -1;
+    const bool failed = injected;
+    CHECK(source.release == release_descriptor_source);
+    CHECK(child.release == release_descriptor_source);
+    if (failed) {
+      CHECK(status == IRX_ARROW_STATUS_OUT_OF_MEMORY);
+      CHECK(owner == nullptr);
+      CHECK(release_error(&error));
+      OK(import(&source, &owner, &error));
+    } else {
+      CHECK(status == IRX_ARROW_STATUS_OK);
+    }
+    ArrowSchema output{};
+    OK(export_value(owner, &output, &error));
+    OK(release(&owner, &error));
+    CHECK(output.release && output.n_children == 1);
+    CHECK(output.children[0]->flags & 2);
+    output.release(&output);
+    if (!failed) {
+      CHECK(index > 2);
+      std::printf("descriptor import: %d allocation failures retried\n", index);
+      return true;
+    }
+  }
+  CHECK(false);
+}
+
+int main() {
+  return sweep_array_finish() && sweep_tensor_finish() &&
+                 sweep_descriptor_import<irx_arrow_type_handle>(
+                     irx_arrow_type_import_copy, irx_arrow_type_export,
+                     irx_arrow_type_release) &&
+                 sweep_descriptor_import<irx_arrow_field_handle>(
+                     irx_arrow_field_import_copy, irx_arrow_field_export,
+                     irx_arrow_field_release)
+             ? 0
+             : 1;
+}

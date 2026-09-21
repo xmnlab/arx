@@ -29,6 +29,13 @@ from irx.builder.runtime.arrowcpp import arrowcpp_linker_flags
 from irx.builder.runtime.features import NativeArtifact
 from irx.builder.runtime.linking import compile_native_artifacts
 
+FAILURE_MARKERS = {
+    "container_failure": "ARX-RUNTIME-NULL-001",
+    "array_failure": "ARX_RUNTIME_FAIL|ARX-RUNTIME-NULL-001|",
+    "descriptor_failure": "ARX_RUNTIME_FAIL|ARX-RUNTIME-ARROW-001|",
+    "nullable_failure": "ARX_RUNTIME_FAIL|ARX-RUNTIME-NULL-001|",
+}
+
 SANITIZER_FLAGS = (
     "-fsanitize=address,undefined,leak",
     "-fno-omit-frame-pointer",
@@ -251,7 +258,11 @@ def build_harness(build_dir: Path, cxx_binary: str) -> Path:
 
 
 def run_harness(
-    executable: Path, *, detect_leaks: bool = True, expected_status: int = 0
+    executable: Path,
+    *,
+    detect_leaks: bool = True,
+    expected_status: int = 0,
+    failure_marker: str = "ARX_ASSERT_FAIL|",
 ) -> None:
     """
     title: Run the ownership harness with fail-fast sanitizer settings.
@@ -262,6 +273,8 @@ def run_harness(
         type: bool
       expected_status:
         type: int
+      failure_marker:
+        type: str
     """
     environment = os.environ.copy()
     environment["ASAN_OPTIONS"] = (
@@ -284,9 +297,9 @@ def run_harness(
             f"{executable.name}: expected exit {expected_status}, "
             f"got {result.returncode}\n{result.stdout}{result.stderr}"
         )
-    if expected_status != 0 and "ARX_ASSERT_FAIL|" not in result.stderr:
+    if expected_status != 0 and failure_marker not in result.stderr:
         raise RuntimeError(
-            f"missing expected assertion record: {result.stderr}"
+            f"missing expected {failure_marker} record: {result.stderr}"
         )
 
 
@@ -406,6 +419,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 program,
                 detect_leaks=not arguments.skip_leak_detection,
                 expected_status=expected,
+                failure_marker=FAILURE_MARKERS.get(name, "ARX_ASSERT_FAIL|"),
             )
             print(f"Generated ownership sanitizer program passed: {name}")
 

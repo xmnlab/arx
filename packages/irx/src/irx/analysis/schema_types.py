@@ -15,6 +15,12 @@ import astx
 from astx.schema import LogicalKind, LogicalType, ParameterKind, TimeUnit
 from public import private, public
 
+from irx.analysis.array_values import array_storage
+from irx.analysis.nullability import (
+    managed_nullable,
+    normalize_nullable,
+    nullable_diagnostic,
+)
 from irx.analysis.schema import (
     DECIMAL_PRECISIONS,
     MAX_SCHEMA_DEPTH,
@@ -280,13 +286,50 @@ def columnar_type_diagnostic(
     """
     if depth > MAX_SCHEMA_DEPTH:
         return "declared type exceeds maximum nesting depth"
+    normalized = normalize_nullable(type_)
+    if isinstance(normalized, astx.NullableType):
+        if depth:
+            return "nullable container elements are not implemented yet"
+        if managed_nullable(normalized):
+            return columnar_type_diagnostic(normalized.payload_type, depth)
+        return nullable_diagnostic(normalized)
+    if isinstance(type_, astx.UnionType) and any(
+        isinstance(member, astx.NoneType) for member in type_.members
+    ):
+        return "nullable unions require one distinct non-none payload type"
     try:
         if isinstance(type_, astx.LogicalValueType):
             canonical_logical_type(type_.element_type)
+            if (
+                isinstance(
+                    type_,
+                    (
+                        astx.ArrayType,
+                        astx.ArrayBuilderType,
+                        astx.ChunkedArrayType,
+                    ),
+                )
+                and array_storage(type_) is not None
+            ):
+                if depth:
+                    return (
+                        "array owners cannot be nested in other value "
+                        "containers yet"
+                    )
+                return None
         elif isinstance(type_, astx.SchemaValueType):
             if type_.schema is not None:
                 canonical_schema(type_.schema)
-        elif not isinstance(type_, (astx.SchemaType, astx.FieldType)):
+        elif isinstance(
+            type_, (astx.SchemaType, astx.FieldType, astx.TypeDescriptorType)
+        ):
+            if depth:
+                return (
+                    "descriptor values cannot be nested in value containers; "
+                    "element ownership and destruction are not implemented"
+                )
+            return None
+        else:
             for child in columnar_type_children(type_):
                 error = columnar_type_diagnostic(child, depth + 1)
                 if error is not None:

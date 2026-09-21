@@ -5,7 +5,7 @@ summary: Do not edit; regenerate from abi.json.
 
 from __future__ import annotations
 
-ABI_VERSION = (1, 0, 0)
+ABI_VERSION = (1, 3, 0)
 RUNTIME_FEATURE_IDS = {
     "core": 1,
     "array": 2,
@@ -15,14 +15,14 @@ RUNTIME_FEATURE_IDS = {
 }
 RUNTIME_FEATURE_VERSIONS = {
     "core": (1, 0, 0),
-    "array": (1, 1, 0),
+    "array": (1, 4, 0),
     "tensor": (1, 0, 0),
     "dataframe": (1, 0, 0),
     "record_batch": (1, 0, 0),
 }
 RUNTIME_FEATURE_PACKED_VERSIONS = {
     "core": 65536,
-    "array": 65792,
+    "array": 66560,
     "tensor": 65536,
     "dataframe": 65536,
     "record_batch": 65536,
@@ -42,6 +42,7 @@ HANDLE_TYPES = (
     "stream",
     "dataset",
     "execution_plan",
+    "field",
 )
 CTYPES_SIGNATURES: dict[str, tuple[str, tuple[str, ...]]] = {
     "irx_arrow_abi_version": (
@@ -626,6 +627,379 @@ CTYPES_SIGNATURES: dict[str, tuple[str, tuple[str, ...]]] = {
         "c_string",
         (),
     ),
+    "irx_arrow_type_import_copy": (
+        "status",
+        (
+            "const_arrow_schema",
+            "type_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_type_export": (
+        "status",
+        (
+            "const_type",
+            "arrow_schema",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_type_retain": (
+        "status",
+        (
+            "const_type",
+            "type_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_type_release": (
+        "status",
+        (
+            "type_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_field_import_copy": (
+        "status",
+        (
+            "const_arrow_schema",
+            "field_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_field_export": (
+        "status",
+        (
+            "const_field",
+            "arrow_schema",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_field_retain": (
+        "status",
+        (
+            "const_field",
+            "field_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_field_release": (
+        "status",
+        (
+            "field_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_type_equals": (
+        "status",
+        (
+            "const_type",
+            "const_type",
+            "int32_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_field_equals": (
+        "status",
+        (
+            "const_field",
+            "const_field",
+            "int32_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_schema_equals": (
+        "status",
+        (
+            "const_schema",
+            "const_schema",
+            "int32_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_type_num_fields": (
+        "status",
+        (
+            "const_type",
+            "int64_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_type_field": (
+        "status",
+        (
+            "const_type",
+            "int64",
+            "field_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_schema_num_fields": (
+        "status",
+        (
+            "const_schema",
+            "int64_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_schema_field": (
+        "status",
+        (
+            "const_schema",
+            "int64",
+            "field_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_field_type": (
+        "status",
+        (
+            "const_field",
+            "type_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_field_nullable": (
+        "status",
+        (
+            "const_field",
+            "int32_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_type_bit_width": (
+        "status",
+        (
+            "const_type",
+            "int64_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_field_name_copy": (
+        "status",
+        (
+            "const_field",
+            "c_string_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_array_get_int": (
+        "status",
+        (
+            "const_array",
+            "int64",
+            "int32_pointer",
+            "int64_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_array_get_uint": (
+        "status",
+        (
+            "const_array",
+            "int64",
+            "int32_pointer",
+            "uint64_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_array_get_double": (
+        "status",
+        (
+            "const_array",
+            "int64",
+            "int32_pointer",
+            "double_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_array_slice": (
+        "status",
+        (
+            "const_array",
+            "int64",
+            "int64",
+            "array_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_array_concat": (
+        "status",
+        (
+            "const_array",
+            "const_array",
+            "array_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_array_copy": (
+        "status",
+        (
+            "const_array",
+            "array_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_array_equal": (
+        "status",
+        (
+            "const_array",
+            "const_array",
+            "int32_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_array_builder_finish_typed": (
+        "status",
+        (
+            "array_builder_pointer",
+            "int32",
+            "array_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_array_builder_reserve": (
+        "status",
+        (
+            "array_builder",
+            "int64",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_array_builder_length": (
+        "status",
+        (
+            "const_array_builder",
+            "int64_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_array_builder_build": (
+        "status",
+        (
+            "array_builder",
+            "int32",
+            "array_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_chunked_new": (
+        "status",
+        (
+            "int32",
+            "int32",
+            "const_void_pointer",
+            "int64",
+            "chunked_array_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_chunked_length": (
+        "status",
+        (
+            "const_chunked_array",
+            "int64_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_chunked_null_count": (
+        "status",
+        (
+            "const_chunked_array",
+            "int64_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_chunked_num_chunks": (
+        "status",
+        (
+            "const_chunked_array",
+            "int64_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_chunked_get_int": (
+        "status",
+        (
+            "const_chunked_array",
+            "int64",
+            "int32_pointer",
+            "int64_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_chunked_get_uint": (
+        "status",
+        (
+            "const_chunked_array",
+            "int64",
+            "int32_pointer",
+            "uint64_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_chunked_get_double": (
+        "status",
+        (
+            "const_chunked_array",
+            "int64",
+            "int32_pointer",
+            "double_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_chunked_chunk": (
+        "status",
+        (
+            "const_chunked_array",
+            "int64",
+            "array_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_chunked_combine": (
+        "status",
+        (
+            "const_chunked_array",
+            "array_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_chunked_slice": (
+        "status",
+        (
+            "const_chunked_array",
+            "int64",
+            "int64",
+            "chunked_array_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_chunked_copy": (
+        "status",
+        (
+            "const_chunked_array",
+            "chunked_array_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_chunked_concat": (
+        "status",
+        (
+            "const_chunked_array",
+            "const_chunked_array",
+            "chunked_array_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_chunked_equal": (
+        "status",
+        (
+            "const_chunked_array",
+            "const_chunked_array",
+            "int32_pointer",
+            "error_pointer",
+        ),
+    ),
 }
 FEATURE_SYMBOLS: dict[str, tuple[str, ...]] = {
     "core": (
@@ -675,6 +1049,49 @@ FEATURE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "irx_arrow_array_borrow_buffer_view",
         "irx_arrow_array_retain",
         "irx_arrow_array_release",
+        "irx_arrow_type_import_copy",
+        "irx_arrow_type_export",
+        "irx_arrow_type_retain",
+        "irx_arrow_type_release",
+        "irx_arrow_field_import_copy",
+        "irx_arrow_field_export",
+        "irx_arrow_field_retain",
+        "irx_arrow_field_release",
+        "irx_arrow_type_equals",
+        "irx_arrow_field_equals",
+        "irx_arrow_schema_equals",
+        "irx_arrow_type_num_fields",
+        "irx_arrow_type_field",
+        "irx_arrow_schema_num_fields",
+        "irx_arrow_schema_field",
+        "irx_arrow_field_type",
+        "irx_arrow_field_nullable",
+        "irx_arrow_type_bit_width",
+        "irx_arrow_field_name_copy",
+        "irx_arrow_array_get_int",
+        "irx_arrow_array_get_uint",
+        "irx_arrow_array_get_double",
+        "irx_arrow_array_slice",
+        "irx_arrow_array_concat",
+        "irx_arrow_array_copy",
+        "irx_arrow_array_equal",
+        "irx_arrow_array_builder_finish_typed",
+        "irx_arrow_array_builder_reserve",
+        "irx_arrow_array_builder_length",
+        "irx_arrow_array_builder_build",
+        "irx_arrow_chunked_new",
+        "irx_arrow_chunked_length",
+        "irx_arrow_chunked_null_count",
+        "irx_arrow_chunked_num_chunks",
+        "irx_arrow_chunked_get_int",
+        "irx_arrow_chunked_get_uint",
+        "irx_arrow_chunked_get_double",
+        "irx_arrow_chunked_chunk",
+        "irx_arrow_chunked_combine",
+        "irx_arrow_chunked_slice",
+        "irx_arrow_chunked_copy",
+        "irx_arrow_chunked_concat",
+        "irx_arrow_chunked_equal",
     ),
     "tensor": (
         "irx_arrow_tensor_builder_new",
@@ -784,6 +1201,49 @@ FALLIBLE_SYMBOLS = (
     "irx_arrow_table_release",
     "irx_arrow_chunked_array_retain",
     "irx_arrow_chunked_array_release",
+    "irx_arrow_type_import_copy",
+    "irx_arrow_type_export",
+    "irx_arrow_type_retain",
+    "irx_arrow_type_release",
+    "irx_arrow_field_import_copy",
+    "irx_arrow_field_export",
+    "irx_arrow_field_retain",
+    "irx_arrow_field_release",
+    "irx_arrow_type_equals",
+    "irx_arrow_field_equals",
+    "irx_arrow_schema_equals",
+    "irx_arrow_type_num_fields",
+    "irx_arrow_type_field",
+    "irx_arrow_schema_num_fields",
+    "irx_arrow_schema_field",
+    "irx_arrow_field_type",
+    "irx_arrow_field_nullable",
+    "irx_arrow_type_bit_width",
+    "irx_arrow_field_name_copy",
+    "irx_arrow_array_get_int",
+    "irx_arrow_array_get_uint",
+    "irx_arrow_array_get_double",
+    "irx_arrow_array_slice",
+    "irx_arrow_array_concat",
+    "irx_arrow_array_copy",
+    "irx_arrow_array_equal",
+    "irx_arrow_array_builder_finish_typed",
+    "irx_arrow_array_builder_reserve",
+    "irx_arrow_array_builder_length",
+    "irx_arrow_array_builder_build",
+    "irx_arrow_chunked_new",
+    "irx_arrow_chunked_length",
+    "irx_arrow_chunked_null_count",
+    "irx_arrow_chunked_num_chunks",
+    "irx_arrow_chunked_get_int",
+    "irx_arrow_chunked_get_uint",
+    "irx_arrow_chunked_get_double",
+    "irx_arrow_chunked_chunk",
+    "irx_arrow_chunked_combine",
+    "irx_arrow_chunked_slice",
+    "irx_arrow_chunked_copy",
+    "irx_arrow_chunked_concat",
+    "irx_arrow_chunked_equal",
 )
 VALUE_RESULTS: dict[str, str] = {
     "irx_arrow_error_code": "status",

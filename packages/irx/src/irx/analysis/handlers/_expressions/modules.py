@@ -372,6 +372,12 @@ class ExpressionModuleVisitorMixin(SemanticVisitorMixinBase):
         if symbol is not None:
             self._set_symbol(node, symbol)
             self._set_type(node, symbol.type_)
+            self._semantic(node).nullable_refined = False
+            if symbol.symbol_id in self.context.valid_nullable_symbols:
+                nullable_type = self._expr_type(node)
+                if isinstance(nullable_type, astx.NullableType):
+                    self._semantic(node).nullable_refined = True
+                    self._set_type(node, nullable_type.payload_type)
             if resource_contract_for_type(symbol.type_) is not None:
                 declaration_ownership = symbol_resource_ownership(symbol)
                 self._set_resource_ownership(

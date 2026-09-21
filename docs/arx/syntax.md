@@ -118,7 +118,7 @@ backticks are reserved for Douki docstrings, not ordinary string values.
 Single-character tokens:
 
 ```text
-= < > + - * / . : , ; @ | ! ( ) [ ] { }
+= < > + - * / % . : , ; @ | ! ( ) [ ] { }
 ```
 
 Multi-character operators:
@@ -137,7 +137,7 @@ Current groups:
 
 - assignment: `=`
 - comparison: `<`, `>`, `<=`, `>=`, `==`, `!=`
-- arithmetic: `+`, `-`, `*`, `/`
+- arithmetic: `+`, `-`, `*`, `/`, `%`
 - logical: `&&`, `||`, `and`, `or`, `!`
 - type union: `|`
 - punctuation: `@`, `:`, `,`, `;`, `.`
@@ -196,8 +196,16 @@ described by the type reference.
 ## Builtin lexical names
 
 Builtin type names include numeric aliases, `bool`, `none`, text and temporal
-types, plus `list`, `tensor`, `dataframe`, and `series`. Builtin callable names
-include `cast`, `dataframe`, `isinstance`, `print`, `range`, and `type`.
+types, plus `list`, `tensor`, `dataframe`, `series`, `datatype`, `field`, and
+`schema`. Builtin callable names include `cast`, `dataframe`, `isinstance`,
+`print`, `range`, `type`, descriptor inspection operations, and the nullable
+operations `is_null`, `is_valid`, and `expect_valid`.
+
+Primitive nullable annotations use `T | none` in locals, parameters and return
+types. Bare `return` has no expression; `return none` explicitly returns a null
+value (or the existing void sentinel in a `none` function). See the
+[nullable reference](built-in-types.md#primitive-nullable-scalars) for the
+implemented payloads and semantic limits.
 
 These names are recorded for syntax tooling. Parser resolution still decides
 whether a name is a type, constructor, ambient builtin, local binding, or
@@ -207,3 +215,28 @@ ordinary identifier in context.
 
 Changes to lexical syntax must update `syntax.json` first, then the lexer,
 tests, this document, examples, and any derived editor grammars.
+
+### Native array values and nullable operators
+
+`array[i32](1, 2)` and `array[i32 | none](1, none)` construct immutable
+primitive arrays. Annotations use the same bracketed syntax. `array_at`,
+`array_slice`, `array_copy`, `array_concat`, `array_equal`, `array_length`,
+`array_null_count` and `array_offset` are ambient builtin names. Unsigned scalar
+aliases are `u8`, `u16`, `u32`, `u64` and `uint8`, `uint16`, `uint32`, `uint64`.
+
+`%` has the same precedence as multiplication and division. Primitive nullable
+arithmetic/comparisons propagate null, Boolean operators use short-circuit
+Kleene logic, and direct validity predicates narrow guarded scalar reads. See
+the [builtin reference](built-in-types.md#first-class-primitive-arrays) for
+supported types, ownership, bounds and remaining limitations.
+
+### Primitive builder and chunk syntax
+
+`array_builder[T]()` constructs a unique reusable builder;
+`chunked_array[T](array1, array2, ...)` constructs an immutable chunk sequence.
+Both support the same primitive logical types and `T | none` element syntax as
+`array[T]`, including `f16`. Queries such as `builder_append`, `builder_finish`,
+`chunk_count`, `chunk_at` and `combine_chunks` are ambient builtins. Chunk
+iteration uses an explicit index loop rather than an implicitly selected unit.
+`array[T] | none` and `chunked_array[T] | none` describe nullable **owners**,
+not nullable elements; both forms can be combined when needed.

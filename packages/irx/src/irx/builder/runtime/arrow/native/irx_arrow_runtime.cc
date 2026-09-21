@@ -6,6 +6,8 @@
 #include "irx_arrow_builder_support.h"
 
 #include <arrow/api.h>
+#include <arrow/array/concatenate.h>
+#include <arrow/util/float16.h>
 #include <arrow/c/bridge.h>
 #include <arrow/tensor.h>
 
@@ -103,11 +105,14 @@ std::shared_ptr<arrow::DataType> make_uint8_type() { return arrow::uint8(); }
 std::shared_ptr<arrow::DataType> make_uint16_type() { return arrow::uint16(); }
 std::shared_ptr<arrow::DataType> make_uint32_type() { return arrow::uint32(); }
 std::shared_ptr<arrow::DataType> make_uint64_type() { return arrow::uint64(); }
+std::shared_ptr<arrow::DataType> make_float16_type() { return arrow::float16(); }
 std::shared_ptr<arrow::DataType> make_float32_type() { return arrow::float32(); }
 std::shared_ptr<arrow::DataType> make_float64_type() { return arrow::float64(); }
 std::shared_ptr<arrow::DataType> make_bool_type() { return arrow::boolean(); }
 
 const TypeSpec kTypeSpecs[] = {
+    {IRX_ARROW_TYPE_FLOAT16, arrow::Type::HALF_FLOAT, 0, 2, false,
+     AppendKind::kDouble, "float16", "e", make_float16_type},
     {
         IRX_ARROW_TYPE_INT32,
         arrow::Type::INT32,
@@ -245,6 +250,16 @@ struct irx_arrow_error_handle {
   ErrorDetail detail;
 };
 
+struct irx_arrow_type_handle {
+  HandleHeader header{IRX_ARROW_HANDLE_KIND_TYPE, IRX_ARROW_HANDLE_OWNERSHIP_SHARED};
+  std::shared_ptr<arrow::Field> field;
+};
+
+struct irx_arrow_field_handle {
+  HandleHeader header{IRX_ARROW_HANDLE_KIND_FIELD, IRX_ARROW_HANDLE_OWNERSHIP_SHARED};
+  std::shared_ptr<arrow::Field> field;
+};
+
 struct irx_arrow_schema_handle {
   HandleHeader header{
       IRX_ARROW_HANDLE_KIND_SCHEMA,
@@ -316,6 +331,7 @@ struct irx_arrow_chunked_array_handle {
       IRX_ARROW_HANDLE_KIND_CHUNKED_ARRAY,
       IRX_ARROW_HANDLE_OWNERSHIP_SHARED};
   std::shared_ptr<arrow::ChunkedArray> column;
+  bool nullable = true;
 };
 
 namespace {
@@ -963,6 +979,8 @@ int append_double_value(
     int32_t type_id,
     double value) {
   switch (type_id) {
+    case IRX_ARROW_TYPE_FLOAT16:
+      return append_typed_value<arrow::HalfFloatBuilder>(builder, arrow::util::Float16::FromDouble(value).bits());
     case IRX_ARROW_TYPE_FLOAT32:
       return append_typed_value<arrow::FloatBuilder>(builder, static_cast<float>(value));
     case IRX_ARROW_TYPE_FLOAT64:
@@ -1009,6 +1027,8 @@ int append_c_data_value(
       return append_uint_value(builder, spec->type_id, *reinterpret_cast<const uint32_t*>(slot));
     case IRX_ARROW_TYPE_UINT64:
       return append_uint_value(builder, spec->type_id, *reinterpret_cast<const uint64_t*>(slot));
+    case IRX_ARROW_TYPE_FLOAT16:
+      return append_double_value(builder, spec->type_id, arrow::util::Float16::FromBytes(slot).ToDouble());
     case IRX_ARROW_TYPE_FLOAT32:
       return append_double_value(builder, spec->type_id, *reinterpret_cast<const float*>(slot));
     case IRX_ARROW_TYPE_FLOAT64:
@@ -1500,6 +1520,10 @@ irx_arrow_status irx_arrow_error_release(
 #endif
 
 #if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+
+#include "irx_arrow_descriptors.inc"
+#include "irx_arrow_array_values.inc"
+#include "irx_arrow_chunks.inc"
 
 irx_arrow_status irx_arrow_schema_import_copy(
     const ArrowSchema* schema,

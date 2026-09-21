@@ -60,6 +60,8 @@ FIXED_C_TYPES = {
     "void_pointer": "void*",
     "const_void_pointer": "const void**",
     "int64_pointer": "int64_t*",
+    "uint64_pointer": "uint64_t*",
+    "double_pointer": "double*",
     "const_int64_pointer": "const int64_t*",
     "const_int64_output": "const int64_t**",
     "status_pointer": "irx_arrow_status*",
@@ -1486,9 +1488,11 @@ def render_export_map(manifest: Manifest) -> str:
     returns:
       type: str
     """
-    major, minor, _ = manifest.version
+    major = manifest.version[0]
+    # ELF consumers bind to a symbol-version node. Keep the original node for
+    # every compatible minor, otherwise already-linked binaries stop loading.
     lines = [
-        f"IRX_ARROW_{major}.{minor} {{",
+        f"IRX_ARROW_{major}.0 {{",
         "  global:",
     ]
     lines.extend(f"    {function.name};" for function in manifest.functions)

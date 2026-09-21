@@ -1127,7 +1127,7 @@ class VisitorMixinTypingBase:
 
     def _cast_ast_value(
         self,
-        _value: ir.Value,
+        _value: ir.Value | None,
         *,
         source_type: astx.DataType | None,
         target_type: astx.DataType | None,
@@ -1136,7 +1136,7 @@ class VisitorMixinTypingBase:
         title: Cast ast value.
         parameters:
           _value:
-            type: ir.Value
+            type: ir.Value | None
           source_type:
             type: astx.DataType | None
           target_type:

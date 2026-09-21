@@ -51,6 +51,10 @@ def arrow_llvm_type(visitor: VisitorProtocol, type_token: str) -> ir.Type:
     if scalar_type is not None:
         return scalar_type
 
+    if type_token == "uint64_pointer":
+        return visitor._llvm.UINT64_TYPE.as_pointer()
+    if type_token == "double_pointer":
+        return visitor._llvm.DOUBLE_TYPE.as_pointer()
     if type_token == "uint32_pointer":
         return visitor._llvm.UINT32_TYPE.as_pointer()
     if type_token in {

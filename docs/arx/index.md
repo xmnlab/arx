@@ -53,6 +53,7 @@ The current frontend supports:
 - lists and builtin `range`
 - fixed-shape numeric tensors and runtime-shaped tensor parameters
 - static-schema DataFrames and typed Series
+- builtin Arrow-core `datatype`, `field`, and `schema` descriptors
 - assertions and the compiled `arx test` runner
 - token, ASTx, LLVM IR, object, executable, and run modes
 
@@ -89,3 +90,18 @@ current interoperability features.
 - [Douki](../tools/douki.md) defines the YAML docstring tooling used by Arx.
 
 Source: [github.com/arxlang/arx](https://github.com/arxlang/arx)
+
+`datatype`, `field`, and `schema` provide native descriptor construction and
+inspection without importing Arrow. See
+[Logical types and schemas](../arrow-type-schemas.md) for the supported syntax
+and the distinction between descriptors and array values.
+
+Primitive nullable scalars use builtin `T | none` types and explicit `is_null`,
+`is_valid`, and `expect_valid` operations. They carry independent validity
+through local storage and function boundaries without an Arrow import.
+[Nullable scalar support](built-in-types.md#primitive-nullable-scalars) includes
+primitive null-propagating operators and predicate narrowing.
+[Primitive arrays](built-in-types.md#first-class-primitive-arrays) support typed
+construction, nullable extraction, reusable builders, explicit chunking and
+immutable transformations. Nullable shared array/descriptor owners are
+supported; variable-width and nested value execution remains pending.

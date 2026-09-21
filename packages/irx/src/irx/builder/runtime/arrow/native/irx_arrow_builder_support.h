@@ -137,6 +137,7 @@ inline std::unique_ptr<arrow::ArrayBuilder> make_snapshot_builder(
     IRX_SNAPSHOT_BUILDER(UINT16, UInt16Builder);
     IRX_SNAPSHOT_BUILDER(UINT32, UInt32Builder);
     IRX_SNAPSHOT_BUILDER(UINT64, UInt64Builder);
+    IRX_SNAPSHOT_BUILDER(HALF_FLOAT, HalfFloatBuilder);
     IRX_SNAPSHOT_BUILDER(FLOAT, FloatBuilder);
     IRX_SNAPSHOT_BUILDER(DOUBLE, DoubleBuilder);
     IRX_SNAPSHOT_BUILDER(BOOL, BooleanBuilder);

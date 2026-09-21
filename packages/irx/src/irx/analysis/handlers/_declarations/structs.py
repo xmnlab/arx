@@ -19,6 +19,7 @@ from irx.analysis.handlers.base import (
     SemanticAnalyzerCore,
     SemanticVisitorMixinBase,
 )
+from irx.analysis.nullability import normalize_nullable
 from irx.analysis.resolved_nodes import SemanticStruct, SemanticStructField
 from irx.analysis.types import clone_type
 from irx.diagnostics import DiagnosticCodes
@@ -68,11 +69,28 @@ class DeclarationStructVisitorMixin(SemanticVisitorMixinBase):
                 node=attr,
                 unknown_message="Unknown field type '{name}'",
             )
+            if isinstance(normalize_nullable(attr.type_), astx.NullableType):
+                self.context.diagnostics.add(
+                    "nullable class and struct fields are not implemented; "
+                    "use a local or parameter value",
+                    node=attr,
+                    code=DiagnosticCodes.SEMANTIC_TYPE_MISMATCH,
+                )
             if isinstance(attr.type_, astx.ListType):
                 self.context.diagnostics.add(
                     f"struct field '{struct.name}.{attr.name}' cannot own "
                     "dynamic list storage because struct destruction is not "
                     "supported",
+                    node=attr,
+                    code=DiagnosticCodes.SEMANTIC_INVALID_OWNERSHIP,
+                )
+            if isinstance(
+                attr.type_,
+                (astx.SchemaType, astx.FieldType, astx.TypeDescriptorType),
+            ):
+                self.context.diagnostics.add(
+                    "struct descriptor fields require field destruction; "
+                    "use a managed class field instead",
                     node=attr,
                     code=DiagnosticCodes.SEMANTIC_INVALID_OWNERSHIP,
                 )

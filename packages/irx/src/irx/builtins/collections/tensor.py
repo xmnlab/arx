@@ -35,7 +35,7 @@ TENSOR_FLAGS_EXTRA = "tensor_flags"
 _DTYPE_ELEMENT_SIZE_BYTES = {
     buffer_dtype_handle(spec.name): spec.element_size_bytes
     for spec in ARRAY_PRIMITIVE_TYPE_SPECS.values()
-    if spec.element_size_bytes is not None
+    if spec.element_size_bytes is not None and spec.buffer_view_compatible
 }
 
 
@@ -271,7 +271,11 @@ def tensor_primitive_type_name(type_: astx.DataType | None) -> str | None:
       type: str | None
     """
     logical = None if type_ is None else logical_type_for_scalar(type_)
-    if logical is None or logical.kind.value not in ARRAY_PRIMITIVE_TYPE_SPECS:
+    if (
+        logical is None
+        or logical.kind.value not in ARRAY_PRIMITIVE_TYPE_SPECS
+        or logical.kind.value == "float16"
+    ):
         return None
     return logical.kind.value
 

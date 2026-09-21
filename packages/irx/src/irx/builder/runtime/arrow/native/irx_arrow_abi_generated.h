@@ -29,7 +29,7 @@ extern "C" {
 #endif
 
 #define IRX_ARROW_ABI_VERSION_MAJOR UINT32_C(1)
-#define IRX_ARROW_ABI_VERSION_MINOR UINT32_C(0)
+#define IRX_ARROW_ABI_VERSION_MINOR UINT32_C(3)
 #define IRX_ARROW_ABI_VERSION_PATCH UINT32_C(0)
 #define IRX_ARROW_ABI_VERSION \
   ((IRX_ARROW_ABI_VERSION_MAJOR << 16) | \
@@ -99,7 +99,7 @@ enum irx_arrow_runtime_feature_id_code {
    IRX_ARROW_RUNTIME_FEATURE_CORE_CONTRACT_VERSION_PATCH)
 
 #define IRX_ARROW_RUNTIME_FEATURE_ARRAY_CONTRACT_VERSION_MAJOR UINT32_C(1)
-#define IRX_ARROW_RUNTIME_FEATURE_ARRAY_CONTRACT_VERSION_MINOR UINT32_C(1)
+#define IRX_ARROW_RUNTIME_FEATURE_ARRAY_CONTRACT_VERSION_MINOR UINT32_C(4)
 #define IRX_ARROW_RUNTIME_FEATURE_ARRAY_CONTRACT_VERSION_PATCH UINT32_C(0)
 #define IRX_ARROW_RUNTIME_FEATURE_ARRAY_CONTRACT_VERSION \
   ((IRX_ARROW_RUNTIME_FEATURE_ARRAY_CONTRACT_VERSION_MAJOR << 16) | \
@@ -144,6 +144,7 @@ typedef struct irx_arrow_tensor_handle irx_arrow_tensor_handle;
 typedef struct irx_arrow_stream_handle irx_arrow_stream_handle;
 typedef struct irx_arrow_dataset_handle irx_arrow_dataset_handle;
 typedef struct irx_arrow_execution_plan_handle irx_arrow_execution_plan_handle;
+typedef struct irx_arrow_field_handle irx_arrow_field_handle;
 
 typedef int32_t irx_arrow_handle_kind;
 
@@ -163,6 +164,7 @@ enum irx_arrow_handle_kind_code {
   IRX_ARROW_HANDLE_KIND_STREAM = 12,
   IRX_ARROW_HANDLE_KIND_DATASET = 13,
   IRX_ARROW_HANDLE_KIND_EXECUTION_PLAN = 14,
+  IRX_ARROW_HANDLE_KIND_FIELD = 15,
 };
 
 typedef int32_t irx_arrow_handle_ownership;
@@ -186,6 +188,7 @@ enum irx_arrow_type_id {
   IRX_ARROW_TYPE_FLOAT32 = 9,
   IRX_ARROW_TYPE_FLOAT64 = 10,
   IRX_ARROW_TYPE_BOOL = 11,
+  IRX_ARROW_TYPE_FLOAT16 = 12,
 };
 
 IRX_ARROW_EXPORT uint32_t IRX_ARROW_CALL irx_arrow_abi_version(void);
@@ -560,6 +563,250 @@ IRX_ARROW_EXPORT void IRX_ARROW_CALL irx_arrow_tensor_release_callback(
     void* tensor);
 
 IRX_ARROW_EXPORT const char* IRX_ARROW_CALL irx_arrow_last_error(void);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_type_import_copy(
+    const struct ArrowSchema* schema,
+    irx_arrow_type_handle** out_value,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_type_export(
+    const irx_arrow_type_handle* value,
+    struct ArrowSchema* out_schema,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_type_retain(
+    const irx_arrow_type_handle* value,
+    irx_arrow_type_handle** out_value,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_type_release(
+    irx_arrow_type_handle** value,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_field_import_copy(
+    const struct ArrowSchema* schema,
+    irx_arrow_field_handle** out_value,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_field_export(
+    const irx_arrow_field_handle* value,
+    struct ArrowSchema* out_schema,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_field_retain(
+    const irx_arrow_field_handle* value,
+    irx_arrow_field_handle** out_value,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_field_release(
+    irx_arrow_field_handle** value,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_type_equals(
+    const irx_arrow_type_handle* left,
+    const irx_arrow_type_handle* right,
+    int32_t* out_equal,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_field_equals(
+    const irx_arrow_field_handle* left,
+    const irx_arrow_field_handle* right,
+    int32_t* out_equal,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_schema_equals(
+    const irx_arrow_schema_handle* left,
+    const irx_arrow_schema_handle* right,
+    int32_t* out_equal,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_type_num_fields(
+    const irx_arrow_type_handle* value,
+    int64_t* out_count,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_type_field(
+    const irx_arrow_type_handle* value,
+    int64_t index,
+    irx_arrow_field_handle** out_field,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_schema_num_fields(
+    const irx_arrow_schema_handle* value,
+    int64_t* out_count,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_schema_field(
+    const irx_arrow_schema_handle* value,
+    int64_t index,
+    irx_arrow_field_handle** out_field,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_field_type(
+    const irx_arrow_field_handle* value,
+    irx_arrow_type_handle** out_type,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_field_nullable(
+    const irx_arrow_field_handle* value,
+    int32_t* out_nullable,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_type_bit_width(
+    const irx_arrow_type_handle* value,
+    int64_t* out_width,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_field_name_copy(
+    const irx_arrow_field_handle* value,
+    const char** out_name,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_array_get_int(
+    const irx_arrow_array_handle* array,
+    int64_t index,
+    int32_t* out_valid,
+    int64_t* out_value,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_array_get_uint(
+    const irx_arrow_array_handle* array,
+    int64_t index,
+    int32_t* out_valid,
+    uint64_t* out_value,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_array_get_double(
+    const irx_arrow_array_handle* array,
+    int64_t index,
+    int32_t* out_valid,
+    double* out_value,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_array_slice(
+    const irx_arrow_array_handle* array,
+    int64_t offset,
+    int64_t length,
+    irx_arrow_array_handle** out_array,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_array_concat(
+    const irx_arrow_array_handle* lhs,
+    const irx_arrow_array_handle* rhs,
+    irx_arrow_array_handle** out_array,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_array_copy(
+    const irx_arrow_array_handle* array,
+    irx_arrow_array_handle** out_array,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_array_equal(
+    const irx_arrow_array_handle* lhs,
+    const irx_arrow_array_handle* rhs,
+    int32_t* out_equal,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_array_builder_finish_typed(
+    irx_arrow_array_builder_handle** builder,
+    int32_t nullable,
+    irx_arrow_array_handle** out_array,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_array_builder_reserve(
+    irx_arrow_array_builder_handle* builder,
+    int64_t additional,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_array_builder_length(
+    const irx_arrow_array_builder_handle* builder,
+    int64_t* out_length,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_array_builder_build(
+    irx_arrow_array_builder_handle* builder,
+    int32_t nullable,
+    irx_arrow_array_handle** out_array,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_chunked_new(
+    int32_t type_id,
+    int32_t nullable,
+    const void** chunks,
+    int64_t count,
+    irx_arrow_chunked_array_handle** out_value,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_chunked_length(
+    const irx_arrow_chunked_array_handle* value,
+    int64_t* output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_chunked_null_count(
+    const irx_arrow_chunked_array_handle* value,
+    int64_t* output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_chunked_num_chunks(
+    const irx_arrow_chunked_array_handle* value,
+    int64_t* output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_chunked_get_int(
+    const irx_arrow_chunked_array_handle* value,
+    int64_t index,
+    int32_t* valid,
+    int64_t* output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_chunked_get_uint(
+    const irx_arrow_chunked_array_handle* value,
+    int64_t index,
+    int32_t* valid,
+    uint64_t* output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_chunked_get_double(
+    const irx_arrow_chunked_array_handle* value,
+    int64_t index,
+    int32_t* valid,
+    double* output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_chunked_chunk(
+    const irx_arrow_chunked_array_handle* value,
+    int64_t index,
+    irx_arrow_array_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_chunked_combine(
+    const irx_arrow_chunked_array_handle* value,
+    irx_arrow_array_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_chunked_slice(
+    const irx_arrow_chunked_array_handle* value,
+    int64_t offset,
+    int64_t length,
+    irx_arrow_chunked_array_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_chunked_copy(
+    const irx_arrow_chunked_array_handle* value,
+    irx_arrow_chunked_array_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_chunked_concat(
+    const irx_arrow_chunked_array_handle* lhs,
+    const irx_arrow_chunked_array_handle* rhs,
+    irx_arrow_chunked_array_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_chunked_equal(
+    const irx_arrow_chunked_array_handle* lhs,
+    const irx_arrow_chunked_array_handle* rhs,
+    int32_t* output,
+    irx_arrow_error_handle** out_failure);
 
 #ifdef __cplusplus
 }

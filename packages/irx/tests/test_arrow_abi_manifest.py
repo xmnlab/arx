@@ -62,6 +62,7 @@ EXPECTED_HANDLE_NAMES = (
     "stream",
     "dataset",
     "execution_plan",
+    "field",
 )
 EXPECTED_RUNTIME_FEATURES = {
     "core": 1,
@@ -82,7 +83,7 @@ def _load_handles() -> list[dict[str, object]]:
         dict[str, object],
         json.loads(ABI_MANIFEST_PATH.read_text(encoding="utf-8")),
     )
-    assert manifest["abi_version"] == "1.0.0"
+    assert manifest["abi_version"] == "1.3.0"
     return cast(list[dict[str, object]], manifest["handles"])
 
 
@@ -172,7 +173,7 @@ def test_arrow_abi_manifest_defines_versioned_runtime_features() -> None:
     } == EXPECTED_RUNTIME_FEATURES
     assert all(
         feature["contract_version"]
-        == ("1.1.0" if feature["name"] == "array" else "1.0.0")
+        == ("1.4.0" if feature["name"] == "array" else "1.0.0")
         for feature in features
     )
     assert all(
@@ -180,11 +181,11 @@ def test_arrow_abi_manifest_defines_versioned_runtime_features() -> None:
     )
     assert RUNTIME_FEATURE_IDS == EXPECTED_RUNTIME_FEATURES
     assert RUNTIME_FEATURE_VERSIONS == {
-        name: (1, 1 if name == "array" else 0, 0)
+        name: (1, 4 if name == "array" else 0, 0)
         for name in EXPECTED_RUNTIME_FEATURES
     }
     assert RUNTIME_FEATURE_PACKED_VERSIONS == {
-        name: 0x00010100 if name == "array" else 0x00010000
+        name: 0x00010400 if name == "array" else 0x00010000
         for name in EXPECTED_RUNTIME_FEATURES
     }
     assert LLVM_RUNTIME_FEATURE_IDS == RUNTIME_FEATURE_IDS
@@ -217,6 +218,14 @@ def test_arrow_abi_declaration_sets_have_exact_symbol_parity() -> None:
     """
     header = ABI_HEADER_PATH.read_text(encoding="utf-8")
     source = ABI_SOURCE_PATH.read_text(encoding="utf-8")
+    for include in (
+        "irx_arrow_descriptors.inc",
+        "irx_arrow_array_values.inc",
+        "irx_arrow_chunks.inc",
+    ):
+        source += (ABI_SOURCE_PATH.parent / include).read_text(
+            encoding="utf-8"
+        )
     wrapper = ABI_WRAPPER_PATH.read_text(encoding="utf-8")
     inventory = tuple(
         ABI_SYMBOLS_PATH.read_text(encoding="utf-8").splitlines()
@@ -286,3 +295,14 @@ def test_fallible_generated_declarations_use_explicit_error_outputs() -> None:
             continue
         assert return_type == "status"
         assert parameters[-1] == "error_pointer"
+
+
+def test_compatible_minor_keeps_existing_elf_version_node() -> None:
+    """
+    title: A newer ABI minor must not rename the node used by linked consumers.
+    """
+    export_map = RUNTIME_ROOT / "native" / "irx_arrow_exports.map"
+    text = export_map.read_text(encoding="utf8")
+    assert text.startswith("IRX_ARROW_1.0 {")
+    assert "irx_arrow_type_import_copy;" in text
+    assert "irx_arrow_schema_import_copy;" in text

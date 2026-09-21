@@ -4,7 +4,7 @@ NOTE: DON'T TRACK THIS BY GIT, IT SHOULD BE KEPT IGNORED BY .gitignore
 
 **Status:** active implementation roadmap
 
-**Repository snapshot:** 2026-09-17
+**Repository snapshot:** 2026-09-18
 
 **Target:** make Apache Arrow C++ a complete, native, first-class data runtime
 for the Arx language.
@@ -34,7 +34,7 @@ re-scoped; do not defer status updates until the end of a milestone.
 | M1 — one native Arrow runtime and ABI   | **DONE**        | M0, Gate A                           |
 | M2 — semantic ownership and cleanup     | **PARTIAL**     | M1 and current managed-value surface |
 | M3 — complete logical types and schemas | **PARTIAL**     | M1-M2, Gate B                        |
-| M4 — first-class containers             | **NOT STARTED** | M1-M3, Gate B                        |
+| M4 — first-class containers             | **PARTIAL**     | M1-M3, Gate B                        |
 | M5 — tensors and multidimensional data  | **NOT STARTED** | M1-M4                                |
 | M6 — compute                            | **NOT STARTED** | M1-M4, Gate C                        |
 | M7 — streaming, IPC, and file formats   | **NOT STARTED** | M1-M4, Gate D                        |
@@ -61,86 +61,88 @@ re-scoped; do not defer status updates until the end of a milestone.
 
 ### Progress log
 
-| Date       | Item           | Transition                 | Evidence                                                                                                                         |
-| ---------- | -------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-09-03 | M0-001         | NOT STARTED -> DONE        | Plan is no longer ignored and now carries tracked states.                                                                        |
-| 2026-09-03 | M0-002         | NOT STARTED -> IN PROGRESS | Capability manifest and generated matrix started.                                                                                |
-| 2026-09-03 | M0-002         | IN PROGRESS -> DONE        | `makim irx.check-arrow-capabilities`; two tests pass.                                                                            |
-| 2026-09-03 | M0-003         | NOT STARTED -> IN PROGRESS | Validated foundation readiness rows started.                                                                                     |
-| 2026-09-03 | M0-003         | IN PROGRESS -> DONE        | 18 owners, states, test targets, and blockers validate.                                                                          |
-| 2026-09-03 | M0-004         | NOT STARTED -> DONE        | Builtin-first, unqualified naming is fixed in Section 2.1.                                                                       |
-| 2026-09-03 | M0-005         | NOT STARTED -> IN PROGRESS | Public operation placement catalog started.                                                                                      |
-| 2026-09-03 | M0-005         | IN PROGRESS -> DONE        | 52 families cover every capability and approved layer.                                                                           |
-| 2026-09-03 | M0-006         | NOT STARTED -> IN PROGRESS | Existing `T \| none` syntax selected for the null contract.                                                                      |
-| 2026-09-03 | M0-006         | IN PROGRESS -> DONE        | Type, flow, operator, container, and ABI rules recorded.                                                                         |
-| 2026-09-03 | M0-007         | NOT STARTED -> IN PROGRESS | Static and runtime schema contract started.                                                                                      |
-| 2026-09-03 | M0-007         | IN PROGRESS -> DONE        | Static identity and checked dynamic access rules recorded.                                                                       |
-| 2026-09-03 | M0-008         | NOT STARTED -> IN PROGRESS | Native handle ownership and value semantics started.                                                                             |
-| 2026-09-03 | M0-008         | IN PROGRESS -> DONE        | Share, move, borrow, view, and cleanup rules recorded.                                                                           |
-| 2026-09-03 | M0-009         | NOT STARTED -> IN PROGRESS | Unified status and language error policy started.                                                                                |
-| 2026-09-03 | M0-009         | IN PROGRESS -> DONE        | ABI status and recoverable/fatal policies recorded.                                                                              |
-| 2026-09-03 | M0-010         | NOT STARTED -> IN PROGRESS | Native runtime wheel strategy started.                                                                                           |
-| 2026-09-03 | M0-010         | IN PROGRESS -> DONE        | Dedicated core and optional runtime artifacts fixed.                                                                             |
-| 2026-09-03 | M0-011         | NOT STARTED -> IN PROGRESS | Unified C ABI v1 compatibility policy started.                                                                                   |
-| 2026-09-03 | M0-011         | IN PROGRESS -> DONE        | ABI 1.0.0 layout and compatibility rules recorded.                                                                               |
-| 2026-09-03 | M0-012         | NOT STARTED -> IN PROGRESS | Local Arrow 24 module tree classification started.                                                                               |
-| 2026-09-03 | M0-012         | IN PROGRESS -> DONE        | 29 groups cover all seven declared product scopes.                                                                               |
-| 2026-09-03 | M0             | IN PROGRESS -> DONE        | All 12 contract items and 11 focused checks complete.                                                                            |
-| 2026-09-03 | M1-001         | NOT STARTED -> IN PROGRESS | Packed Arrow ABI version query implementation started.                                                                           |
-| 2026-09-03 | M1-001         | IN PROGRESS -> DONE        | C harness and ctypes verify the native ABI 1.0.0 query.                                                                          |
-| 2026-09-03 | M1-002         | NOT STARTED -> IN PROGRESS | Stable status categories and error codes started.                                                                                |
-| 2026-09-03 | M1-002         | IN PROGRESS -> DONE        | Native ABI and 44 runtime tests use stable Arx statuses.                                                                         |
-| 2026-09-03 | M1-003         | NOT STARTED -> IN PROGRESS | Owned, thread-safe error detail implementation started.                                                                          |
-| 2026-09-03 | M1-003         | IN PROGRESS -> DONE        | Owned snapshots pass isolation, lifetime, and 64 regressions.                                                                    |
-| 2026-09-03 | M1-004         | NOT STARTED -> IN PROGRESS | Unified opaque-handle ownership implementation started.                                                                          |
-| 2026-09-03 | M1-004         | IN PROGRESS -> DONE        | ABI manifest and 50 Arrow ABI/runtime tests pass.                                                                                |
-| 2026-09-03 | M1-005         | NOT STARTED -> IN PROGRESS | Cross-language ABI declaration generation started.                                                                               |
-| 2026-09-03 | M1-005         | IN PROGRESS -> DONE        | 67 generated symbols have C/Python/LLVM parity; 55 tests pass.                                                                   |
-| 2026-09-04 | M1-009         | NOT STARTED -> IN PROGRESS | Capability-specific native artifact split started.                                                                               |
-| 2026-09-04 | M1-009         | IN PROGRESS -> DONE        | 21 feature tests and all 983 IRx tests pass.                                                                                     |
-| 2026-09-04 | M1-010         | NOT STARTED -> IN PROGRESS | Installed ABI conformance gates started.                                                                                         |
-| 2026-09-04 | M1-010         | IN PROGRESS -> DONE        | GCC/Clang, wheel, symbol, and all 995 IRx tests pass.                                                                            |
-| 2026-09-04 | M1             | IN PROGRESS -> DONE        | All ten native runtime and ABI work items are complete.                                                                          |
-| 2026-09-04 | M2-001         | NOT STARTED -> IN PROGRESS | Arrow semantic resource descriptors started.                                                                                     |
-| 2026-09-04 | M2-001         | IN PROGRESS -> DONE        | Nine ownership tests and all 1,004 IRx tests pass.                                                                               |
-| 2026-09-05 | M2-002         | NOT STARTED -> IN PROGRESS | Current Arrow expression and binding ownership flow started.                                                                     |
-| 2026-09-05 | M2-002         | IN PROGRESS -> PARTIAL     | Current types carry ownership; future M3-M7 types remain.                                                                        |
-| 2026-09-05 | M2-003         | NOT STARTED -> IN PROGRESS | Retained table-column projection contract started.                                                                               |
-| 2026-09-05 | M2-003         | IN PROGRESS -> DONE        | Parent-first and child-first native release tests pass.                                                                          |
-| 2026-09-05 | M2-004         | NOT STARTED -> IN PROGRESS | Generic semantic cleanup lowering started.                                                                                       |
-| 2026-09-05 | M2-004         | IN PROGRESS -> DONE        | All current exit and partial-build paths use slot cleanup.                                                                       |
-| 2026-09-05 | M2-005         | NOT STARTED -> IN PROGRESS | Move-safe, terminator-safe cleanup hardening started.                                                                            |
-| 2026-09-05 | M2-005         | IN PROGRESS -> DONE        | Releases null slots; generated LLVM has no late cleanup.                                                                         |
-| 2026-09-05 | M2-006         | NOT STARTED -> IN PROGRESS | Aggregate and suspended-frame ownership audit started.                                                                           |
-| 2026-09-05 | M2-006         | IN PROGRESS -> PARTIAL     | Owners fail closed until aggregate destruction exists.                                                                           |
-| 2026-09-05 | M2-007         | NOT STARTED -> IN PROGRESS | Borrowed and retained view ownership started.                                                                                    |
-| 2026-09-05 | M2-007         | IN PROGRESS -> PARTIAL     | Buffer, tensor, and table-column views are explicit.                                                                             |
-| 2026-09-05 | M2-008         | NOT STARTED -> IN PROGRESS | Deterministic Python wrapper lifecycle hardening started.                                                                        |
-| 2026-09-05 | M2-008         | IN PROGRESS -> DONE        | Core and stream wrappers close and fail closed.                                                                                  |
-| 2026-09-05 | M2-009         | NOT STARTED -> IN PROGRESS | Native ownership sanitizer gate started.                                                                                         |
-| 2026-09-05 | M2-009         | IN PROGRESS -> PARTIAL     | ASan/UBSan pass; local ptrace blocks LSan execution.                                                                             |
-| 2026-09-05 | M2-010         | NOT STARTED -> IN PROGRESS | Test-only native handle allocation failpoint started.                                                                            |
-| 2026-09-05 | M2-010         | IN PROGRESS -> PARTIAL     | Current creation/finish/projection OOM paths pass.                                                                               |
-| 2026-09-05 | M2-011         | NOT STARTED -> IN PROGRESS | Bounded lifecycle and release-order checks started.                                                                              |
-| 2026-09-05 | M2-011         | IN PROGRESS -> DONE        | 256 iterations and both parent/child orders pass.                                                                                |
-| 2026-09-05 | M2             | IN PROGRESS -> PARTIAL     | 1,014-test suite and 13-test ownership rerun pass.                                                                               |
-| 2026-09-05 | M2-002         | PARTIAL -> DONE            | All modeled expression and binding sites carry ownership.                                                                        |
-| 2026-09-05 | M2-006         | PARTIAL -> DONE            | Class destructors and generator-frame close cleanup pass.                                                                        |
-| 2026-09-05 | M2-007         | PARTIAL -> DONE            | Borrowed and retained views preserve parent/root ownership.                                                                      |
-| 2026-09-05 | M2-009         | PARTIAL -> DONE            | Sanitizer CI gate added; local ASan/UBSan harness passes.                                                                        |
-| 2026-09-05 | M2-010         | PARTIAL -> DONE            | Allocation failures leave current inputs retry-safe.                                                                             |
-| 2026-09-05 | M2             | PARTIAL -> DONE            | All 11 work items meet current-surface acceptance criteria.                                                                      |
-| 2026-09-16 | M2-009/010/011 | DONE -> PARTIAL            | Reopened: configured CI is not a passing LSan run; entry failpoints and iteration counts are not full allocator/memory evidence. |
-| 2026-09-16 | M2-012         | NOT STARTED -> DONE        | Allocation guards, MCJIT runtime loading, isolated resume cleanup; real malloc-failure regressions pass.                         |
-| 2026-09-16 | M2-013         | NOT STARTED -> PARTIAL     | Reject unsafe heap-string field initialization; remaining storage policies tracked explicitly.                                   |
-| 2026-09-16 | M3-001/002     | NOT STARTED -> DONE        | Immutable descriptors, canonical validation, structural type identity and conservative conversions; focused ASTx/IRx tests pass. |
-| 2026-09-16 | M3-004         | NOT STARTED -> DONE        | Every modeled logical family passes host C Data, IPC schema and native recursive-field round trips.                              |
-| 2026-09-16 | M3-003/006     | NOT STARTED -> PARTIAL     | Shared scalar/physical mapping and recursive native schema copying; source operations and dedicated descriptor handles remain.   |
-| 2026-09-16 | M2-011         | PARTIAL -> DONE            | Live Arrow-pool accounting over 256 iterations and wrapped malloc/free accounting in a generated owning-local loop pass.         |
-| 2026-09-16 | M1-006         | DONE (updated)             | Array feature contract 1.1.0 advertises recursive schema support; C ABI 1.0.0 remains baseline-compatible.                       |
-| 2026-09-17 | M2-009/010     | PARTIAL -> IN PROGRESS     | Generated ownership sanitizer programs and real allocator-failure probes started.                                                |
-| 2026-09-17 | M2-014/015     | NOT STARTED -> DONE        | Retry-safe primitive/Tensor builders and cleanup-aware fatal paths pass allocator/accounting regressions.                        |
-| 2026-09-17 | M2-009/010     | IN PROGRESS -> PARTIAL     | Expanded probes pass; LSan remains ptrace-blocked and remaining operation sweeps are incomplete.                                 |
+| Date       | Item           | Transition                 | Evidence                                                                                                                                        |
+| ---------- | -------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-03 | M0-001         | NOT STARTED -> DONE        | Plan is no longer ignored and now carries tracked states.                                                                                       |
+| 2026-09-03 | M0-002         | NOT STARTED -> IN PROGRESS | Capability manifest and generated matrix started.                                                                                               |
+| 2026-09-03 | M0-002         | IN PROGRESS -> DONE        | `makim irx.check-arrow-capabilities`; two tests pass.                                                                                           |
+| 2026-09-03 | M0-003         | NOT STARTED -> IN PROGRESS | Validated foundation readiness rows started.                                                                                                    |
+| 2026-09-03 | M0-003         | IN PROGRESS -> DONE        | 18 owners, states, test targets, and blockers validate.                                                                                         |
+| 2026-09-03 | M0-004         | NOT STARTED -> DONE        | Builtin-first, unqualified naming is fixed in Section 2.1.                                                                                      |
+| 2026-09-03 | M0-005         | NOT STARTED -> IN PROGRESS | Public operation placement catalog started.                                                                                                     |
+| 2026-09-03 | M0-005         | IN PROGRESS -> DONE        | 52 families cover every capability and approved layer.                                                                                          |
+| 2026-09-03 | M0-006         | NOT STARTED -> IN PROGRESS | Existing `T \| none` syntax selected for the null contract.                                                                                     |
+| 2026-09-03 | M0-006         | IN PROGRESS -> DONE        | Type, flow, operator, container, and ABI rules recorded.                                                                                        |
+| 2026-09-03 | M0-007         | NOT STARTED -> IN PROGRESS | Static and runtime schema contract started.                                                                                                     |
+| 2026-09-03 | M0-007         | IN PROGRESS -> DONE        | Static identity and checked dynamic access rules recorded.                                                                                      |
+| 2026-09-03 | M0-008         | NOT STARTED -> IN PROGRESS | Native handle ownership and value semantics started.                                                                                            |
+| 2026-09-03 | M0-008         | IN PROGRESS -> DONE        | Share, move, borrow, view, and cleanup rules recorded.                                                                                          |
+| 2026-09-03 | M0-009         | NOT STARTED -> IN PROGRESS | Unified status and language error policy started.                                                                                               |
+| 2026-09-03 | M0-009         | IN PROGRESS -> DONE        | ABI status and recoverable/fatal policies recorded.                                                                                             |
+| 2026-09-03 | M0-010         | NOT STARTED -> IN PROGRESS | Native runtime wheel strategy started.                                                                                                          |
+| 2026-09-03 | M0-010         | IN PROGRESS -> DONE        | Dedicated core and optional runtime artifacts fixed.                                                                                            |
+| 2026-09-03 | M0-011         | NOT STARTED -> IN PROGRESS | Unified C ABI v1 compatibility policy started.                                                                                                  |
+| 2026-09-03 | M0-011         | IN PROGRESS -> DONE        | ABI 1.0.0 layout and compatibility rules recorded.                                                                                              |
+| 2026-09-03 | M0-012         | NOT STARTED -> IN PROGRESS | Local Arrow 24 module tree classification started.                                                                                              |
+| 2026-09-03 | M0-012         | IN PROGRESS -> DONE        | 29 groups cover all seven declared product scopes.                                                                                              |
+| 2026-09-03 | M0             | IN PROGRESS -> DONE        | All 12 contract items and 11 focused checks complete.                                                                                           |
+| 2026-09-03 | M1-001         | NOT STARTED -> IN PROGRESS | Packed Arrow ABI version query implementation started.                                                                                          |
+| 2026-09-03 | M1-001         | IN PROGRESS -> DONE        | C harness and ctypes verify the native ABI 1.0.0 query.                                                                                         |
+| 2026-09-03 | M1-002         | NOT STARTED -> IN PROGRESS | Stable status categories and error codes started.                                                                                               |
+| 2026-09-03 | M1-002         | IN PROGRESS -> DONE        | Native ABI and 44 runtime tests use stable Arx statuses.                                                                                        |
+| 2026-09-03 | M1-003         | NOT STARTED -> IN PROGRESS | Owned, thread-safe error detail implementation started.                                                                                         |
+| 2026-09-03 | M1-003         | IN PROGRESS -> DONE        | Owned snapshots pass isolation, lifetime, and 64 regressions.                                                                                   |
+| 2026-09-03 | M1-004         | NOT STARTED -> IN PROGRESS | Unified opaque-handle ownership implementation started.                                                                                         |
+| 2026-09-03 | M1-004         | IN PROGRESS -> DONE        | ABI manifest and 50 Arrow ABI/runtime tests pass.                                                                                               |
+| 2026-09-03 | M1-005         | NOT STARTED -> IN PROGRESS | Cross-language ABI declaration generation started.                                                                                              |
+| 2026-09-03 | M1-005         | IN PROGRESS -> DONE        | 67 generated symbols have C/Python/LLVM parity; 55 tests pass.                                                                                  |
+| 2026-09-04 | M1-009         | NOT STARTED -> IN PROGRESS | Capability-specific native artifact split started.                                                                                              |
+| 2026-09-04 | M1-009         | IN PROGRESS -> DONE        | 21 feature tests and all 983 IRx tests pass.                                                                                                    |
+| 2026-09-04 | M1-010         | NOT STARTED -> IN PROGRESS | Installed ABI conformance gates started.                                                                                                        |
+| 2026-09-04 | M1-010         | IN PROGRESS -> DONE        | GCC/Clang, wheel, symbol, and all 995 IRx tests pass.                                                                                           |
+| 2026-09-04 | M1             | IN PROGRESS -> DONE        | All ten native runtime and ABI work items are complete.                                                                                         |
+| 2026-09-04 | M2-001         | NOT STARTED -> IN PROGRESS | Arrow semantic resource descriptors started.                                                                                                    |
+| 2026-09-04 | M2-001         | IN PROGRESS -> DONE        | Nine ownership tests and all 1,004 IRx tests pass.                                                                                              |
+| 2026-09-05 | M2-002         | NOT STARTED -> IN PROGRESS | Current Arrow expression and binding ownership flow started.                                                                                    |
+| 2026-09-05 | M2-002         | IN PROGRESS -> PARTIAL     | Current types carry ownership; future M3-M7 types remain.                                                                                       |
+| 2026-09-05 | M2-003         | NOT STARTED -> IN PROGRESS | Retained table-column projection contract started.                                                                                              |
+| 2026-09-05 | M2-003         | IN PROGRESS -> DONE        | Parent-first and child-first native release tests pass.                                                                                         |
+| 2026-09-05 | M2-004         | NOT STARTED -> IN PROGRESS | Generic semantic cleanup lowering started.                                                                                                      |
+| 2026-09-05 | M2-004         | IN PROGRESS -> DONE        | All current exit and partial-build paths use slot cleanup.                                                                                      |
+| 2026-09-05 | M2-005         | NOT STARTED -> IN PROGRESS | Move-safe, terminator-safe cleanup hardening started.                                                                                           |
+| 2026-09-05 | M2-005         | IN PROGRESS -> DONE        | Releases null slots; generated LLVM has no late cleanup.                                                                                        |
+| 2026-09-05 | M2-006         | NOT STARTED -> IN PROGRESS | Aggregate and suspended-frame ownership audit started.                                                                                          |
+| 2026-09-05 | M2-006         | IN PROGRESS -> PARTIAL     | Owners fail closed until aggregate destruction exists.                                                                                          |
+| 2026-09-05 | M2-007         | NOT STARTED -> IN PROGRESS | Borrowed and retained view ownership started.                                                                                                   |
+| 2026-09-05 | M2-007         | IN PROGRESS -> PARTIAL     | Buffer, tensor, and table-column views are explicit.                                                                                            |
+| 2026-09-05 | M2-008         | NOT STARTED -> IN PROGRESS | Deterministic Python wrapper lifecycle hardening started.                                                                                       |
+| 2026-09-05 | M2-008         | IN PROGRESS -> DONE        | Core and stream wrappers close and fail closed.                                                                                                 |
+| 2026-09-05 | M2-009         | NOT STARTED -> IN PROGRESS | Native ownership sanitizer gate started.                                                                                                        |
+| 2026-09-05 | M2-009         | IN PROGRESS -> PARTIAL     | ASan/UBSan pass; local ptrace blocks LSan execution.                                                                                            |
+| 2026-09-05 | M2-010         | NOT STARTED -> IN PROGRESS | Test-only native handle allocation failpoint started.                                                                                           |
+| 2026-09-05 | M2-010         | IN PROGRESS -> PARTIAL     | Current creation/finish/projection OOM paths pass.                                                                                              |
+| 2026-09-05 | M2-011         | NOT STARTED -> IN PROGRESS | Bounded lifecycle and release-order checks started.                                                                                             |
+| 2026-09-05 | M2-011         | IN PROGRESS -> DONE        | 256 iterations and both parent/child orders pass.                                                                                               |
+| 2026-09-05 | M2             | IN PROGRESS -> PARTIAL     | 1,014-test suite and 13-test ownership rerun pass.                                                                                              |
+| 2026-09-05 | M2-002         | PARTIAL -> DONE            | All modeled expression and binding sites carry ownership.                                                                                       |
+| 2026-09-05 | M2-006         | PARTIAL -> DONE            | Class destructors and generator-frame close cleanup pass.                                                                                       |
+| 2026-09-05 | M2-007         | PARTIAL -> DONE            | Borrowed and retained views preserve parent/root ownership.                                                                                     |
+| 2026-09-05 | M2-009         | PARTIAL -> DONE            | Sanitizer CI gate added; local ASan/UBSan harness passes.                                                                                       |
+| 2026-09-05 | M2-010         | PARTIAL -> DONE            | Allocation failures leave current inputs retry-safe.                                                                                            |
+| 2026-09-05 | M2             | PARTIAL -> DONE            | All 11 work items meet current-surface acceptance criteria.                                                                                     |
+| 2026-09-16 | M2-009/010/011 | DONE -> PARTIAL            | Reopened: configured CI is not a passing LSan run; entry failpoints and iteration counts are not full allocator/memory evidence.                |
+| 2026-09-16 | M2-012         | NOT STARTED -> DONE        | Allocation guards, MCJIT runtime loading, isolated resume cleanup; real malloc-failure regressions pass.                                        |
+| 2026-09-16 | M2-013         | NOT STARTED -> PARTIAL     | Reject unsafe heap-string field initialization; remaining storage policies tracked explicitly.                                                  |
+| 2026-09-16 | M3-001/002     | NOT STARTED -> DONE        | Immutable descriptors, canonical validation, structural type identity and conservative conversions; focused ASTx/IRx tests pass.                |
+| 2026-09-16 | M3-004         | NOT STARTED -> DONE        | Every modeled logical family passes host C Data, IPC schema and native recursive-field round trips.                                             |
+| 2026-09-16 | M3-003/006     | NOT STARTED -> PARTIAL     | Shared scalar/physical mapping and recursive native schema copying; source operations and dedicated descriptor handles remain.                  |
+| 2026-09-16 | M2-011         | PARTIAL -> DONE            | Live Arrow-pool accounting over 256 iterations and wrapped malloc/free accounting in a generated owning-local loop pass.                        |
+| 2026-09-16 | M1-006         | DONE (updated)             | Array feature contract 1.1.0 advertises recursive schema support; C ABI 1.0.0 remains baseline-compatible.                                      |
+| 2026-09-17 | M2-009/010     | PARTIAL -> IN PROGRESS     | Generated ownership sanitizer programs and real allocator-failure probes started.                                                               |
+| 2026-09-17 | M2-014/015     | NOT STARTED -> DONE        | Retry-safe primitive/Tensor builders and cleanup-aware fatal paths pass allocator/accounting regressions.                                       |
+| 2026-09-17 | M2-009/010     | IN PROGRESS -> PARTIAL     | Expanded probes pass; LSan remains ptrace-blocked and remaining operation sweeps are incomplete.                                                |
+| 2026-09-18 | M3-003/005     | IN PROGRESS -> DONE        | Builtin descriptor construction, closed inspection and compile-time conversion classification lower from resolved sidecars to native Arrow C++. |
+| 2026-09-18 | M3-006         | IN PROGRESS -> PARTIAL     | Dedicated type/field ABI and lifecycle paths implemented; combined Gate B and complete sanitizer/fault coverage remain open.                    |
 
 ### Verification — 2026-09-16
 
@@ -181,11 +183,12 @@ Vulture (`--min-confidence 80`). McCabe (`--min 10`) reports complexities 21 and
 pre-commit/Prettier stack, Quarto `docs.build`, installed-wheel checks, and the
 Python 3.10–3.13 matrix were not run in this slice.
 
-**Scope remaining:** M3-003/005/006 still require source operations, focused
-ASTx expression nodes, semantic sidecars consumed by native lowering, and
-dedicated descriptor handles. M2-009/010/013 retain sanitizer breadth,
-post-mutation allocator-failure, and aggregate storage/cycle work. Passing the
-checks above does not close either milestone or Gate B.
+**Current scope remaining (2026-09-18):** descriptor literals, dedicated owners,
+physical sidecars and native inspection now execute. M3-006 and Gate B remain
+partial: complete nullable semantics, general nested/variable-width containers
+and complete offset/bitmap guarantees are not descriptor features. M2 retains
+LSan, remaining allocator-operation sweeps and aggregate storage/cycle work. See
+the latest decision and verification record at the end of this file.
 
 ## 1. Objective
 
@@ -496,7 +499,7 @@ output. The table below retains the design baseline and completion contract.
 | Foundation                              | Current baseline                                                                                                           | Required completion                                                                                                                     |
 | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | Scalar numerics and Boolean             | Core signed/unsigned integers, floats, casts, and Boolean rules exist                                                      | Define exact Arrow cast, overflow, comparison, NaN, and non-finite behavior                                                             |
-| Null values                             | `none` and finite unions exist; Arrow arrays expose validity metadata                                                      | Define first-class nullable scalar semantics, validity propagation, equality, ordering, casts, and pattern/branch behavior              |
+| Null values                             | Primitive nullable storage, validity queries, checked unwrap and local/call/return conversion exist                        | Complete nullable operators, managed payloads, array extraction and flow-sensitive branch behavior                                      |
 | Strings and bytes                       | UTF-8 strings exist; Arrow RecordBatch supports UTF-8 internally                                                           | Add owned/borrowed binary values, large offsets, Unicode conversion, view lifetimes, and zero-copy rules                                |
 | Decimal values                          | ASTx reserves decimal data-type kinds                                                                                      | Add Arx literals/types, precision and scale checking, 32/64/128/256-bit representation, arithmetic, casts, and ABI rules                |
 | Temporal values                         | Date, time, timestamp, and datetime types/literals exist                                                                   | Add Arrow units, duration/interval types, timezone metadata, range checking, and conversion policy                                      |
@@ -620,6 +623,10 @@ Before broadening the Arrow surface, Arx needs these common rules.
 Arx reuses its existing union spelling instead of adding nullable-only syntax.
 `T | none` is the canonical source form for a nullable `T`; this plan does not
 introduce `T?`. Union order and duplicates are normalized during analysis.
+
+This is the target contract. M4-001 implements primitive storage, injection,
+copy/widening, calls/returns and explicit validity queries. Predicate flow
+narrowing, nullable operators and general nullable containers remain pending.
 
 - An exact union of one non-`none` type and `none` resolves to a reusable ASTx
   `NullableType(T)` semantic type. The parser may continue to emit the source
@@ -1575,24 +1582,33 @@ allocation-failure tests in the same vertical slice.
 
 ### Milestone 3 work items
 
-| ID     | Item                                                                          | Status          | Evidence or blocker                                                                                                                    |
-| ------ | ----------------------------------------------------------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| M3-001 | Reusable recursive logical types, fields, schemas and container types in ASTx | **DONE**        | 45 logical kinds, immutable recursive descriptors, runtime collection checks, ASTx tests                                               |
-| M3-002 | Canonical schema validation and lossless conversion rules in IRx              | **DONE**        | Field paths, metadata identity, parameter validation and conversion-domain tests                                                       |
-| M3-003 | Central scalar/storage mapping and physical type resolution                   | **PARTIAL**     | C Data formats and scalar mapping integrated with existing tensor/DataFrame helpers; lowering sidecars remain                          |
-| M3-004 | Descriptor/schema, C Data and IPC metadata round trips                        | **DONE**        | 45 families round-trip through PyArrow C Data, IPC schemas and native recursive field handles; synthetic-child restrictions documented |
-| M3-005 | Builtin source syntax and typed construction/inspection/conversion nodes      | **NOT STARTED** | Requires coordinated parser, semantics and native lowering                                                                             |
-| M3-006 | Native descriptor ABI, ownership, failure paths and milestone gate            | **PARTIAL**     | Existing schema ABI preserves recursive fields and metadata; dedicated type/field handles and end-to-end Gate B remain                 |
+| ID     | Item                                                                                         | Status      | Evidence or blocker                                                                                                                                          |
+| ------ | -------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| M3-001 | Reusable recursive logical types, fields, schemas and container types in ASTx                | **DONE**    | 45 logical kinds, immutable recursive descriptors, runtime collection checks, ASTx tests                                                                     |
+| M3-002 | Canonical schema validation and lossless conversion rules in IRx                             | **DONE**    | Field paths, metadata identity, parameter validation and conversion-domain tests                                                                             |
+| M3-003 | Central scalar/storage mapping and physical type resolution                                  | **DONE**    | All 45 families resolve to immutable C Data sidecars consumed by verified native LLVM lowering; no PyArrow serialization in compilation                      |
+| M3-004 | Descriptor/schema, C Data and IPC metadata round trips                                       | **DONE**    | 45 families round-trip through PyArrow C Data, IPC schemas and native recursive field handles; synthetic-child restrictions documented                       |
+| M3-005 | Builtin source syntax and typed descriptor construction/inspection/conversion classification | **DONE**    | Arx literals and nine closed queries, ASTx nodes, IRx validation and native execution; conversion_kind classifies literals, not value casts                  |
+| M3-006 | Native descriptor ABI, ownership, failure paths and milestone gate                           | **PARTIAL** | ABI 1.1 and array contract 1.2 implemented; import allocator sweeps and owner tests added; combined Gate B and complete sanitizer/fault coverage remain open |
 
-### Implemented descriptor foundation (2026-09-16)
+### Implemented descriptor execution (2026-09-18)
 
-See `docs/arrow-type-schemas.md` for the exact API and restrictions. The host
-interoperability implementation is not a Python execution fallback for Arx. All
-45 modeled logical families have recursive descriptors and native schema
-round-trip tests. Columnar value declarations not yet backed by lowering fail in
-semantic analysis. No new Arx syntax or standard-library namespace has been
-introduced. The remaining M3-003/005/006 work is required before this milestone
-or Gate B can be marked complete.
+See `docs/arrow-type-schemas.md` and `examples/schema_descriptors.x` for the
+exact source API. All 45 logical families have builtin descriptor syntax,
+canonical semantic validation, pre-resolved physical sidecars, dedicated opaque
+native owners and C Data round-trip coverage. Inspection, checked projection,
+exact equality, call/return sharing and replacement execute natively. New
+modeled-only columnar value types and descriptor container wrappers fail in
+analysis rather than reaching unsupported lowering.
+
+There is no Arrow namespace or Python execution fallback. `conversion_kind`
+classifies two literal type or schema descriptors at compile time; actual casts
+of values remain M4/M6 work. Managed class fields and suspended descriptor
+locals use the existing ownership machinery. Unmanaged structs and yielding or
+wrapping descriptors remain rejected. Primitive nullable scalar storage now
+executes in M4-001; Gate B still requires complete nullable semantics,
+variable-width and nested containers, and complete offset/bitmap checks; its
+completion must not be inferred from descriptor support.
 
 ### ASTx
 
@@ -1638,6 +1654,15 @@ or Gate B can be marked complete.
 
 Deliver vertical slices rather than implementing all builders before any
 language path works.
+
+### Milestone 4 work items
+
+| ID     | Item                                                               | Status          | Evidence or blocker                                                                                                                            |
+| ------ | ------------------------------------------------------------------ | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| M4-001 | Primitive nullable scalar storage and explicit validity operations | **DONE**        | Normalized nullable types, independent validity, local/call/return conversion, checked unwrap, native execution and sanitizer cleanup coverage |
+| M4-002 | Nullable operators, predicate flow narrowing and managed payloads  | **PARTIAL**     | Primitive operators, predicate proofs and nullable shared owners implemented; unique/string payloads and aggregate fields pending              |
+| M4-003 | First-class primitive arrays and nullable scalar extraction        | **PARTIAL**     | Primitive arrays, reusable builders, half-float and chunked values implemented; source buffer/C Data constructors pending                      |
+| M4-004 | Variable-width and nested containers, batches and tables           | **NOT STARTED** | Requires array and aggregate lifetime foundations                                                                                              |
 
 ### Arrays and scalars
 
@@ -2119,3 +2144,536 @@ IPC/stream operations still needs an explicit consumption/retry contract and
 allocator tests. M3-003/005/006 remain unchanged and incomplete. They require
 source operations, focused ASTx nodes, resolved sidecars consumed by native
 lowering, and dedicated descriptor handles, not a Python execution fallback.
+
+### 2026-09-17/18 — M3 descriptor execution (M3-003/005/006)
+
+- Implement M3 before M4 because container operations depend on a usable native
+  type/schema model. Descriptor support does not imply value/kernel support.
+- Use builtin `datatype`, `field`, and `schema` descriptor literals and explicit
+  inspection intrinsics; no Arrow-specific public namespace. Keep parameters
+  typed in ASTx and validate them in IRx, not in LLVM lowering.
+- Resolve portable C Data trees during analysis and lower only those sidecars.
+  Native imports copy immutable compiler data into dedicated opaque owners.
+  Alternative: compile-time IPC serialization through PyArrow; rejected to keep
+  descriptor analysis independent of host Python Arrow execution.
+
+#### Decisions, assumptions and best alternatives
+
+1. **Builtin descriptors, not an Arrow module.** `datatype`, `field` and
+   `schema` are ambient value types. `datatype` avoids changing the existing
+   `type(...)` query. Closed query names are listed in the lexical manifest and
+   modeled as an ASTx enum, never arbitrary native symbol strings in source.
+   Alternative: descriptor methods or a general reflection API, once reusable
+   method resolution is ready. Any library conveniences should remain
+   `stdlib.*`, not `stdlib.arrow.*`.
+2. **Descriptors are not container values.** All 45 logical kinds are
+   describable; this does not add decimal arithmetic, nested arrays, nullable
+   scalars or compute. `conversion_kind` returns
+   exact/lossless/explicit/incompatible classifications (0/1/2/3) for two
+   literals. Alternative: typed runtime compatibility results and checked value
+   casts in M4/M6; do not silently execute casts from this classification.
+3. **Resolved C Data, host target.** Analysis canonicalizes and resolves the
+   full C Data tree and index promotion. LLVM emits standard C-layout constants
+   and calls a version-checked native import-copy operation. Metadata int32
+   lengths are checked before lowering. Current metadata encoding assumes host
+   endianness, consistent with the existing backend. Alternative: explicit
+   target-data serialization for cross compilation. PyArrow IPC serialization
+   during compilation was rejected as an unnecessary host dependency.
+4. **Metadata and reflection.** Source names, metadata and extension payloads
+   use UTF-8 literals. Binary keys/values still round-trip through ASTx and the
+   native ABI. Alternative: add language byte literals before arbitrary binary
+   source metadata. Type handles normalize away outer field names/nullability
+   and ordinary metadata, while retaining opaque extension identity and nested
+   metadata. `type_field` reflects Arrow physical fields, not synthetic
+   dictionary/extension children; export preserves their complete C Data.
+   Alternative: a separate logical-child reflection API.
+5. **Owned names and descriptor lifetimes.** Field-name queries return malloc
+   copies managed as owned strings; they do not borrow a destroyed descriptor.
+   Alternative: a rooted borrowed-string view once that ABI exists. Schema,
+   field and type owners use existing retain/release, moves and lexical cleanup.
+   Class construction zero-initializes descriptor slots before any fallible
+   initializer. Unmanaged structs, container elements, nullable wrappers and
+   yielded descriptors remain fail-closed until element destruction/transfer is
+   implemented. Suspended descriptor locals do not imply generator source syntax
+   support. Fatal native errors clean current-function owners; this does not
+   implement cross-function stack unwinding.
+6. **Append-only native ABI.** ABI 1.1.0 adds 19 symbols and field handle kind
+   15; the array feature contract is 1.2.0. Existing signatures/IDs are
+   unchanged. ELF symbols keep `IRX_ARROW_1.0` rather than renaming the version
+   node on a compatible minor bump. Alternative: explicit per-symbol
+   introduction nodes with version inheritance; changing every old symbol to
+   `IRX_ARROW_1.1` would break existing linked consumers. The capability
+   inventory's initial ABI decision remains 1.0.0, distinct from the current
+   runtime ABI.
+7. **Gate accounting.** M3-003 and M3-005 cover executable descriptors;
+   M3-006/M3 and Gate B remain PARTIAL. M2 import-copy allocation sweeps now
+   also include type/field owners, but do not prove all native operations
+   failure atomic. Alternative: split the descriptor exit gate from container
+   Gate B in a future roadmap revision; this implementation does not silently
+   close it.
+
+#### Verification record
+
+Final focused checks and environment limitations are recorded below. The broad
+IRx/ASTx suite, broad Arx Python suite and full compiled-language suite were
+started, then interrupted when concurrent native compilation exhausted this 8 GB
+environment (less than 250 MB available and severe system load). These are **not
+passing full-suite results**. The installed-wheel smoke driver also hit its
+300-second timeout during that load; all six wheel builds completed.
+
+Completed checks:
+
+- **1,002 passed** in the sequential regression run below. This includes all
+  ASTx tests and IRx semantic-analysis tests, all 45 descriptor families, ABI
+  declaration/export conformance, canonical capability metadata, the updated
+  ABI/feature-version harness, Arx descriptor integration and translate paths.
+
+  ```bash
+  TMPDIR="$PWD/.tmp" pytest -q \
+    packages/irx/tests/analysis packages/astx/tests \
+    packages/irx/tests/test_descriptor_execution.py \
+    packages/irx/tests/test_arrow_abi_manifest.py \
+    packages/irx/tests/test_arrow_abi_conformance.py \
+    packages/irx/tests/test_arrow_capability_matrix.py \
+    packages/irx/tests/test_arrow_runtime.py::test_arrow_runtime_reports_stable_abi_and_feature_versions \
+    packages/arx/tests/python/test_descriptors.py \
+    packages/arx/tests/python/test_codegen_ast_output.py
+  ```
+
+- **ASan/UBSan passed:**
+  `TMPDIR="$PWD/.tmp" python scripts/check_arrow_ownership_sanitizers.py --skip-leak-detection`
+  exercises the native harness and six generated LLVM ownership programs. New
+  cases cover descriptors in class fields, replacement, projection, owned
+  field-name strings, bounds-failure cleanup and suspended locals on
+  exhaustion/early close/failure. LSan was deliberately disabled; no successful
+  LSan run is claimed.
+- `mypy src` passed in `packages/arx`, `packages/astx` and `packages/irx` (29,
+  55 and 144 source files respectively). Package-configured Ruff checks and
+  formatting passed on the touched Python files; native additions pass Google
+  clang-format verification. Douki's complete rerun was idempotent (33 checked
+  files; generated declarations are excluded by its own configuration).
+- ABI generation `--check`, compatibility with the 1.0 baseline, capability
+  matrix generation `--check`, lexical manifest JSON validation, API
+  documentation generation and `git diff --check` passed.
+- An initial ABI symbol-parity test missed the new included implementation file;
+  its source inventory now includes it. An outdated feature-version assertion
+  was updated to 1.2.0 (with 1.3.0 rejected). A sanitizer harness assertion-only
+  expectation was generalized to accept the _specific expected_ descriptor
+  runtime diagnostic. Their focused reruns passed; errors were not suppressed.
+
+Unrun gates: full repository CI/lint, Quarto rendering, a fresh-dependency wheel
+isolation run, successful LSan and the Python 3.10–3.13 matrix. The interrupted
+full-suite attempts must not be used as evidence for these gates.
+
+Additional focused results:
+
+- `pytest -q packages/irx/tests/test_arrow_allocation_failures.py -k cpp_allocation_failure_sweep`:
+  **1 passed** in the final combined edge run (the two accompanying new Unicode
+  tests initially expected the wrong error phase). Type/field import-copy
+  allocation failures preserve producer callbacks, publish no output, and allow
+  retry; the existing Array/Tensor finish sweeps also execute in this harness.
+- `pytest -q packages/arx/tests/python/test_descriptors.py -k source_metadata_rejects_invalid_unicode`:
+  **2 passed** after asserting the existing `SourceError` boundary, not
+  inventing a parser encoding check. ArxIO already rejects invalid UTF-8 before
+  lexing.
+- `TMPDIR="$PWD/.tmp" arx test packages/arx/tests/arx/test_schema_descriptors.x`:
+  **2 passed**, including mutable class fields for all three descriptor owner
+  types.
+- `python scripts/test_wheels.py --audit-only`: **passed**, including the new
+  native descriptor include. The installed-wheel smoke now also compiles and
+  runs a native descriptor source program from the installed packages.
+
+Final delivery checks:
+
+- The sequential `python scripts/test_wheels.py --current-environment` retry
+  **passed**, including native descriptor execution and installed asset/header
+  checks. The earlier timeout is no longer an outstanding local smoke failure.
+  This mode reuses existing third-party dependencies and is not the isolated
+  fresh-environment release gate. Wheel/source byte comparisons found no
+  mismatches in Arx, ASTx or IRx packaged files.
+- `TMPDIR="$PWD/.tmp" arx --run examples/schema_descriptors.x` exited **0**.
+- Vulture (`--min-confidence 80`) passed on the touched Python files. Bandit's
+  high-confidence/high-severity gate (`-iii -lll`) passed; its inventory still
+  includes lower-severity findings, so this is not a zero-findings claim. The
+  McCabe probe reports complexity **11** for the new descriptor parameter
+  parser; it is advisory, not a zero-warning result.
+
+### 2026-09-18 — Primitive nullable scalar foundation (M4-001, done)
+
+- Preserve `T | none` source syntax and normalize it to reusable ASTx
+  `NullableType(T)` semantic types. Begin with numeric and Boolean payloads;
+  reject managed payloads and nested value wrappers before lowering.
+- Represent an immediate nullable value as a language-owned LLVM
+  validity/payload pair, not an Arrow C++ layout or a heap-allocated Arrow
+  Scalar. Arrow extraction will use separate status, validity and typed payload
+  slots. Alternative: opaque Arrow Scalar owners for every value, with
+  additional allocation costs.
+- Implement `is_null`, `is_valid` and checked `expect_valid` as ambient
+  builtins. Do not pretend ordinary nullable operators or predicate flow
+  narrowing are implemented; these stay explicit M4-002 work.
+- The initial Arx spellings are existing Boolean, signed integer and float
+  types. IRx additionally supports unsigned 8/16/32/64-bit payloads.
+  Alternative: expose unsigned aliases in this slice; deferred to avoid claiming
+  unrelated frontend numeric support without its own lexer/parser/literal
+  coverage.
+- Source nullable locals require explicit initialization; direct ASTx locals
+  without an initializer use initialized null storage. Alternative: synthesize
+  `none` for source locals too, after a broader default-initialization decision.
+- Bare returns now use ASTx `FunctionReturn(value=None)`, distinct from an
+  explicit `LiteralNone` return. Existing void execution remains unchanged.
+  Alternative: add a separate return-presence flag or statement class; using the
+  existing downstream optional-value checks is the smaller reusable contract.
+- Nullable class/struct fields, container elements and C FFI signatures fail
+  before lowering. They need separate layout/lifetime and interchange tests; the
+  internal aggregate is not a public C ABI or an Arrow C++ object layout.
+  Alternative: implement primitive aggregate fields immediately, but that would
+  expand this local/parameter/return slice into static/module initialization.
+- `expect_valid` is an explicit fatal checked unwrap. It performs current-frame
+  cleanup before reporting `ARX-RUNTIME-NULL-001`; it does not claim recoverable
+  exceptions or caller-frame unwinding. Alternatives: a recoverable result type,
+  pattern matching, or proven flow narrowing; all require additional semantics.
+- A passing `is_valid` condition does not narrow a variable's type. Alternative:
+  flow-sensitive refinement with invalidation on assignment and aliasing, kept
+  as M4-002 rather than an unsafe syntactic special case.
+- Nullable examples exposed two pre-existing core gaps: scalar unary `+`/`-`
+  passed analysis without general lowering, and `if` parsing consumed the next
+  line marker even without a matching `else`. This slice repairs both with
+  resolved-operator lowering, numeric operand validation, and indentation-aware
+  branch lookahead. Integer negation follows existing modular arithmetic;
+  floating negation uses LLVM `fneg` rather than subtraction from positive zero.
+  Alternative: avoid these forms in examples; rejected because they are basic
+  prerequisites for useful nullable control flow and signed payloads.
+- Added a generated sanitizer program that owns a schema descriptor and a
+  dynamic string before failing `expect_valid`, so the existing native ownership
+  gate also exercises nullable fatal-path cleanup.
+
+#### M4-001 verification record
+
+Checks were run sequentially on the available Python 3.14/Linux toolchain:
+
+- `pytest -q packages/astx/tests`: **538 passed**.
+- `pytest -q packages/irx/tests/analysis packages/irx/tests/test_nullable_runtime.py packages/irx/tests/test_none.py`:
+  **322 passed**, including native storage for twelve primitive payload types.
+- `pytest -q packages/arx/tests/python/test_nullable_syntax.py packages/arx/tests/python/test_parser*.py packages/arx/tests/python/test_codegen_ast_output.py packages/arx/tests/python/test_descriptors.py packages/arx/tests/python/test_lexer*.py`:
+  **663 passed**, including nullable example execution, scalar sign lowering,
+  branch/dedent regressions, failure diagnostics and current-frame cleanup.
+- `pytest -q packages/irx/tests/test_descriptor_execution.py -k 'wrappers or inferred'`:
+  **6 passed**, 56 deselected. Descriptor nullable wrappers still fail in
+  analysis, now through the primitive-payload support boundary.
+- `TMPDIR="$PWD/.tmp" arx test packages/arx/tests/arx/test_nullable_scalars.x`:
+  **1 compiled-language test passed**.
+- `mypy src` from each of `packages/astx`, `packages/irx`, `packages/arx`,
+  `packages/arxjit`, `packages/arxpy`, and `packages/aix`: **all passed** (56,
+  147, 29, 10, 5 and 21 source files respectively).
+- `TMPDIR="$PWD/.tmp" python scripts/check_arrow_ownership_sanitizers.py --skip-leak-detection`:
+  **passed** the native harness and all seven generated programs, including
+  `nullable_failure`. LLVM ASan instrumentation is checked by the harness;
+  native artifacts are built with ASan/UBSan. LSan was explicitly disabled
+  because of the previously recorded sandbox/ptrace limitation; this does not
+  close the leak-detection gate.
+- The ASTx descriptor docstrings from M3 contained inherited `loc`/`type_`
+  attribute stubs that prevented a subsequent Douki run. Explicit annotations
+  and synchronized documentation repair those stubs; no descriptor runtime
+  behavior changed.
+
+- Ruff checks and formatting checks passed for the changed Python files using
+  the owning package configurations; Douki synchronization is idempotent.
+- `python scripts/gen_arrow_capability_matrix.py --check` and
+  `python scripts/gen_arrow_abi.py --check` passed. The capability matrix
+  records primitive nullable support without upgrading the full null/container
+  rows.
+- Prettier checks passed for the changed nullable documentation and JSON
+  manifests; `python -m json.tool packages/arx/src/arx/lexer/syntax.json` and
+  `git diff --check` passed.
+
+M4-002 through M4-004 remain **NOT STARTED**. M4 and combined Gate B remain
+incomplete. This slice does not claim nullable operators, flow narrowing,
+managed payloads, general Arrow array construction/extraction, public C nullable
+ABIs, installed-wheel verification, full repository CI, Quarto builds, or the
+Python 3.10–3.13 matrix.
+
+### 2026-09-19 — M4 nullable operations and primitive arrays (partial)
+
+This continuation implements additional end-to-end foundations, **not the whole
+M4 exit criteria**. M4-002 and M4-003 remain partial; M4-004 remains not
+started. Descriptor coverage is not value-execution coverage.
+
+#### Implementation tracking
+
+- **DONE (bounded subtask):** primitive nullable arithmetic, comparisons, unary
+  signs/not, short-circuit Kleene logic, direct predicate narrowing, mutation
+  invalidation and conservative branch/loop joins.
+- **DONE (bounded subtask):** ASTx array expressions, Arx typed
+  constructors/annotations, IRx resolved signatures and managed opaque owners;
+  nullable extraction, length/null count/offset, slice, concat, copy and
+  equality.
+- **Pending M4-002:** managed nullable payload lifetime/destruction, aggregate
+  fields, richer compound-predicate proofs and explicit nullable casts.
+- **Pending M4-003:** public dynamic builders, buffer and source C Data
+  constructors, half-float storage, chunked arrays and rechunking.
+- **Pending M4-004:** variable-width and recursive nested values, typed batch/
+  table construction and transformations, static/dynamic projection, metadata,
+  expanded DataFrame/Series values and explicit batch/row/column iteration.
+
+#### Decisions and top three alternatives
+
+1. **Decision:** keep immediate nullable operators builtin and unboxed;
+   propagate null before payload work and short-circuit decisive Kleene
+   Booleans. Reject explicit fast-math/FMA/unsigned modifiers rather than
+   silently ignoring them. **Top three alternatives:** (1) call Arrow Compute
+   for each scalar operation; (2) allocate an opaque Arrow Scalar for every
+   intermediate; (3) require explicit validity handling for all arithmetic. The
+   chosen representation preserves the primitive storage foundation without heap
+   allocation or Python.
+2. **Decision:** refine direct local/argument predicates with symbol-identity
+   facts, invalidate on assignment, intersect at joins, and discard inherited
+   facts at loop backedges. Guarded Boolean RHS reads also receive direct facts;
+   arbitrary compound branch facts are not inferred. **Top three alternatives:**
+   (1) full SSA/path-sensitive proof analysis; (2) immutable-bindings-only
+   refinement; (3) checked unwraps exclusively. Conservative rejection is
+   preferred to stale proofs or alias assumptions.
+3. **Decision:** expose immutable `array[T]` and `array[T | none]` as ambient
+   language values, not `stdlib.arrow` wrappers. Constructors require explicit
+   element types; nullable extraction always returns a validity/payload pair.
+   **Top three alternatives:** (1) overload existing mutable list literals; (2)
+   expose builders before array values; (3) implement arrays only in a
+   namespaced standard library. Existing ASTx logical types remain reusable.
+4. **Decision:** use shared opaque array owners, zero-copy slices, explicit
+   buffer-rebuilding copies, and concatenation through Arrow C++ primitives.
+   Preserve bit-packed Booleans and use offset-aware typed accessors only after
+   validity checks. Native ABI 1.2.0 adds symbols; array capability 1.3.0 gates
+   their use without changing existing symbol signatures or ELF version nodes.
+   **Top three alternatives:** (1) expose raw Arrow buffers directly to LLVM;
+   (2) eagerly materialize every slice; (3) convert arrays to mutable Arx lists.
+   The chosen design keeps C++ layouts private and child lifetimes independent.
+5. **Decision:** expose unsigned scalar spellings to make unsigned array values
+   usable in source. Preserve existing explicit-cast and whole-domain lossless
+   assignment rules; narrow/signed-to-unsigned literals require explicit casts.
+   **Top three alternatives:** (1) keep unsigned execution IRx-only; (2) add
+   context-sensitive integer literals now; (3) implicitly truncate or
+   reinterpret integers. Context-sensitive checked literals are the strongest
+   follow-up; silent truncation is not an acceptable default.
+6. **Decision:** keep unsupported managed/nested execution fail-closed and keep
+   M4 open. General iteration and DataFrame/Table naming are not settled by the
+   primitive array API. **Top three alternatives:** (1) prioritize dynamic
+   builders and managed scalar destruction next; (2) implement opaque nested
+   Scalar values before native language payloads; (3) prioritize typed batches
+   over additional scalar syntax. No Python fallback or descriptor-only model is
+   counted as native value support.
+
+Additional implementation notes: `array[...]` now denotes a native typed
+columnar owner, not the removed legacy raw-array representation. A parser
+regression asserts this intentional new meaning. Arrays exposed a pre-existing
+ASTx `LiteralNone.get_struct()` failure: structural primitive values now include
+`None`, allowing nullable ASTs to render without bypassing runtime validation.
+Failure-only Arrow error cleanups are removed after successful calls so sibling
+branches never reference undominated output slots. Array builder owner slots are
+initialized in the function entry block, and typed finish validates nullability
+before consuming the builder.
+
+7. **Decision:** include genuine null in ASTx structural primitive values,
+   rather than special-casing array rendering. **Top three alternatives:** (1)
+   override only `LiteralNone.get_struct`; (2) serialize null as a string token;
+   (3) replace it with the existing undefined sentinel. The chosen contract
+   preserves the distinction between a null value and absent/undefined data.
+8. **Decision:** register native error ownership only through its failure guard,
+   removing that cleanup on success, where the ABI guarantees an empty error
+   slot. **Top three alternatives:** (1) hoist every error slot to function
+   entry; (2) release errors directly inside a new shared failure helper; (3)
+   introduce general branch-scoped cleanup regions. The targeted approach fixes
+   dominance without expanding the lifetime representation in this slice.
+
+9. **Decision:** reject generic scalar unary/binary operators on array and
+   descriptor owners, and on the existing DataFrame/Series owners. Use typed
+   operations (`array_equal` or `descriptor_equal` where applicable). This
+   closes a lowering hazard where opaque `i8*` handles could enter string
+   comparison or pointer arithmetic. **Top three alternatives:** (1) overload
+   equality with Arrow value semantics; (2) expose a distinct explicit
+   owner-identity predicate; (3) introduce comparison traits/methods. Closed
+   typed operations avoid prematurely choosing elementwise versus
+   whole-container equality.
+
+#### M4 continuation verification
+
+The following checks passed on the available Linux/Python 3.14 toolchain:
+
+- `pytest -q packages/astx/tests`: **540 passed**.
+- `pytest -q packages/irx/tests/analysis packages/irx/tests/test_nullable_runtime.py packages/irx/tests/test_none.py packages/irx/tests/test_arrow_abi_manifest.py packages/irx/tests/test_arrow_abi_conformance.py packages/irx/tests/test_array_value_runtime.py`:
+  **355 passed**. This includes ABI declaration/export parity and compatibility.
+- `pytest -q packages/arx/tests/python/test_nullable_syntax.py packages/arx/tests/python/test_nullable_operations.py packages/arx/tests/python/test_array_values.py packages/arx/tests/python/test_codegen_ast_output.py packages/arx/tests/python/test_parser*.py packages/arx/tests/python/test_lexer*.py`:
+  **630 passed**, including verified LLVM, native execution and failure paths.
+- A subsequent
+  `pytest -q packages/irx/tests/test_nullable_runtime.py packages/irx/tests/test_descriptor_execution.py packages/irx/tests/test_arrow_allocation_failures.py packages/irx/tests/test_arrow_capability_matrix.py packages/irx/tests/test_array_value_runtime.py`:
+  **163 passed**. This overlapping follow-up includes the missing nullable
+  operator sidecar regression and strengthened nonzero offsets for all eleven
+  primitive array storage types; do not add it to the earlier counts as unique
+  test coverage.
+- A further
+  `pytest -q packages/arx/tests/python/test_array_values.py packages/arx/tests/python/test_descriptors.py packages/arx/tests/python/test_nullable_operations.py packages/irx/tests/test_descriptor_execution.py`:
+  **164 passed**, including seven new rejections of scalar operations on opaque
+  array/descriptor owners. This is overlapping regression coverage.
+- `pytest -q packages/arx/tests/python/test_array_values.py packages/arx/tests/python/test_dataframe.py`:
+  **34 passed** after extending the scalar-operator guard to existing
+  DataFrame/Series owners. IRx strict mypy and the rebuilt installed-wheel smoke
+  were then rerun successfully. An initial attempt also named a nonexistent IRx
+  analysis test glob and collected no tests; the corrected command above is the
+  executed coverage, not that failed invocation.
+- `pytest -q packages/arx/tests/python/test_nullable_operations.py`: **12
+  passed** after adding native call/return, valid addition and null propagation
+  coverage for all eleven numeric nullable payload widths, including half-float
+  and unsigned integers. Boolean Kleene coverage also remains in this
+  overlapping suite.
+- `TMPDIR="$PWD/.tmp" arx test packages/arx/tests/arx/test_columnar_arrays.x`:
+  **1 passed**, including functions returning independently owned slices.
+- `mypy src` in ASTx, IRx, Arx, ArxJIT, ArxPy and AIX: **all passed** (57, 153,
+  30, 10, 5 and 21 source files).
+- `TMPDIR="$PWD/.tmp" python scripts/check_arrow_ownership_sanitizers.py --skip-leak-detection`:
+  **passed** the native harness and all **nine** generated programs, including
+  successful array owners and fatal nullable extraction with array cleanup. LSan
+  was explicitly disabled; no leak-detection completion is claimed.
+- Ruff checks and formatting passed on all **74** modified/new Python files;
+  Douki synchronization was idempotent. Generated ABI and capability checks,
+  syntax JSON validation, Prettier and `git diff --check` passed.
+- Rebuilt ASTx/IRx/Arx wheels and sdists locally using
+  `poetry.core.masonry.api.build_wheel` / `build_sdist` (no dependency
+  resolution). The first artifact-only audit correctly found an old IRx wheel
+  missing the new native include. After rebuilding,
+  `python scripts/test_wheels.py --audit-only` **passed**.
+- `TMPDIR="$PWD/.tmp" python scripts/test_wheels.py --current-environment`:
+  **passed**, including installed-package primitive array and nullable operator
+  execution. This reuses installed third-party dependencies; it is not the
+  isolated fresh-environment release gate.
+
+Native ABI **1.2.0** now exposes **101** manifest functions; the eight additive
+array symbols are gated by array feature **1.3.0**. Existing C signatures and
+ELF compatibility nodes remain unchanged.
+
+**M4 is PARTIAL, not complete.** The pending work listed above remains required.
+No full repository CI, Quarto build, isolated release installation, LSan run, or
+Python 3.10–3.13 matrix was performed. Previous milestone/Gate B blockers remain
+open where not explicitly discharged by these checks.
+
+### 2026-09-19 — M4 continuation: reusable builders and chunked arrays
+
+**Implemented and verified (bounded continuation):** source-visible unique
+primitive builders and immutable chunked arrays, including explicit chunk
+iteration, slicing, concatenation, copying, equality, and combine-chunks. This
+continuation also adds nullable shared array/descriptor owners and half-float
+array storage. This entry does not claim that modeled nested types execute.
+
+- **Decision:** public `builder_finish` resets a borrowed unique builder for
+  reuse rather than consuming its local binding. The internal consuming finish
+  ABI remains unchanged. **Top three alternatives:** (1) statically consume the
+  binding with move analysis; (2) return a builder/array tuple; (3) freeze the
+  builder permanently and diagnose subsequent mutation at runtime.
+- **Decision:** expose `chunked_array[T]`, `chunk_count`, `chunk_at`, and
+  `combine_chunks` as ambient builtins. Scalar access resolves across chunks; no
+  implicit rechunking or iteration is introduced. **Top three alternatives:**
+  (1) silently combine at every array operation; (2) erase physical chunks from
+  the type system; (3) expose chunking only through `stdlib` wrappers.
+- **Decision:** preserve the existing shared chunked-owner lifecycle in the
+  registered DataFrame runtime feature, while array primitives use the array
+  feature. The semantic sidecar activates both for chunked values. **Top three
+  alternatives:** (1) move existing lifecycle symbols to core immediately; (2)
+  duplicate lifecycle implementations across capability objects; (3) introduce a
+  new independently packaged chunk runtime feature.
+
+#### Additional decisions and top three alternatives
+
+- **Decision:** represent nullable immutable shared owners with a reserved null
+  pointer. Empty valid Arrow arrays still have a non-null handle. Guard retains
+  of absent owners, reuse null-safe slot release, and preserve borrowed
+  extraction plus retained copy/return boundaries. This applies to primitive
+  arrays, chunks and runtime datatype/field/schema descriptors, not unique
+  builders or strings. **Top three alternatives:** (1) use a validity/payload
+  aggregate for every managed optional; (2) allocate an opaque optional-owner
+  wrapper; (3) prohibit nullable owners and expose only nullable scalar cells.
+  Primitive nullable values retain their independent validity/payload ABI.
+- **Decision:** reuse IRx's failure-atomic snapshot builder and reset only after
+  successful snapshot and metadata publication. Ordinary Arrow Finish is not a
+  substitute for this retry guarantee. **Top three alternatives:** (1) consume
+  builders on finish; (2) switch to destructive Arrow Finish and document lost
+  state after allocation failure; (3) copy the entire builder before every
+  mutation. Allocation-failure tests must verify retry data and reset timing.
+- **Decision:** implement binary16 arrays numerically through Arrow's Float16
+  conversion and the existing double scalar ABI. Half bits are never exposed as
+  unsigned integer values. Do not enable half-float tensor/buffer views without
+  their own buffer ABI contract. **Top three alternatives:** (1) expose a new
+  half-bit scalar C ABI; (2) expand buffer dtype and tensor contracts in this
+  change; (3) promote all half arrays to float32 storage, losing physical type
+  identity. Half-float adds stable primitive type ID 12; existing IDs remain.
+- **Decision:** keep `chunked_array[T]` and the legacy `series[T]` distinct for
+  now, rejecting silent cross-conversion. The former carries ASTx logical types
+  and nullability; the latter is the existing DataFrame projection surface.
+  **Top three alternatives:** (1) migrate Series to logical element descriptors
+  immediately; (2) add explicit lossless Series/chunk conversion builtins; (3)
+  expose chunks only through Series methods. An explicit unification or
+  conversion design remains M4-004 work, not an accidental alias.
+
+#### Implementation tracking for this continuation
+
+- **DONE:** reusable primitive builder construction, append, reserve, length and
+  reset-on-success finish; unique-owner copy rejection and borrowed operations.
+- **DONE:** primitive chunked construction, length/null count, cross-chunk
+  scalar access, strict slicing, concat, copy, equality, chunk access/count and
+  explicit combine. Constructors check logical type/nullability; native paths
+  check shape/size bounds and preserve independently owned child storage.
+- **DONE:** nullable immutable array, chunked array and descriptor owners,
+  including defaults, calls, return, borrowed unwrap, aliasing, replacement,
+  null retention guards, failure cleanup and logical descriptor validation.
+- **DONE:** half-float array storage, snapshot builders, scalar extraction,
+  chunking and C Data/PyArrow interchange. Tensor half-float remains
+  unsupported.
+- **PENDING M4-002:** unique/string nullable payloads, class/struct fields,
+  richer compound predicate proofs and explicit nullable casts.
+- **PENDING M4-003:** source buffer and source C Data constructors. Native
+  interchange evidence must not be counted as Arx source constructor support.
+- **PENDING M4-004:** variable-width and recursive nested values, full typed
+  batches/tables, dynamic/static projection and schema transformations,
+  DataFrame/Series expansion and explicit batch/row/column iteration APIs.
+
+Native ABI **1.3.0**, array capability **1.4.0**, **117** manifest functions.
+The sixteen additive builder/chunk functions leave existing signatures and ELF
+compatibility nodes unchanged. No Python execution fallback was introduced.
+
+#### Verification for reusable builders, chunking and nullable owners
+
+Available toolchain: Linux and Python 3.14. Final checks below passed; counts
+from separate runs overlap and should not be summed as unique test coverage.
+
+- `pytest -q packages/astx/tests`: **540 passed**.
+- `pytest -q packages/irx/tests/analysis packages/irx/tests/test_nullable_runtime.py packages/irx/tests/test_arrow_abi_manifest.py packages/irx/tests/test_arrow_abi_conformance.py packages/irx/tests/test_array_value_runtime.py packages/irx/tests/test_chunked_value_runtime.py packages/irx/tests/test_arrow_allocation_failures.py packages/irx/tests/test_arrow_capability_matrix.py packages/irx/tests/test_tensor.py`:
+  **439 passed**. Includes source-independent semantics, twelve primitive array
+  storage families, C Data/PyArrow offsets, chunk parent/child lifetimes,
+  allocation-failure retry/reset, ABI parity and legacy tensor regressions.
+- `pytest -q packages/arx/tests/python/test_nullable_syntax.py packages/arx/tests/python/test_nullable_operations.py packages/arx/tests/python/test_nullable_owners.py packages/arx/tests/python/test_array_values.py packages/arx/tests/python/test_chunked_values.py packages/arx/tests/python/test_codegen_ast_output.py packages/arx/tests/python/test_parser*.py packages/arx/tests/python/test_lexer*.py packages/arx/tests/python/test_dataframe.py`:
+  **662 passed**, including LLVM verification and linked native execution.
+- `TMPDIR="$PWD/.tmp" arx test packages/arx/tests/arx/test_columnar_builders.x`:
+  **1 passed**. The example also tests returning chunks after parent scope exit.
+- `mypy src` in ASTx, IRx, Arx, ArxPy, ArxJIT and AIX: **all passed** (57, 154,
+  30, 5, 10 and 21 source files respectively).
+- Ruff check and format checks passed on all **81** modified/new Python files.
+  Douki synchronization was idempotent, including the final signature changes.
+- `TMPDIR="$PWD/.tmp" python scripts/check_arrow_ownership_sanitizers.py --skip-leak-detection`:
+  **passed**, native harness plus **11** generated programs. Added nullable
+  chunk owners and unique builders on success and fatal null extraction paths.
+  LSan was explicitly disabled and is not claimed.
+- Built ASTx/IRx/Arx wheels and sdists with
+  `poetry.core.masonry.api.build_sdist` / `build_wheel`.
+  `python scripts/test_wheels.py --audit-only` **passed**.
+- `TMPDIR="$PWD/.tmp" python scripts/test_wheels.py --current-environment`:
+  **passed**, including installed builder reset, chunk scalar access, nullable
+  owner alias/replacement and half-float execution. This is not the isolated
+  fresh-environment release gate.
+- A final
+  `pytest -q packages/irx/tests/test_arrow_capability_matrix.py packages/irx/tests/test_arrow_runtime.py::test_arrow_runtime_reports_stable_abi_and_feature_versions`:
+  **12 passed**, after the documentation-only foundation update.
+- Generated ABI/capability checks, syntax JSON validation, Prettier and
+  `git diff --check` passed. Intermediate runs found stale ABI expectations and
+  a matrix invalidated by manifest formatting; regeneration and final reruns
+  above are the verified results. A void-query test assertion pattern was also
+  corrected to match the existing actionable diagnostic.
+
+**M4 remains PARTIAL, not complete.** The pending M4-002/003/004 work above is
+still required. No full repository CI, Quarto build, LSan, isolated release
+installation or Python 3.10–3.13 matrix was run in this continuation.

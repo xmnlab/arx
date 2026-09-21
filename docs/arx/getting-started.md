@@ -119,3 +119,45 @@ when the compilation unit uses those features.
 - [Projects and imports](projects.md)
 - [Compiled tests](testing.md)
 - [Apache Arrow runtime](../apache-arrow.md)
+
+## Try Arrow-core descriptors
+
+From a development checkout, run:
+
+```bash
+arx --run examples/schema_descriptors.x
+```
+
+The example constructs `schema`, `field`, and `datatype` values using native
+Arrow C++ without an Arrow import. It exercises descriptor inspection, not a
+query engine or general nested arrays. See the
+[descriptor reference](../arrow-type-schemas.md) for supported operations.
+
+## Try primitive nullable values
+
+```bash
+arx --run examples/nullable_scalars.x
+```
+
+`T | none`, `is_null`, `is_valid`, and `expect_valid` are builtins; no Arrow
+import is needed. The example demonstrates independent validity, nullable
+function defaults and returns, and lossless payload widening. See
+[Primitive nullable scalars](built-in-types.md#primitive-nullable-scalars) for
+supported payloads and the current operator/container limits.
+
+For native arrays without an Arrow import, run:
+
+```bash
+arx --run examples/columnar_arrays.x
+```
+
+For reusable builders, explicit chunk iteration, half-float arrays and nullable
+shared owners, run:
+
+```bash
+arx --run examples/columnar_builders.x
+```
+
+These operations are ambient builtins, not an Arrow-namespaced library. See the
+[builder and chunk reference](built-in-types.md#reusable-builders-and-chunked-arrays)
+for ownership, bounds and current support limits.

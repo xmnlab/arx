@@ -68,6 +68,9 @@ REQUIRED_IRX_NATIVE_ASSETS = (
     "irx/builder/runtime/arrow/native/irx_arrow_c_abi.h",
     "irx/builder/runtime/arrow/native/irx_arrow_dataframe_runtime.cc",
     "irx/builder/runtime/arrow/native/irx_arrow_exports.map",
+    "irx/builder/runtime/arrow/native/irx_arrow_descriptors.inc",
+    "irx/builder/runtime/arrow/native/irx_arrow_array_values.inc",
+    "irx/builder/runtime/arrow/native/irx_arrow_chunks.inc",
     "irx/builder/runtime/arrow/native/irx_arrow_feature_query_generated.inc",
     "irx/builder/runtime/arrow/native/irx_arrow_record_batch_runtime.cc",
     "irx/builder/runtime/arrow/native/irx_arrow_tensor_runtime.cc",
@@ -148,6 +151,37 @@ fn main() -> i32:
   return values[1] - 5
 """
 
+DESCRIPTOR_MODULE = """```
+title: Installed wheel descriptor and array smoke
+```
+fn make_layout() -> schema:
+  return schema[id: i64 | none]
+
+fn main() -> i32:
+  var rows: schema = make_layout()
+  var column: field = schema_field(rows, 0)
+  assert schema_nfields(rows) == 1
+  assert field_name(column) == "id"
+  assert field_nullable(column)
+  assert descriptor_equal(field_type(column), datatype[i64])
+  var values: array[i32 | none] = array[i32 | none](1, none, 3)
+  assert is_null(array_at(values, 1))
+  assert expect_valid(array_at(values, 0) + 2) == 3
+  var view: array[i32 | none] = array_slice(values, 1, 2)
+  assert array_equal(view, array_copy(view))
+  var b: array_builder[f16] = array_builder[f16]()
+  builder_append(b, cast(1.5, f16))
+  var a: array[f16] = builder_finish(b)
+  assert builder_length(b) == 0
+  var chunks: chunked_array[f16] = chunked_array[f16](a, a)
+  var optional: chunked_array[f16] | none = chunks
+  var alias: chunked_array[f16] | none = optional
+  optional = none
+  assert array_length(expect_valid(alias)) == 2
+  assert expect_valid(array_at(chunks, 1)) == cast(1.5, f16)
+  return 0
+"""
+
 SMOKE_DRIVER = r"""
 import os
 import shutil
@@ -222,6 +256,7 @@ for source_name in (
     "class_smoke.x",
     "list_smoke.x",
     "tensor_smoke.x",
+    "descriptor_smoke.x",
 ):
     artifact = compiler.compile_file(
         root / source_name,
@@ -454,6 +489,7 @@ def run_smoke(
             "class_smoke.x": CLASS_MODULE,
             "list_smoke.x": LIST_MODULE,
             "tensor_smoke.x": TENSOR_MODULE,
+            "descriptor_smoke.x": DESCRIPTOR_MODULE,
         }
         for name, content in sources.items():
             (work_dir / name).write_text(content, encoding="utf-8")

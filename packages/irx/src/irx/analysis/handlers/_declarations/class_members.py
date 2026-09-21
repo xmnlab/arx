@@ -19,6 +19,7 @@ from irx.analysis.handlers._declarations.class_methods import (
     DeclarationClassMethodVisitorMixin,
 )
 from irx.analysis.handlers.base import SemanticAnalyzerCore
+from irx.analysis.nullability import normalize_nullable
 from irx.analysis.ownership import (
     resource_contract_for_type,
     resource_ownership,
@@ -183,6 +184,15 @@ class DeclarationClassMemberVisitorMixin(DeclarationClassMethodVisitorMixin):
                 node=attribute,
                 unknown_message="Unknown attribute type '{name}'",
             )
+            if isinstance(
+                normalize_nullable(attribute.type_), astx.NullableType
+            ):
+                self.context.diagnostics.add(
+                    "nullable class and struct fields are not implemented; "
+                    "use a local or parameter value",
+                    node=attribute,
+                    code=DiagnosticCodes.SEMANTIC_TYPE_MISMATCH,
+                )
             field_contract = resource_contract_for_type(attribute.type_)
             if (
                 field_contract is not None

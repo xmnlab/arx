@@ -21,6 +21,7 @@ from irx.analysis.handlers.base import (
     SemanticVisitorMixinBase,
 )
 from irx.analysis.iterables import resolve_iteration_capability
+from irx.analysis.nullable_flow import nullable_branch_symbol
 from irx.analysis.ownership import (
     list_resource_ownership,
     resource_contract_for_type,
@@ -173,6 +174,12 @@ class ControlFlowVisitorMixin(SemanticVisitorMixinBase):
             return
         value_ownership = resource_ownership(node.value)
         contract = resource_contract_for_type(return_type)
+        if isinstance(return_type, astx.NullableType) and isinstance(
+            node.value, astx.LiteralNone
+        ):
+            value_ownership = typed_resource_ownership(
+                return_type, OwnershipKind.OWNED
+            )
         if value_ownership is None or contract is None:
             self.context.diagnostics.add(
                 "resource return expression is missing ownership metadata",
@@ -796,9 +803,19 @@ class ControlFlowVisitorMixin(SemanticVisitorMixinBase):
         """
         self.visit(node.condition)
         self._validate_boolean_condition(node.condition, label="if")
+        incoming = self.context.valid_nullable_symbols.copy()
+        valid_then = nullable_branch_symbol(node.condition, True)
+        if valid_then is not None:
+            self.context.valid_nullable_symbols.add(valid_then)
         self.visit(node.then)
+        then_valid = self.context.valid_nullable_symbols.copy()
+        self.context.valid_nullable_symbols = incoming.copy()
         if node.else_ is not None:
+            valid_else = nullable_branch_symbol(node.condition, False)
+            if valid_else is not None:
+                self.context.valid_nullable_symbols.add(valid_else)
             self.visit(node.else_)
+        self.context.valid_nullable_symbols.intersection_update(then_valid)
         self._set_type(node, None)
 
     @SemanticAnalyzerCore.visit.dispatch
@@ -809,9 +826,13 @@ class ControlFlowVisitorMixin(SemanticVisitorMixinBase):
           node:
             type: astx.WhileStmt
         """
+        self.context.valid_nullable_symbols.clear()
         self.visit(node.condition)
         self._validate_boolean_condition(node.condition, label="while")
         with self.context.in_loop():
+            valid_body = nullable_branch_symbol(node.condition, True)
+            if valid_body is not None:
+                self.context.valid_nullable_symbols.add(valid_body)
             self.visit(node.body)
         self._set_type(node, None)
 
@@ -824,6 +845,7 @@ class ControlFlowVisitorMixin(SemanticVisitorMixinBase):
             type: astx.ForCountLoopStmt
         """
         with self.context.scope("for-count"):
+            self.context.valid_nullable_symbols.clear()
             if node.initializer.value is not None:
                 self.visit(node.initializer.value)
             symbol = self.registry.declare_local(
@@ -854,6 +876,7 @@ class ControlFlowVisitorMixin(SemanticVisitorMixinBase):
             type: astx.ForRangeLoopStmt
         """
         with self.context.scope("for-range"):
+            self.context.valid_nullable_symbols.clear()
             self.visit(node.start)
             self.visit(node.end)
             if not isinstance(node.step, astx.LiteralNone):

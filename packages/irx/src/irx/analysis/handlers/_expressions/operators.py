@@ -24,7 +24,10 @@ from irx.analysis.handlers.base import (
     SemanticAnalyzerCore,
     SemanticVisitorMixinBase,
 )
+from irx.analysis.handlers.nullable import analyze_nullable_operator
 from irx.analysis.normalization import normalize_flags, normalize_operator
+from irx.analysis.nullability import normalize_nullable
+from irx.analysis.nullable_flow import nullable_branch_symbol
 from irx.analysis.ownership import (
     resource_ownership,
     string_resource_ownership,
@@ -43,6 +46,17 @@ from irx.analysis.typing import binary_result_type, unary_result_type
 from irx.analysis.validation import validate_assignment, validate_cast
 from irx.diagnostics import DiagnosticCodes
 from irx.typecheck import typechecked
+
+COLUMNAR_OPERATOR_TYPES = (
+    astx.ArrayType,
+    astx.ArrayBuilderType,
+    astx.ChunkedArrayType,
+    astx.DataFrameType,
+    astx.SeriesType,
+    astx.SchemaType,
+    astx.FieldType,
+    astx.TypeDescriptorType,
+)
 
 
 @typechecked
@@ -67,6 +81,30 @@ class ExpressionOperatorVisitorMixin(SemanticVisitorMixinBase):
             self._set_type(node, None)
             return
         operand_type = self._expr_type(node.operand)
+        if isinstance(operand_type, COLUMNAR_OPERATOR_TYPES):
+            self.context.diagnostics.add(
+                "columnar owners do not support scalar unary operators",
+                node=node,
+                code=DiagnosticCodes.SEMANTIC_TYPE_MISMATCH,
+            )
+            self._set_type(node, None)
+            return
+        operand_symbol = self._semantic(node.operand).resolved_symbol
+        if node.op_code in {"++", "--"} and operand_symbol is not None:
+            if isinstance(
+                normalize_nullable(operand_symbol.type_), astx.NullableType
+            ):
+                self.context.diagnostics.add(
+                    "nullable increment/decrement is unsupported; use an "
+                    "explicit assignment",
+                    node=node,
+                    code=DiagnosticCodes.SEMANTIC_TYPE_MISMATCH,
+                )
+                self._set_type(node, None)
+                return
+        if isinstance(operand_type, astx.NullableType):
+            analyze_nullable_operator(cast(SemanticAnalyzerCore, self), node)
+            return
         if (
             node.op_code == "!"
             and operand_type is not None
@@ -76,6 +114,14 @@ class ExpressionOperatorVisitorMixin(SemanticVisitorMixinBase):
                 "unary operator '!' requires Boolean operand",
                 node=node,
             )
+        if node.op_code in {"+", "-"} and not is_numeric_type(operand_type):
+            self.context.diagnostics.add(
+                f"unary operator '{node.op_code}' requires a numeric operand",
+                node=node,
+                code=DiagnosticCodes.SEMANTIC_TYPE_MISMATCH,
+            )
+            self._set_type(node, None)
+            return
         result_type = unary_result_type(node.op_code, operand_type)
         if node.op_code in {"++", "--"}:
             resolved_target = self._resolve_mutation_target(
@@ -111,7 +157,15 @@ class ExpressionOperatorVisitorMixin(SemanticVisitorMixinBase):
             type: astx.BinaryOp
         """
         self.visit(node.lhs)
+        incoming_valid = self.context.valid_nullable_symbols.copy()
+        if node.op_code in {"and", "&&", "or", "||"}:
+            proof = nullable_branch_symbol(
+                node.lhs, node.op_code in {"and", "&&"}
+            )
+            if proof is not None:
+                self.context.valid_nullable_symbols.add(proof)
         self.visit(node.rhs)
+        self.context.valid_nullable_symbols.intersection_update(incoming_valid)
         lhs_type = self._expr_type(node.lhs)
         rhs_type = self._expr_type(node.rhs)
         flags = normalize_flags(node, lhs_type=lhs_type, rhs_type=rhs_type)
@@ -136,6 +190,9 @@ class ExpressionOperatorVisitorMixin(SemanticVisitorMixinBase):
             if self._require_value_expression(
                 node.rhs,
                 context=f"Assignment to '{target_name}'",
+                allow_none=isinstance(
+                    normalize_nullable(target_type), astx.NullableType
+                ),
             ):
                 validate_assignment(
                     self.context.diagnostics,
@@ -184,6 +241,22 @@ class ExpressionOperatorVisitorMixin(SemanticVisitorMixinBase):
             )
             return
 
+        if isinstance(lhs_type, COLUMNAR_OPERATOR_TYPES) or isinstance(
+            rhs_type, COLUMNAR_OPERATOR_TYPES
+        ):
+            self.context.diagnostics.add(
+                "columnar owners require typed operations, such as "
+                "array_equal or descriptor_equal, not scalar operators",
+                node=node,
+                code=DiagnosticCodes.SEMANTIC_TYPE_MISMATCH,
+            )
+            self._set_type(node, None)
+            return
+        if isinstance(lhs_type, astx.NullableType) or isinstance(
+            rhs_type, astx.NullableType
+        ):
+            analyze_nullable_operator(cast(SemanticAnalyzerCore, self), node)
+            return
         lhs_has_value = self._require_value_expression(
             node.lhs,
             context=f"Operator '{node.op_code}'",
@@ -273,6 +346,17 @@ class ExpressionOperatorVisitorMixin(SemanticVisitorMixinBase):
             return
         source_type = self._expr_type(node.value)
         target_type = cast(astx.DataType | None, node.target_type)
+        if isinstance(source_type, astx.NullableType) or isinstance(
+            normalize_nullable(target_type), astx.NullableType
+        ):
+            self.context.diagnostics.add(
+                "nullable casts are not implemented; use implicit injection "
+                "or expect_valid",
+                node=node,
+                code=DiagnosticCodes.SEMANTIC_TYPE_MISMATCH,
+            )
+            self._set_type(node, None)
+            return
         validate_cast(
             self.context.diagnostics,
             source_type=source_type,

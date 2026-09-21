@@ -33,6 +33,7 @@ from irx.analysis.module_symbols import (
     qualified_class_name,
     qualified_struct_name,
 )
+from irx.analysis.nullability import managed_nullable
 from irx.analysis.ownership import resource_ownership
 from irx.analysis.resolved_nodes import (
     FunctionSignature,
@@ -696,7 +697,41 @@ class VisitorCore(BuilderVisitor):
             or ownership.transfer_kind is not OwnershipTransferKind.COPY
         ):
             return value
+        if managed_nullable(self._resolved_ast_type(node)):
+            return self.retain_nullable_resource(node, value, ownership)
         return self._retain_resource_value(node, value, ownership)
+
+    def retain_nullable_resource(
+        self, node: astx.AST, value: ir.Value, ownership: ResourceOwnership
+    ) -> ir.Value:
+        """
+        title: Retain a present nullable owner without passing null to the ABI.
+        parameters:
+          node:
+            type: astx.AST
+          value:
+            type: ir.Value
+          ownership:
+            type: ResourceOwnership
+        returns:
+          type: ir.Value
+        """
+        builder = self._llvm.ir_builder
+        empty = ir.Constant(value.type, None)
+        present = builder.icmp_unsigned("!=", value, empty)
+        origin = builder.block
+        retain = builder.function.append_basic_block("nullable.retain.present")
+        merge = builder.function.append_basic_block("nullable.retain.end")
+        builder.cbranch(present, retain, merge)
+        builder.position_at_end(retain)
+        retained = self._retain_resource_value(node, value, ownership)
+        incoming = builder.block
+        builder.branch(merge)
+        builder.position_at_end(merge)
+        result = builder.phi(value.type, "nullable.retained")
+        result.add_incoming(empty, origin)
+        result.add_incoming(retained, incoming)
+        return result
 
     def _retain_resource_value(
         self,
@@ -1563,6 +1598,15 @@ class VisitorCore(BuilderVisitor):
         """
         if type_ is None:
             return None
+        if managed_nullable(type_):
+            return self._llvm.OPAQUE_POINTER_TYPE
+        if isinstance(type_, astx.NullableType):
+            payload_type = self._llvm_type_for_ast_type(type_.payload_type)
+            if payload_type is None or isinstance(payload_type, ir.VoidType):
+                raise_lowering_internal_error(
+                    "nullable payload has no resolved LLVM storage"
+                )
+            return ir.LiteralStructType([ir.IntType(1), payload_type])
         if isinstance(type_, astx.UnionType):
             storage_type = self._union_storage_ast_type(type_)
             if storage_type is None:
@@ -1580,6 +1624,18 @@ class VisitorCore(BuilderVisitor):
             )
         if isinstance(type_, astx.BufferOwnerType):
             return self._llvm.BUFFER_OWNER_HANDLE_TYPE
+        if isinstance(
+            type_,
+            (
+                astx.SchemaType,
+                astx.FieldType,
+                astx.TypeDescriptorType,
+                astx.ArrayType,
+                astx.ArrayBuilderType,
+                astx.ChunkedArrayType,
+            ),
+        ):
+            return self._llvm.OPAQUE_POINTER_TYPE
         if isinstance(type_, astx.OpaqueHandleType):
             return self._llvm.OPAQUE_POINTER_TYPE
         if isinstance(type_, astx.PointerType):
@@ -1950,9 +2006,110 @@ class VisitorCore(BuilderVisitor):
             )
         return self._llvm.ir_builder.icmp_signed(op_code, lhs, rhs, name)
 
-    def _cast_ast_value(
+    def inject_nullable_value(
+        self,
+        value: ir.Value | None,
+        source_type: astx.DataType | None,
+        target_type: astx.NullableType,
+    ) -> ir.Value:
+        """
+        title: Inject or widen a semantically validated nullable scalar.
+        parameters:
+          value:
+            type: ir.Value | None
+          source_type:
+            type: astx.DataType | None
+          target_type:
+            type: astx.NullableType
+        returns:
+          type: ir.Value
+        """
+        llvm_type = self._llvm_type_for_ast_type(target_type)
+        if managed_nullable(target_type):
+            assert llvm_type is not None
+            if isinstance(source_type, astx.NoneType) and value is None:
+                return ir.Constant(llvm_type, None)
+            if value is None or value.type != llvm_type:
+                raise_lowering_internal_error(
+                    "invalid nullable owner injection"
+                )
+            return value
+        if not isinstance(llvm_type, ir.LiteralStructType):
+            raise_lowering_internal_error("missing nullable aggregate type")
+        empty = ir.Constant(llvm_type, None)
+        if isinstance(source_type, astx.NoneType) and value is None:
+            return empty
+        if value is None or source_type is None:
+            raise_lowering_internal_error("nullable injection has no payload")
+        if isinstance(source_type, astx.NullableType):
+            if value.type == llvm_type:
+                return value
+            return self.widen_nullable_value(
+                value,
+                source_type.payload_type,
+                target_type.payload_type,
+                empty,
+            )
+        payload = self._cast_ast_value(
+            value,
+            source_type=source_type,
+            target_type=target_type.payload_type,
+        )
+        builder = self._llvm.ir_builder
+        aggregate = builder.insert_value(empty, payload, 1)
+        return builder.insert_value(
+            aggregate, ir.Constant(ir.IntType(1), 1), 0
+        )
+
+    def widen_nullable_value(
         self,
         value: ir.Value,
+        source_payload: astx.DataType,
+        target_payload: astx.DataType,
+        empty: ir.Constant,
+    ) -> ir.Value:
+        """
+        title: >-
+          Widen only valid payloads and merge with initialized null storage.
+        parameters:
+          value:
+            type: ir.Value
+          source_payload:
+            type: astx.DataType
+          target_payload:
+            type: astx.DataType
+          empty:
+            type: ir.Constant
+        returns:
+          type: ir.Value
+        """
+        builder = self._llvm.ir_builder
+        origin = builder.block
+        function = builder.function
+        valid_block = function.append_basic_block("nullable.convert.valid")
+        merge = function.append_basic_block("nullable.convert.merge")
+        valid = builder.extract_value(value, 0, "nullable.valid")
+        builder.cbranch(valid, valid_block, merge)
+        builder.position_at_end(valid_block)
+        payload = builder.extract_value(value, 1, "nullable.payload")
+        converted = self._cast_ast_value(
+            payload, source_type=source_payload, target_type=target_payload
+        )
+        aggregate = builder.insert_value(empty, converted, 1)
+        aggregate = builder.insert_value(
+            aggregate, ir.Constant(ir.IntType(1), 1), 0
+        )
+        incoming = builder.block
+        builder.branch(merge)
+        builder.position_at_end(merge)
+        result = builder.phi(empty.type, "nullable.converted")
+        result.add_incoming(empty, origin)
+        result.add_incoming(aggregate, incoming)
+        return result
+
+    def _cast_ast_value(
+        self,
+        value: ir.Value | None,
         *,
         source_type: astx.DataType | None,
         target_type: astx.DataType | None,
@@ -1961,7 +2118,7 @@ class VisitorCore(BuilderVisitor):
         title: Cast one lowered value using semantic scalar types.
         parameters:
           value:
-            type: ir.Value
+            type: ir.Value | None
           source_type:
             type: astx.DataType | None
           target_type:
@@ -1969,6 +2126,14 @@ class VisitorCore(BuilderVisitor):
         returns:
           type: ir.Value
         """
+        if isinstance(target_type, astx.NullableType):
+            return self.inject_nullable_value(value, source_type, target_type)
+        if value is None:
+            raise_lowering_internal_error("value conversion has no value")
+        if isinstance(source_type, astx.NullableType):
+            raise_lowering_internal_error(
+                "implicit nullable unwrap reached lowering"
+            )
         if source_type is None or target_type is None:
             return value
 

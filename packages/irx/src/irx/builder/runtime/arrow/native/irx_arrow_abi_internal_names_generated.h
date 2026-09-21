@@ -151,6 +151,92 @@
   irx_arrow_internal_tensor_release_callback
 #define irx_arrow_last_error \
   irx_arrow_internal_last_error
+#define irx_arrow_type_import_copy \
+  irx_arrow_internal_type_import_copy
+#define irx_arrow_type_export \
+  irx_arrow_internal_type_export
+#define irx_arrow_type_retain \
+  irx_arrow_internal_type_retain
+#define irx_arrow_type_release \
+  irx_arrow_internal_type_release
+#define irx_arrow_field_import_copy \
+  irx_arrow_internal_field_import_copy
+#define irx_arrow_field_export \
+  irx_arrow_internal_field_export
+#define irx_arrow_field_retain \
+  irx_arrow_internal_field_retain
+#define irx_arrow_field_release \
+  irx_arrow_internal_field_release
+#define irx_arrow_type_equals \
+  irx_arrow_internal_type_equals
+#define irx_arrow_field_equals \
+  irx_arrow_internal_field_equals
+#define irx_arrow_schema_equals \
+  irx_arrow_internal_schema_equals
+#define irx_arrow_type_num_fields \
+  irx_arrow_internal_type_num_fields
+#define irx_arrow_type_field \
+  irx_arrow_internal_type_field
+#define irx_arrow_schema_num_fields \
+  irx_arrow_internal_schema_num_fields
+#define irx_arrow_schema_field \
+  irx_arrow_internal_schema_field
+#define irx_arrow_field_type \
+  irx_arrow_internal_field_type
+#define irx_arrow_field_nullable \
+  irx_arrow_internal_field_nullable
+#define irx_arrow_type_bit_width \
+  irx_arrow_internal_type_bit_width
+#define irx_arrow_field_name_copy \
+  irx_arrow_internal_field_name_copy
+#define irx_arrow_array_get_int \
+  irx_arrow_internal_array_get_int
+#define irx_arrow_array_get_uint \
+  irx_arrow_internal_array_get_uint
+#define irx_arrow_array_get_double \
+  irx_arrow_internal_array_get_double
+#define irx_arrow_array_slice \
+  irx_arrow_internal_array_slice
+#define irx_arrow_array_concat \
+  irx_arrow_internal_array_concat
+#define irx_arrow_array_copy \
+  irx_arrow_internal_array_copy
+#define irx_arrow_array_equal \
+  irx_arrow_internal_array_equal
+#define irx_arrow_array_builder_finish_typed \
+  irx_arrow_internal_array_builder_finish_typed
+#define irx_arrow_array_builder_reserve \
+  irx_arrow_internal_array_builder_reserve
+#define irx_arrow_array_builder_length \
+  irx_arrow_internal_array_builder_length
+#define irx_arrow_array_builder_build \
+  irx_arrow_internal_array_builder_build
+#define irx_arrow_chunked_new \
+  irx_arrow_internal_chunked_new
+#define irx_arrow_chunked_length \
+  irx_arrow_internal_chunked_length
+#define irx_arrow_chunked_null_count \
+  irx_arrow_internal_chunked_null_count
+#define irx_arrow_chunked_num_chunks \
+  irx_arrow_internal_chunked_num_chunks
+#define irx_arrow_chunked_get_int \
+  irx_arrow_internal_chunked_get_int
+#define irx_arrow_chunked_get_uint \
+  irx_arrow_internal_chunked_get_uint
+#define irx_arrow_chunked_get_double \
+  irx_arrow_internal_chunked_get_double
+#define irx_arrow_chunked_chunk \
+  irx_arrow_internal_chunked_chunk
+#define irx_arrow_chunked_combine \
+  irx_arrow_internal_chunked_combine
+#define irx_arrow_chunked_slice \
+  irx_arrow_internal_chunked_slice
+#define irx_arrow_chunked_copy \
+  irx_arrow_internal_chunked_copy
+#define irx_arrow_chunked_concat \
+  irx_arrow_internal_chunked_concat
+#define irx_arrow_chunked_equal \
+  irx_arrow_internal_chunked_equal
 
 uint32_t irx_arrow_abi_version(void);
 
@@ -425,6 +511,207 @@ void irx_arrow_tensor_release_callback(
     void* tensor);
 
 const char* irx_arrow_last_error(void);
+
+irx_arrow_status irx_arrow_type_import_copy(
+    const struct ArrowSchema* schema,
+    irx_arrow_type_handle** out_value);
+
+irx_arrow_status irx_arrow_type_export(
+    const irx_arrow_type_handle* value,
+    struct ArrowSchema* out_schema);
+
+irx_arrow_status irx_arrow_type_retain(
+    const irx_arrow_type_handle* value,
+    irx_arrow_type_handle** out_value);
+
+irx_arrow_status irx_arrow_type_release(
+    irx_arrow_type_handle** value);
+
+irx_arrow_status irx_arrow_field_import_copy(
+    const struct ArrowSchema* schema,
+    irx_arrow_field_handle** out_value);
+
+irx_arrow_status irx_arrow_field_export(
+    const irx_arrow_field_handle* value,
+    struct ArrowSchema* out_schema);
+
+irx_arrow_status irx_arrow_field_retain(
+    const irx_arrow_field_handle* value,
+    irx_arrow_field_handle** out_value);
+
+irx_arrow_status irx_arrow_field_release(
+    irx_arrow_field_handle** value);
+
+irx_arrow_status irx_arrow_type_equals(
+    const irx_arrow_type_handle* left,
+    const irx_arrow_type_handle* right,
+    int32_t* out_equal);
+
+irx_arrow_status irx_arrow_field_equals(
+    const irx_arrow_field_handle* left,
+    const irx_arrow_field_handle* right,
+    int32_t* out_equal);
+
+irx_arrow_status irx_arrow_schema_equals(
+    const irx_arrow_schema_handle* left,
+    const irx_arrow_schema_handle* right,
+    int32_t* out_equal);
+
+irx_arrow_status irx_arrow_type_num_fields(
+    const irx_arrow_type_handle* value,
+    int64_t* out_count);
+
+irx_arrow_status irx_arrow_type_field(
+    const irx_arrow_type_handle* value,
+    int64_t index,
+    irx_arrow_field_handle** out_field);
+
+irx_arrow_status irx_arrow_schema_num_fields(
+    const irx_arrow_schema_handle* value,
+    int64_t* out_count);
+
+irx_arrow_status irx_arrow_schema_field(
+    const irx_arrow_schema_handle* value,
+    int64_t index,
+    irx_arrow_field_handle** out_field);
+
+irx_arrow_status irx_arrow_field_type(
+    const irx_arrow_field_handle* value,
+    irx_arrow_type_handle** out_type);
+
+irx_arrow_status irx_arrow_field_nullable(
+    const irx_arrow_field_handle* value,
+    int32_t* out_nullable);
+
+irx_arrow_status irx_arrow_type_bit_width(
+    const irx_arrow_type_handle* value,
+    int64_t* out_width);
+
+irx_arrow_status irx_arrow_field_name_copy(
+    const irx_arrow_field_handle* value,
+    const char** out_name);
+
+irx_arrow_status irx_arrow_array_get_int(
+    const irx_arrow_array_handle* array,
+    int64_t index,
+    int32_t* out_valid,
+    int64_t* out_value);
+
+irx_arrow_status irx_arrow_array_get_uint(
+    const irx_arrow_array_handle* array,
+    int64_t index,
+    int32_t* out_valid,
+    uint64_t* out_value);
+
+irx_arrow_status irx_arrow_array_get_double(
+    const irx_arrow_array_handle* array,
+    int64_t index,
+    int32_t* out_valid,
+    double* out_value);
+
+irx_arrow_status irx_arrow_array_slice(
+    const irx_arrow_array_handle* array,
+    int64_t offset,
+    int64_t length,
+    irx_arrow_array_handle** out_array);
+
+irx_arrow_status irx_arrow_array_concat(
+    const irx_arrow_array_handle* lhs,
+    const irx_arrow_array_handle* rhs,
+    irx_arrow_array_handle** out_array);
+
+irx_arrow_status irx_arrow_array_copy(
+    const irx_arrow_array_handle* array,
+    irx_arrow_array_handle** out_array);
+
+irx_arrow_status irx_arrow_array_equal(
+    const irx_arrow_array_handle* lhs,
+    const irx_arrow_array_handle* rhs,
+    int32_t* out_equal);
+
+irx_arrow_status irx_arrow_array_builder_finish_typed(
+    irx_arrow_array_builder_handle** builder,
+    int32_t nullable,
+    irx_arrow_array_handle** out_array);
+
+irx_arrow_status irx_arrow_array_builder_reserve(
+    irx_arrow_array_builder_handle* builder,
+    int64_t additional);
+
+irx_arrow_status irx_arrow_array_builder_length(
+    const irx_arrow_array_builder_handle* builder,
+    int64_t* out_length);
+
+irx_arrow_status irx_arrow_array_builder_build(
+    irx_arrow_array_builder_handle* builder,
+    int32_t nullable,
+    irx_arrow_array_handle** out_array);
+
+irx_arrow_status irx_arrow_chunked_new(
+    int32_t type_id,
+    int32_t nullable,
+    const void** chunks,
+    int64_t count,
+    irx_arrow_chunked_array_handle** out_value);
+
+irx_arrow_status irx_arrow_chunked_length(
+    const irx_arrow_chunked_array_handle* value,
+    int64_t* output);
+
+irx_arrow_status irx_arrow_chunked_null_count(
+    const irx_arrow_chunked_array_handle* value,
+    int64_t* output);
+
+irx_arrow_status irx_arrow_chunked_num_chunks(
+    const irx_arrow_chunked_array_handle* value,
+    int64_t* output);
+
+irx_arrow_status irx_arrow_chunked_get_int(
+    const irx_arrow_chunked_array_handle* value,
+    int64_t index,
+    int32_t* valid,
+    int64_t* output);
+
+irx_arrow_status irx_arrow_chunked_get_uint(
+    const irx_arrow_chunked_array_handle* value,
+    int64_t index,
+    int32_t* valid,
+    uint64_t* output);
+
+irx_arrow_status irx_arrow_chunked_get_double(
+    const irx_arrow_chunked_array_handle* value,
+    int64_t index,
+    int32_t* valid,
+    double* output);
+
+irx_arrow_status irx_arrow_chunked_chunk(
+    const irx_arrow_chunked_array_handle* value,
+    int64_t index,
+    irx_arrow_array_handle** output);
+
+irx_arrow_status irx_arrow_chunked_combine(
+    const irx_arrow_chunked_array_handle* value,
+    irx_arrow_array_handle** output);
+
+irx_arrow_status irx_arrow_chunked_slice(
+    const irx_arrow_chunked_array_handle* value,
+    int64_t offset,
+    int64_t length,
+    irx_arrow_chunked_array_handle** output);
+
+irx_arrow_status irx_arrow_chunked_copy(
+    const irx_arrow_chunked_array_handle* value,
+    irx_arrow_chunked_array_handle** output);
+
+irx_arrow_status irx_arrow_chunked_concat(
+    const irx_arrow_chunked_array_handle* lhs,
+    const irx_arrow_chunked_array_handle* rhs,
+    irx_arrow_chunked_array_handle** output);
+
+irx_arrow_status irx_arrow_chunked_equal(
+    const irx_arrow_chunked_array_handle* lhs,
+    const irx_arrow_chunked_array_handle* rhs,
+    int32_t* output);
 
 
 #endif

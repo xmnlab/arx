@@ -51,11 +51,19 @@
       "status": "partial",
       "test_targets": [
         "packages/irx/tests/test_none.py",
-        "packages/irx/tests/test_arrow_runtime.py"
+        "packages/irx/tests/test_arrow_runtime.py",
+        "packages/astx/tests/test_nullable_model.py",
+        "packages/irx/tests/test_nullable_runtime.py",
+        "packages/arx/tests/python/test_nullable_syntax.py",
+        "packages/arx/tests/python/test_nullable_operations.py",
+        "packages/arx/tests/python/test_array_values.py",
+        "packages/irx/tests/test_array_value_runtime.py",
+        "packages/arx/tests/python/test_nullable_owners.py",
+        "packages/arx/tests/python/test_chunked_values.py"
       ],
       "blocks": ["M2", "M3", "M5"],
-      "baseline": "The language has none and finite unions, and Arrow arrays expose validity metadata.",
-      "completion": "Define nullable scalar semantics, validity propagation, equality, ordering, casts, and branch behavior."
+      "baseline": "Primitive nullable operators and predicate refinement, nullable shared array/descriptor owners, primitive array extraction, reusable builders and explicit chunking execute natively.",
+      "completion": "Complete unique/string nullable payloads, aggregate fields, explicit casts, source buffer/C Data constructors and variable-width/nested values."
     },
     {
       "id": "FND-003",
@@ -109,10 +117,12 @@
         "packages/irx/tests/analysis/test_schema.py",
         "packages/irx/tests/test_schema_interop.py",
         "packages/irx/tests/analysis/test_templates.py",
-        "packages/irx/tests/analysis/test_sized_type_metadata.py"
+        "packages/irx/tests/analysis/test_sized_type_metadata.py",
+        "packages/arx/tests/python/test_descriptors.py",
+        "packages/irx/tests/test_descriptor_execution.py"
       ],
       "blocks": ["M2", "M3"],
-      "baseline": "Immutable recursive schemas now validate fields, nullability, fixed sizes, dictionary indices, union codes and structural identity. New container value lowering remains pending.",
+      "baseline": "Recursive type/field/schema literals execute natively with canonical validation, physical sidecars, shared owners, projection and exact identity. General nested container values remain pending.",
       "completion": "Support recursive schema parameters, fixed sizes, dictionary types, union codes, field nullability, and canonical equality."
     },
     {
@@ -124,10 +134,12 @@
         "packages/irx/tests/analysis/test_schema.py",
         "packages/irx/tests/test_schema_interop.py",
         "packages/astx/tests/test_sized_type_metadata.py",
-        "packages/irx/tests/analysis/test_sized_type_metadata.py"
+        "packages/irx/tests/analysis/test_sized_type_metadata.py",
+        "packages/arx/tests/python/test_descriptors.py",
+        "packages/irx/tests/test_descriptor_execution.py"
       ],
       "blocks": ["M2", "M4"],
-      "baseline": "Logical descriptors validate precision, scale, time units, widths, sizes and schema fields; new Arx source expressions for these compile-time values remain pending.",
+      "baseline": "Builtin Arx descriptor literals carry checked precision, scale, time units, widths, fixed sizes, union codes and recursive fields through ASTx and resolved IRx sidecars. conversion_kind classifies literal types/schemas without executing casts.",
       "completion": "Provide checked type parameters for dimensions, decimal precision and scale, time units, fixed sizes, and schema fields."
     },
     {
@@ -297,7 +309,7 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Logical descriptors, validation, C Data and IPC schema interchange are implemented, including recursive metadata. This does not imply native values, builders, Arx syntax or compute support for the entire family.",
+      "notes": "Primitive nullable scalars support explicit validity, checked unwrap, locals, defaults, calls and returns with separate LLVM validity. Primitive nullable operators, direct predicate narrowing and primitive array extraction are implemented; managed payloads and general nullable containers remain incomplete.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_schema_interop.py",
@@ -313,6 +325,16 @@
           "path": "packages/irx/tests/test_record_batch.py",
           "symbol": "test_null_values",
           "purpose": "Exercises null values in RecordBatch construction and access."
+        },
+        {
+          "path": "packages/irx/tests/test_nullable_runtime.py",
+          "symbol": "test_every_primitive_nullable_executes_natively",
+          "purpose": "Executes null and valid zero/false payloads for twelve primitive types with checked extraction and no Arrow C++ layout dependency."
+        },
+        {
+          "path": "packages/arx/tests/python/test_nullable_operations.py",
+          "symbol": "test_kleene_truth_tables_and_short_circuit",
+          "purpose": "Executes all three-valued Boolean truth-table cells and verifies decisive left operands skip the RHS."
         }
       ]
     },
@@ -719,11 +741,11 @@
         "astx_model": "partial",
         "irx_semantics": "partial",
         "llvm_lowering": "partial",
-        "arx_surface": "not_started",
+        "arx_surface": "partial",
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Primitive native arrays and an internal int32 length node exist, but Array is not a general first-class Arx container.",
+      "notes": "First-class primitive arrays, reusable unique builders, nullable shared owners and half-float storage execute natively in Arx. Source buffer/C Data constructors and variable-width/nested values remain incomplete.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_arrow_runtime.py",
@@ -734,6 +756,21 @@
           "path": "packages/irx/tests/test_array.py",
           "symbol": "test_array_int32_array_length_get_struct_shapes",
           "purpose": "Covers the current internal Array length lowering helper."
+        },
+        {
+          "path": "packages/arx/tests/python/test_array_values.py",
+          "symbol": "test_array_example_executes",
+          "purpose": "Executes primitive constructors, offset/nullable access, immutable transformations and owner calls/returns from Arx source."
+        },
+        {
+          "path": "packages/irx/tests/test_array_value_runtime.py",
+          "symbol": "test_scalar_offsets_copy_and_parent_release",
+          "purpose": "Validates all twelve primitive storage families, nonzero slice offsets, independent copies, C Data/PyArrow interchange and parent/child ownership."
+        },
+        {
+          "path": "packages/arx/tests/python/test_nullable_owners.py",
+          "symbol": "test_nullable_array_owners",
+          "purpose": "Checks nullable shared owners across borrowing, copying, reassignment and return boundaries."
         }
       ]
     },
@@ -752,12 +789,22 @@
         "interop": "not_started"
       },
       "overall": "partial",
-      "notes": "DataFrame projection returns an opaque chunked-array-backed Series, but construction, iteration, methods, ownership, and interchange are incomplete.",
+      "notes": "Ambient primitive chunked_array values support construction, ownership, scalar access across chunks, slicing, concatenation, copying, value equality, explicit chunk iteration and combine_chunks. The legacy projected Series is distinct; nested values, complete Series APIs and whole-container interchange remain pending.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_dataframe.py",
           "symbol": "test_dataframe_column_access_lowers_to_chunked_array_handle",
           "purpose": "Checks the existing Table column projection to a chunked array handle."
+        },
+        {
+          "path": "packages/arx/tests/python/test_chunked_values.py",
+          "symbol": "test_builders_and_chunks_execute",
+          "purpose": "Executes reusable builders and chunk transformations from Arx source."
+        },
+        {
+          "path": "packages/irx/tests/test_chunked_value_runtime.py",
+          "symbol": "test_chunk_views_outlive_all_parents",
+          "purpose": "Verifies independent child owners and exported buffers after parent release."
         }
       ]
     },
@@ -1132,11 +1179,11 @@
     {
       "id": "type-field-schema",
       "name": "Field and schema types",
-      "surface": "field[T], schema[...]",
+      "surface": "datatype[T], field[name: T], schema[name: T, ...]",
       "placement": "compiler_builtin_type",
       "module": "ambient",
       "visibility": "public",
-      "target_milestone": "M2",
+      "target_milestone": "M3",
       "capabilities": [
         "struct-map",
         "union",
@@ -1276,7 +1323,7 @@
     {
       "id": "construct-array",
       "name": "Array literals and builders",
-      "surface": "array(...), ArrayBuilder[T]",
+      "surface": "array[T](...), array_builder[T]()",
       "placement": "compiler_intrinsic",
       "module": "ambient",
       "visibility": "public",
@@ -1430,7 +1477,7 @@
     {
       "id": "core-chunks",
       "name": "Chunk inspection and normalization",
-      "surface": "value.chunks, value.combine_chunks()",
+      "surface": "chunk_count(value), chunk_at(value, index), combine_chunks(value)",
       "placement": "compiler_intrinsic",
       "module": "ambient",
       "visibility": "public",

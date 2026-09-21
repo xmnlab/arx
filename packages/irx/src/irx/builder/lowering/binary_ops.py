@@ -44,6 +44,7 @@ from irx.builder.core import (
     uses_unsigned_semantics,
 )
 from irx.builder.diagnostics import raise_lowering_internal_error
+from irx.builder.lowering.nullable_operators import lower_nullable_operator
 from irx.builder.protocols import VisitorMixinBase
 from irx.builder.runtime import safe_pop
 from irx.builder.types import is_fp_type, is_int_type
@@ -492,6 +493,8 @@ class BinaryOpVisitorMixin(VisitorMixinBase):
           node:
             type: astx.BinaryOp
         """
+        if lower_nullable_operator(cast(VisitorCore, self), node):
+            return
         specialized = self._resolved_binary_variant(node)
         if specialized is node:
             raise Exception(f"Binary op {node.op_code} not implemented yet.")
@@ -530,8 +533,6 @@ class BinaryOpVisitorMixin(VisitorMixinBase):
 
         self.visit_child(node.rhs)
         llvm_rhs = safe_pop(self.result_stack)
-        if llvm_rhs is None:
-            raise Exception("codegen: Invalid rhs expression.")
         llvm_rhs = self._cast_ast_value(
             llvm_rhs,
             source_type=self._resolved_ast_type(node.rhs),
@@ -594,6 +595,8 @@ class BinaryOpVisitorMixin(VisitorMixinBase):
           node:
             type: AddBinOp
         """
+        if lower_nullable_operator(cast(VisitorCore, self), node):
+            return
         llvm_lhs, llvm_rhs, _unsigned = self._load_binary_operands(node)
 
         vector_result = self._emit_vector_add(node, llvm_lhs, llvm_rhs)
@@ -627,6 +630,8 @@ class BinaryOpVisitorMixin(VisitorMixinBase):
           node:
             type: SubBinOp
         """
+        if lower_nullable_operator(cast(VisitorCore, self), node):
+            return
         llvm_lhs, llvm_rhs, _unsigned = self._load_binary_operands(node)
 
         if self._try_set_binary_op(llvm_lhs, llvm_rhs, node.op_code):
@@ -652,6 +657,8 @@ class BinaryOpVisitorMixin(VisitorMixinBase):
           node:
             type: MulBinOp
         """
+        if lower_nullable_operator(cast(VisitorCore, self), node):
+            return
         llvm_lhs, llvm_rhs, _unsigned = self._load_binary_operands(node)
 
         vector_result = self._emit_vector_mul(node, llvm_lhs, llvm_rhs)
@@ -674,6 +681,8 @@ class BinaryOpVisitorMixin(VisitorMixinBase):
           node:
             type: DivBinOp
         """
+        if lower_nullable_operator(cast(VisitorCore, self), node):
+            return
         llvm_lhs, llvm_rhs, unsigned = self._load_binary_operands(node)
 
         vector_result = self._emit_vector_div(
@@ -715,6 +724,8 @@ class BinaryOpVisitorMixin(VisitorMixinBase):
           node:
             type: ModBinOp
         """
+        if lower_nullable_operator(cast(VisitorCore, self), node):
+            return
         llvm_lhs, llvm_rhs, unsigned = self._load_binary_operands(node)
 
         if is_vector(llvm_lhs) and is_vector(llvm_rhs):
@@ -748,6 +759,8 @@ class BinaryOpVisitorMixin(VisitorMixinBase):
           node:
             type: LogicalAndBinOp
         """
+        if lower_nullable_operator(cast(VisitorCore, self), node):
+            return
         self._lower_short_circuit_boolean(
             node,
             short_circuit_value=False,
@@ -762,6 +775,8 @@ class BinaryOpVisitorMixin(VisitorMixinBase):
           node:
             type: LogicalOrBinOp
         """
+        if lower_nullable_operator(cast(VisitorCore, self), node):
+            return
         self._lower_short_circuit_boolean(
             node,
             short_circuit_value=True,
@@ -776,6 +791,8 @@ class BinaryOpVisitorMixin(VisitorMixinBase):
           node:
             type: LtBinOp
         """
+        if lower_nullable_operator(cast(VisitorCore, self), node):
+            return
         llvm_lhs, llvm_rhs, unsigned = self._load_binary_operands(node)
         if is_vector(llvm_lhs) and is_vector(llvm_rhs):
             raise Exception(f"Vector binop {node.op_code} not implemented.")
@@ -796,6 +813,8 @@ class BinaryOpVisitorMixin(VisitorMixinBase):
           node:
             type: GtBinOp
         """
+        if lower_nullable_operator(cast(VisitorCore, self), node):
+            return
         llvm_lhs, llvm_rhs, unsigned = self._load_binary_operands(node)
         if is_vector(llvm_lhs) and is_vector(llvm_rhs):
             raise Exception(f"Vector binop {node.op_code} not implemented.")
@@ -816,6 +835,8 @@ class BinaryOpVisitorMixin(VisitorMixinBase):
           node:
             type: LeBinOp
         """
+        if lower_nullable_operator(cast(VisitorCore, self), node):
+            return
         llvm_lhs, llvm_rhs, unsigned = self._load_binary_operands(node)
         if is_vector(llvm_lhs) and is_vector(llvm_rhs):
             raise Exception(f"Vector binop {node.op_code} not implemented.")
@@ -836,6 +857,8 @@ class BinaryOpVisitorMixin(VisitorMixinBase):
           node:
             type: GeBinOp
         """
+        if lower_nullable_operator(cast(VisitorCore, self), node):
+            return
         llvm_lhs, llvm_rhs, unsigned = self._load_binary_operands(node)
         if is_vector(llvm_lhs) and is_vector(llvm_rhs):
             raise Exception(f"Vector binop {node.op_code} not implemented.")
@@ -856,6 +879,8 @@ class BinaryOpVisitorMixin(VisitorMixinBase):
           node:
             type: EqBinOp
         """
+        if lower_nullable_operator(cast(VisitorCore, self), node):
+            return
         llvm_lhs, llvm_rhs, unsigned = self._load_binary_operands(node)
 
         if is_vector(llvm_lhs) and is_vector(llvm_rhs):
@@ -886,6 +911,8 @@ class BinaryOpVisitorMixin(VisitorMixinBase):
           node:
             type: NeBinOp
         """
+        if lower_nullable_operator(cast(VisitorCore, self), node):
+            return
         llvm_lhs, llvm_rhs, unsigned = self._load_binary_operands(node)
 
         if is_vector(llvm_lhs) and is_vector(llvm_rhs):

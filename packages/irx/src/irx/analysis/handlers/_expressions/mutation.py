@@ -18,6 +18,7 @@ from irx.analysis.handlers.base import SemanticAnalyzerCore
 from irx.analysis.handlers.class_helpers import (
     ClassMemberFormattingVisitorMixin,
 )
+from irx.analysis.nullability import normalize_nullable
 from irx.analysis.ownership import (
     list_resource_ownership,
     resource_contract_for_type,
@@ -122,6 +123,10 @@ class ExpressionMutationVisitorMixin(ClassMemberFormattingVisitorMixin):
                 )
                 return None
             target_name = symbol.name
+            # Mutation targets retain declared storage, never a refined view.
+            self._semantic(target).nullable_refined = False
+            self._set_type(target, symbol.type_)
+            target_type = symbol.type_
             if not symbol.is_mutable:
                 self.context.diagnostics.add(
                     f"Cannot {action} '{target_name}': declared as constant",
@@ -509,6 +514,12 @@ class ExpressionMutationVisitorMixin(ClassMemberFormattingVisitorMixin):
             else None
         )
         value_ownership = resource_ownership(value)
+        if isinstance(target_type, astx.NullableType) and isinstance(
+            value, astx.LiteralNone
+        ):
+            value_ownership = typed_resource_ownership(
+                target_type, OwnershipKind.OWNED
+            )
         if target_ownership is None or value_ownership is None:
             self.context.diagnostics.add(
                 f"resource assignment to '{target_name}' is missing "
@@ -595,6 +606,9 @@ class ExpressionMutationVisitorMixin(ClassMemberFormattingVisitorMixin):
         if self._require_value_expression(
             node.value,
             context=f"Assignment to '{node.name}'",
+            allow_none=isinstance(
+                normalize_nullable(symbol.type_), astx.NullableType
+            ),
         ):
             validate_assignment(
                 self.context.diagnostics,

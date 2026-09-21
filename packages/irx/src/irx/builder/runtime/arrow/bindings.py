@@ -41,6 +41,10 @@ def arrow_ctypes_type(type_token: str) -> object | None:
     if type_token in scalar_types:
         return scalar_types[type_token]
 
+    if type_token == "uint64_pointer":
+        return ctypes.POINTER(ctypes.c_uint64)
+    if type_token == "double_pointer":
+        return ctypes.POINTER(ctypes.c_double)
     if type_token == "uint32_pointer":
         return ctypes.POINTER(ctypes.c_uint32)
     if type_token in {

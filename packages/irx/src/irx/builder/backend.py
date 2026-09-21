@@ -35,6 +35,9 @@ from irx.builder.lowering import (
     UnaryOpVisitorMixin,
     VariableVisitorMixin,
 )
+from irx.builder.lowering.array_values import ArrayValueLoweringMixin
+from irx.builder.lowering.descriptors import DescriptorLoweringMixin
+from irx.builder.lowering.nullable import NullableLoweringMixin
 from irx.builder.runtime.linking import link_executable
 from irx.typecheck import typechecked
 
@@ -42,6 +45,9 @@ from irx.typecheck import typechecked
 @public
 @typechecked
 class Visitor(
+    ArrayValueLoweringMixin,
+    NullableLoweringMixin,
+    DescriptorLoweringMixin,
     LiteralVisitorMixin,
     ListVisitorMixin,
     CollectionVisitorMixin,

@@ -20,6 +20,7 @@ from astx import (
 from astx.array import (
     ArrayInt32ArrayLength,
 )
+from astx.array_expr import ArrayLiteral, ArrayOperation, ArrayQuery
 from astx.base import (
     AST,
     ASTKind,
@@ -221,6 +222,7 @@ from astx.modules import (
     NamespaceKind,
     NamespaceType,
 )
+from astx.nullable import NullableOperation, NullableQuery, NullableType
 from astx.operators import (
     AssignmentExpr,
     AugAssign,
@@ -241,6 +243,7 @@ from astx.packages import (
     Target,
 )
 from astx.schema import (
+    ArrayBuilderType,
     ArrayType,
     ChunkedArrayType,
     FieldType,
@@ -258,6 +261,15 @@ from astx.schema import (
     StreamType,
     TableType,
     TimeUnit,
+    TypeDescriptorType,
+)
+from astx.schema_expr import (
+    DescriptorCompatibility,
+    DescriptorOperation,
+    DescriptorQuery,
+    FieldLiteral,
+    SchemaLiteral,
+    TypeDescriptorLiteral,
 )
 from astx.structs import (
     FieldAccess,
@@ -378,7 +390,11 @@ __all__ = [
     "AndOp",
     "Argument",
     "Arguments",
+    "ArrayBuilderType",
     "ArrayInt32ArrayLength",
+    "ArrayLiteral",
+    "ArrayOperation",
+    "ArrayQuery",
     "ArrayType",
     "AssertStmt",
     "AssignmentBinOp",
@@ -442,6 +458,9 @@ __all__ = [
     "Date",
     "DateTime",
     "DeleteStmt",
+    "DescriptorCompatibility",
+    "DescriptorOperation",
+    "DescriptorQuery",
     "DictComprehension",
     "DictType",
     "DivBinOp",
@@ -454,6 +473,7 @@ __all__ = [
     "Expr",
     "ExprType",
     "FieldAccess",
+    "FieldLiteral",
     "FieldType",
     "FinallyHandlerStmt",
     "Float16",
@@ -548,6 +568,9 @@ __all__ = [
     "NoneType",
     "NorOp",
     "NotOp",
+    "NullableOperation",
+    "NullableQuery",
+    "NullableType",
     "Number",
     "OpaqueHandleType",
     "OperatorType",
@@ -562,6 +585,7 @@ __all__ = [
     "ScalarType",
     "Schema",
     "SchemaField",
+    "SchemaLiteral",
     "SchemaType",
     "SchemaValueType",
     "ScopeKind",
@@ -606,6 +630,8 @@ __all__ = [
     "Timestamp",
     "TupleType",
     "TypeCastExpr",
+    "TypeDescriptorLiteral",
+    "TypeDescriptorType",
     "TypeOfExpr",
     "UInt8",
     "UInt16",
