@@ -1,13 +1,23 @@
-# Native Apache Arrow C++ Support Plan
+# Native Arrow design and implementation archive
 
-NOTE: DON'T TRACK THIS BY GIT, IT SHOULD BE KEPT IGNORED BY .gitignore
+**Archived snapshot:** 2026-09-22, through implementation slice C7.
 
-**Status:** active implementation roadmap
+The root [ROADMAP.md](../ROADMAP.md) is the authoritative current tracker. This
+file preserves the detailed design, original work-item descriptions, historical
+transitions, assumptions, alternatives, and verification evidence from the
+former `PLAN.md`.
 
-**Repository snapshot:** 2026-09-22
+**Status words below are historical, not active assignments.** In particular,
+`NOT STARTED -> IN PROGRESS` records a past transition, not a task still being
+worked on. Later entries may supersede earlier completion claims or test counts.
+Use the root roadmap for current status, outstanding work, and PR readiness.
 
-**Target:** make Apache Arrow C++ a complete, native, first-class data runtime
-for the Arx language.
+The accepted architecture and contracts remain design references unless a later
+record explicitly changes them. Moving them here does not waive milestone exit
+criteria. The former file's contradictory Git-ignore note is retired: it was
+tracked, and this reorganization does not change tracking policy.
+
+<!-- BEGIN PRESERVED ROADMAP BODY -->
 
 ## Implementation control
 

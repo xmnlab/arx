@@ -192,4 +192,5 @@ Nullable scalar values, general nested container construction, variable-width
 buffer operations, and comprehensive offset/bitmap validation are separate value
 work, not proven by descriptor tests. Actual value casts and runtime descriptor
 conversion classification are not supplied here. M2 also retains incomplete
-allocator-operation sweeps and an unverified local LSan gate; see `PLAN.md`.
+allocator-operation sweeps and an unverified local LSan gate; see `ROADMAP.md`
+at the repository root for current M1-M4 progress.
