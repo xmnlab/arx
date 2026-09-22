@@ -16,6 +16,7 @@ import astx
 
 from llvmlite import ir
 
+from irx.analysis.nullability import aggregate_nullable, managed_nullable
 from irx.analysis.ownership import resource_ownership
 from irx.analysis.resolved_nodes import (
     OwnershipKind,
@@ -562,6 +563,7 @@ class GeneratorVisitorMixin(VisitorMixinBase):
             yielded = cast(Any, self)._retain_copied_resource_value(
                 value,
                 yielded,
+                target_type=resolution.expected_type,
             )
             self._llvm.ir_builder.store(yielded, out_ptr)
             self._emit_temporary_cleanups(cleanup_depth)
@@ -863,10 +865,15 @@ class GeneratorVisitorMixin(VisitorMixinBase):
                         f"generator capture '{symbol.name}' has no source",
                         node=function.prototype,
                     )
-                captured_value = cast(Any, self)._retain_resource_value(
-                    declaration,
-                    llvm_arg,
-                    capture.ownership,
+                retain = (
+                    cast(Any, self).retain_nullable_aggregate
+                    if aggregate_nullable(symbol.type_)
+                    else cast(Any, self).retain_nullable_resource
+                    if managed_nullable(symbol.type_)
+                    else cast(Any, self)._retain_resource_value
+                )
+                captured_value = retain(
+                    declaration, llvm_arg, capture.ownership
                 )
             self._llvm.ir_builder.store(captured_value, field_addr)
 

@@ -180,7 +180,7 @@ def test_existing_resource_helpers_populate_complete_contracts() -> None:
     assert list_ownership.sharing_kind is ResourceSharingKind.UNIQUE
     assert list_ownership.mutability is ResourceMutability.MUTABLE
     assert string_ownership.cleanup_intrinsic == "free"
-    assert string_ownership.sharing_kind is ResourceSharingKind.UNIQUE
+    assert string_ownership.sharing_kind is ResourceSharingKind.COPYABLE
     assert string_ownership.mutability is ResourceMutability.IMMUTABLE
     assert LIST_RESOURCE_CONTRACT.resource_kind is ResourceKind.LIST
     assert STRING_RESOURCE_CONTRACT.resource_kind is ResourceKind.STRING
@@ -193,6 +193,12 @@ def test_existing_resource_helpers_populate_complete_contracts() -> None:
         (astx.TensorType(astx.Int32()), ResourceKind.BUFFER_VIEW),
         (astx.SeriesType(astx.Int32()), ResourceKind.CHUNKED_ARRAY),
         (astx.DataFrameType(), ResourceKind.TABLE),
+        (astx.NullableType(astx.DataFrameType()), ResourceKind.TABLE),
+        (
+            astx.NullableType(astx.SeriesType(astx.Int32())),
+            ResourceKind.CHUNKED_ARRAY,
+        ),
+        (astx.NullableType(astx.CDataType()), ResourceKind.C_DATA),
         (astx.ClassType("Box"), ResourceKind.CLASS_INSTANCE),
         (astx.GeneratorType(astx.Int32()), ResourceKind.GENERATOR_FRAME),
     ),

@@ -73,6 +73,8 @@ REQUIRED_IRX_NATIVE_ASSETS = (
     "irx/builder/runtime/arrow/native/irx_arrow_chunks.inc",
     "irx/builder/runtime/arrow/native/irx_arrow_tabular.inc",
     "irx/builder/runtime/arrow/native/irx_arrow_scalar_values.inc",
+    "irx/builder/runtime/arrow/native/irx_arrow_interchange.inc",
+    "irx/builder/runtime/arrow/native/irx_arrow_extensions.inc",
     "irx/builder/runtime/arrow/native/irx_arrow_feature_query_generated.inc",
     "irx/builder/runtime/arrow/native/irx_arrow_record_batch_runtime.cc",
     "irx/builder/runtime/arrow/native/irx_arrow_tensor_runtime.cc",
@@ -283,6 +285,11 @@ for source_name in (
     "tensor_smoke.x",
     "descriptor_smoke.x",
     "logical_smoke.x",
+    "dataframe_adapters.x",
+    "columnar_interchange.x",
+    "extension_values.x",
+    "nullable_strings.x",
+    "nullable_collections.x",
 ):
     artifact = compiler.compile_file(
         root / source_name,
@@ -518,6 +525,16 @@ def run_smoke(
             "descriptor_smoke.x": DESCRIPTOR_MODULE,
             "logical_smoke.x": LOGICAL_MODULE,
         }
+        for name in (
+            "dataframe_adapters",
+            "columnar_interchange",
+            "extension_values",
+            "nullable_strings",
+            "nullable_collections",
+        ):
+            sources[f"{name}.x"] = (
+                workspace / "examples" / f"{name}.x"
+            ).read_text(encoding="utf-8")
         for name, content in sources.items():
             (work_dir / name).write_text(content, encoding="utf-8")
         driver = work_dir / "smoke.py"

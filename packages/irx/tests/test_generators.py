@@ -570,3 +570,69 @@ def test_resumed_owned_locals_have_dominating_failure_cleanup() -> None:
     assert_ir_parses(ir_text)
     if HAS_CLANG:
         assert_build_output(Builder(), module, "6")
+
+
+@pytest.mark.skipif(not HAS_CLANG, reason="clang is required for build tests")
+@pytest.mark.parametrize("present", [False, True])
+@pytest.mark.parametrize("tensor", [False, True])
+def test_generator_captures_nullable_owners(
+    present: bool, tensor: bool
+) -> None:
+    """
+    title: Copy valid captures and guard absent pointer or aggregate payloads.
+    parameters:
+      present:
+        type: bool
+      tensor:
+        type: bool
+    """
+    payload = (
+        astx.TensorType(astx.Int32(), shape=(1,)) if tensor else astx.String()
+    )
+    generator = astx.FunctionDef(
+        astx.FunctionPrototype(
+            "capture",
+            astx.Arguments(astx.Argument("value", astx.NullableType(payload))),
+            astx.GeneratorType(astx.Boolean()),
+        ),
+        _block_of(
+            astx.YieldStmt(
+                astx.NullableQuery(
+                    astx.NullableOperation.IS_VALID, astx.Identifier("value")
+                )
+            )
+        ),
+    )
+    value: astx.Expr = astx.LiteralNone()
+    if present:
+        value = (
+            astx.TensorLiteral(
+                (astx.LiteralInt32(5),), element_type=astx.Int32(), shape=(1,)
+            )
+            if tensor
+            else astx.LiteralString("owned")
+        )
+    main = astx.FunctionDef(
+        astx.FunctionPrototype("main", astx.Arguments(), astx.Int32()),
+        _block_of(
+            astx.ForInLoopStmt(
+                astx.Identifier("item"),
+                astx.FunctionCall("capture", [value]),
+                _block_of(
+                    astx.AssertStmt(
+                        astx.BinaryOp(
+                            "==",
+                            astx.Identifier("item"),
+                            astx.LiteralBoolean(present),
+                        )
+                    )
+                ),
+            ),
+            astx.FunctionReturn(astx.LiteralInt32(0)),
+        ),
+    )
+    module = astx.Module()
+    module.block.append(generator)
+    module.block.append(main)
+    assert_ir_parses(Builder().translate(module))
+    assert_build_output(Builder(), module, "0")

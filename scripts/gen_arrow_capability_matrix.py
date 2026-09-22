@@ -1237,15 +1237,8 @@ def validate_modules(
         raise CapabilityMatrixError(
             f"duplicate module IDs: {', '.join(duplicates)}"
         )
-    classifications = {module.classification for module in modules}
-    missing_classifications = (
-        set(MODULE_CLASSIFICATION_LABELS) - classifications
-    )
-    if missing_classifications:
-        raise CapabilityMatrixError(
-            "module inventory does not exercise classifications: "
-            f"{', '.join(sorted(missing_classifications))}"
-        )
+    # Each entry already validates its classification. A transitional category
+    # such as preserve_only may become empty as native support is implemented.
     known_capabilities = {capability.id for capability in capabilities}
     for module in modules:
         unknown = sorted(set(module.capabilities) - known_capabilities)

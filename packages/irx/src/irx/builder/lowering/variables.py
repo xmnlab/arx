@@ -133,9 +133,12 @@ class VariableVisitorMixin(VisitorMixinBase):
           string_ptr:
             type: ir.Value
         """
-        if not is_string_type(node.type_):
-            return
         ownership = resource_ownership(node)
+        if not is_string_type(node.type_) and (
+            ownership is None
+            or ownership.resource_kind is not ResourceKind.STRING
+        ):
+            return
         if ownership is None:
             raise_lowering_internal_error(
                 f"string declaration '{node.name}' is missing ownership "
@@ -233,9 +236,10 @@ class VariableVisitorMixin(VisitorMixinBase):
             type: ir.Value
         """
         ownership = resource_ownership(node)
-        if ownership is None or ownership.resource_kind in (
-            ResourceKind.LIST,
-            ResourceKind.STRING,
+        if ownership is None or (
+            not ownership.nullable_aggregate
+            and ownership.resource_kind
+            in (ResourceKind.LIST, ResourceKind.STRING)
         ):
             return
         if ownership.kind in (OwnershipKind.BORROWED, OwnershipKind.STATIC):
@@ -279,6 +283,12 @@ class VariableVisitorMixin(VisitorMixinBase):
                 "validated ownership transfer",
                 node=node,
             )
+        if ownership.nullable_aggregate:
+            cast(Any, self).release_resource_slot(ownership, slot)
+            return
+        if ownership.resource_kind is ResourceKind.STRING:
+            self._destroy_replaced_string(node, slot, target_name=target_name)
+            return
         release_fn = cast(Any, self).require_runtime_symbol_by_name(
             ownership.cleanup_intrinsic
         )
@@ -359,6 +369,7 @@ class VariableVisitorMixin(VisitorMixinBase):
         llvm_value = cast(Any, self)._retain_copied_resource_value(
             expr.value,
             llvm_value,
+            target_type=self._resolved_ast_type(expr),
         )
 
         llvm_var = self.named_values.get(var_key)
@@ -371,8 +382,11 @@ class VariableVisitorMixin(VisitorMixinBase):
         native_ownership = (
             ownership
             if ownership is not None
-            and ownership.resource_kind
-            not in (ResourceKind.LIST, ResourceKind.STRING)
+            and (
+                ownership.nullable_aggregate
+                or ownership.resource_kind
+                not in (ResourceKind.LIST, ResourceKind.STRING)
+            )
             else None
         )
         incoming_slot: ir.Value | None = None
@@ -382,7 +396,10 @@ class VariableVisitorMixin(VisitorMixinBase):
                 llvm_var,
                 target_name=expr.name,
             )
-        elif is_string_type(self._resolved_ast_type(expr)):
+        elif (
+            ownership is not None
+            and ownership.resource_kind is ResourceKind.STRING
+        ):
             self._destroy_replaced_string(
                 expr,
                 llvm_var,
@@ -553,6 +570,7 @@ class VariableVisitorMixin(VisitorMixinBase):
             init_val = cast(Any, self)._retain_copied_resource_value(
                 node.value,
                 init_val,
+                target_type=node.type_,
             )
 
             if type_str == "string":
@@ -570,7 +588,9 @@ class VariableVisitorMixin(VisitorMixinBase):
                 empty_str_global = ir.GlobalVariable(
                     self._llvm.module,
                     empty_str_type,
-                    name=f"empty_str_{node.name}",
+                    name=self._llvm.module.get_unique_name(
+                        f"empty_str_{node.name}"
+                    ),
                 )
                 empty_str_global.linkage = "internal"
                 empty_str_global.global_constant = True
@@ -630,6 +650,7 @@ class VariableVisitorMixin(VisitorMixinBase):
                 (
                     astx.BufferViewType,
                     astx.DataFrameType,
+                    astx.CDataType,
                     astx.SchemaType,
                     astx.FieldType,
                     astx.TypeDescriptorType,
@@ -658,6 +679,13 @@ class VariableVisitorMixin(VisitorMixinBase):
                     else self.create_entry_block_alloca(node.name, llvm_type)
                 )
 
+            ownership = resource_ownership(node)
+            if (
+                is_string_type(node.type_)
+                and ownership is not None
+                and ownership.kind is OwnershipKind.OWNED
+            ):
+                init_val = self._copy_string_to_heap(node, init_val)
             self._llvm.ir_builder.store(init_val, alloca)
 
         if node.mutability == astx.MutabilityKind.constant:
@@ -698,6 +726,18 @@ class VariableVisitorMixin(VisitorMixinBase):
             init_val = cast(Any, self)._retain_copied_resource_value(
                 node.value,
                 init_val,
+                target_type=node.type_,
+            )
+        elif isinstance(node.type_, astx.String):
+            empty = cast(Any, self)._constant_c_string_pointer(
+                "", name_hint="inline_default_string"
+            )
+            ownership = resource_ownership(node)
+            init_val = (
+                self._copy_string_to_heap(node, empty)
+                if ownership is not None
+                and ownership.kind is OwnershipKind.OWNED
+                else empty
             )
         elif isinstance(node.type_, astx.StructType):
             init_val = ir.Constant(llvm_type, None)
@@ -715,6 +755,7 @@ class VariableVisitorMixin(VisitorMixinBase):
             (
                 astx.BufferViewType,
                 astx.DataFrameType,
+                astx.CDataType,
                 astx.SchemaType,
                 astx.FieldType,
                 astx.TypeDescriptorType,

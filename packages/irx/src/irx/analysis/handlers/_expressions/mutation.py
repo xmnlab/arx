@@ -18,7 +18,7 @@ from irx.analysis.handlers.base import SemanticAnalyzerCore
 from irx.analysis.handlers.class_helpers import (
     ClassMemberFormattingVisitorMixin,
 )
-from irx.analysis.nullability import normalize_nullable
+from irx.analysis.nullability import aggregate_nullable, normalize_nullable
 from irx.analysis.ownership import (
     list_resource_ownership,
     resource_contract_for_type,
@@ -94,6 +94,7 @@ class ExpressionMutationVisitorMixin(ClassMemberFormattingVisitorMixin):
         node: astx.AST,
         action: str,
         invalid_message: str,
+        payload_only: bool = False,
     ) -> tuple[SemanticSymbol, str, astx.DataType | None] | None:
         """
         title: >-
@@ -107,6 +108,8 @@ class ExpressionMutationVisitorMixin(ClassMemberFormattingVisitorMixin):
             type: str
           invalid_message:
             type: str
+          payload_only:
+            type: bool
         returns:
           type: tuple[SemanticSymbol, str, astx.DataType | None] | None
         """
@@ -123,10 +126,12 @@ class ExpressionMutationVisitorMixin(ClassMemberFormattingVisitorMixin):
                 )
                 return None
             target_name = symbol.name
-            # Mutation targets retain declared storage, never a refined view.
-            self._semantic(target).nullable_refined = False
-            self._set_type(target, symbol.type_)
-            target_type = symbol.type_
+            # Replacing an owner needs its full storage; mutating a proven
+            # payload preserves the owner's independent validity flag.
+            if not payload_only:
+                self._semantic(target).nullable_refined = False
+                self._set_type(target, symbol.type_)
+                target_type = symbol.type_
             if not symbol.is_mutable:
                 self.context.diagnostics.add(
                     f"Cannot {action} '{target_name}': declared as constant",
@@ -373,6 +378,13 @@ class ExpressionMutationVisitorMixin(ClassMemberFormattingVisitorMixin):
         """
         if not is_string_type(target_type):
             return
+        target_ownership = symbol_resource_ownership(symbol)
+        if symbol.kind == "class_field" or (
+            is_local
+            and target_ownership is not None
+            and target_ownership.kind is OwnershipKind.OWNED
+        ):
+            return
         value_ownership = resource_ownership(value)
         if value_ownership is None:
             self.context.diagnostics.add(
@@ -488,11 +500,21 @@ class ExpressionMutationVisitorMixin(ClassMemberFormattingVisitorMixin):
             type: bool
         """
         contract = resource_contract_for_type(target_type)
-        if contract is None or contract.resource_kind in (
-            ResourceKind.LIST,
-            ResourceKind.STRING,
+        if contract is None or (
+            contract.resource_kind is ResourceKind.LIST
+            and not aggregate_nullable(target_type)
         ):
             return
+        if contract.resource_kind is ResourceKind.STRING:
+            target = symbol_resource_ownership(symbol)
+            if not is_local and symbol.kind != "class_field":
+                return
+            if (
+                is_local
+                and target is not None
+                and target.kind is OwnershipKind.STATIC
+            ):
+                return
         if not is_local and symbol.kind == "class_static_field":
             self.context.diagnostics.add(
                 f"cannot assign resource storage to static field "
@@ -548,7 +570,7 @@ class ExpressionMutationVisitorMixin(ClassMemberFormattingVisitorMixin):
             OwnershipKind.BORROWED,
             OwnershipKind.STATIC,
         ):
-            if contract.sharing_kind is not ResourceSharingKind.SHARED:
+            if contract.sharing_kind is ResourceSharingKind.UNIQUE:
                 self.context.diagnostics.add(
                     f"unique resource '{target_name}' cannot be copied",
                     node=value,

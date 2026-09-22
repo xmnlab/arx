@@ -163,6 +163,15 @@
 #undef irx_arrow_batch_take
 #undef irx_arrow_table_take
 #undef irx_arrow_array_from_buffer
+#undef irx_arrow_c_data_retain
+#undef irx_arrow_c_data_release
+#undef irx_arrow_c_data_from_array
+#undef irx_arrow_c_data_import_move
+#undef irx_arrow_c_data_export
+#undef irx_arrow_array_from_c_data
+#undef irx_arrow_array_with_validity
+#undef irx_arrow_array_from_buffers
+#undef irx_arrow_scalar_storage
 
 #if defined(__GNUC__) || defined(__clang__)
 #pragma GCC visibility pop
@@ -4155,6 +4164,218 @@ irx_arrow_status irx_arrow_array_from_buffer(
   return finish_generated_call(
       status,
       "irx_arrow_array_from_buffer",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_c_data_retain(
+    const irx_arrow_c_data_handle* value,
+    irx_arrow_c_data_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_c_data_retain");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_c_data_retain(value, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_c_data_retain",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_c_data_release(
+    irx_arrow_c_data_handle** value,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_c_data_release");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_c_data_release(value);
+  return finish_generated_call(
+      status,
+      "irx_arrow_c_data_release",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_c_data_from_array(
+    const irx_arrow_array_handle* value,
+    irx_arrow_c_data_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_c_data_from_array");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_c_data_from_array(value, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_c_data_from_array",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_c_data_import_move(
+    struct ArrowArray* array,
+    struct ArrowSchema* schema,
+    irx_arrow_c_data_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_c_data_import_move");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_c_data_import_move(array, schema, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_c_data_import_move",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_c_data_export(
+    const irx_arrow_c_data_handle* value,
+    struct ArrowArray* array,
+    struct ArrowSchema* schema,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_c_data_export");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_c_data_export(value, array, schema);
+  return finish_generated_call(
+      status,
+      "irx_arrow_c_data_export",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_array_from_c_data(
+    const irx_arrow_c_data_handle* value,
+    const irx_arrow_field_handle* field,
+    irx_arrow_array_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_array_from_c_data");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_array_from_c_data(value, field, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_array_from_c_data",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_array_with_validity(
+    const irx_arrow_array_handle* value,
+    const irx_arrow_array_handle* bitmap,
+    int64_t offset,
+    irx_arrow_array_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_array_with_validity");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_array_with_validity(value, bitmap, offset, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_array_with_validity",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_array_from_buffers(
+    const irx_arrow_field_handle* field,
+    const irx_arrow_array_handle* data,
+    const irx_arrow_array_handle* bitmap,
+    int64_t length,
+    int64_t offset,
+    irx_arrow_array_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_array_from_buffers");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_array_from_buffers(
+          field,
+          data,
+          bitmap,
+          length,
+          offset,
+          output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_array_from_buffers",
+      out_failure);
+}
+
+#endif
+
+#if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
+irx_arrow_status irx_arrow_scalar_storage(
+    const irx_arrow_scalar_handle* value,
+    irx_arrow_scalar_handle** output,
+    irx_arrow_error_handle** out_failure) {
+  if (out_failure == nullptr) {
+    begin_operation("irx_arrow_scalar_storage");
+    return set_error(
+        IRX_ARROW_STATUS_NULL_POINTER,
+        "out_failure must not be NULL");
+  }
+  *out_failure = nullptr;
+  const irx_arrow_status status =
+      irx_arrow_internal_scalar_storage(value, output);
+  return finish_generated_call(
+      status,
+      "irx_arrow_scalar_storage",
       out_failure);
 }
 

@@ -6,6 +6,7 @@
 #include "irx_arrow_builder_support.h"
 
 #include <arrow/api.h>
+#include <arrow/extension_type.h>
 #include <arrow/array/concatenate.h>
 #include <arrow/device.h>
 #include <arrow/util/float16.h>
@@ -274,6 +275,12 @@ struct irx_arrow_schema_handle {
 struct irx_arrow_scalar_handle {
   HandleHeader header{IRX_ARROW_HANDLE_KIND_SCALAR, IRX_ARROW_HANDLE_OWNERSHIP_SHARED};
   std::shared_ptr<arrow::Scalar> scalar;
+};
+
+struct irx_arrow_c_data_handle {
+  HandleHeader header{IRX_ARROW_HANDLE_KIND_C_DATA, IRX_ARROW_HANDLE_OWNERSHIP_SHARED};
+  std::shared_ptr<arrow::Array> array;
+  std::shared_ptr<arrow::Field> field;
 };
 
 struct irx_arrow_array_builder_handle {
@@ -1125,6 +1132,9 @@ int checked_offset_bytes(
 }
 
 int64_t logical_null_count(const arrow::Array &array) {
+  if (array.type_id() == arrow::Type::EXTENSION)
+    return logical_null_count(
+        *static_cast<const arrow::ExtensionArray &>(array).storage());
   // Union and run-end arrays have no parent bitmap. Dictionary validity,
   // like DictionaryScalar::is_valid, belongs to indices rather than values.
   if (array.type_id() == arrow::Type::SPARSE_UNION ||
@@ -1556,9 +1566,11 @@ irx_arrow_status irx_arrow_error_release(
 
 #if defined(IRX_ARROW_RUNTIME_BUILD_ARRAY)
 
+#include "irx_arrow_extensions.inc"
 #include "irx_arrow_descriptors.inc"
 #include "irx_arrow_array_values.inc"
 #include "irx_arrow_scalar_values.inc"
+#include "irx_arrow_interchange.inc"
 #include "irx_arrow_chunks.inc"
 
 irx_arrow_status irx_arrow_schema_import_copy(
@@ -1584,6 +1596,8 @@ irx_arrow_status irx_arrow_schema_import_copy(
     if (!borrowed.ok()) {
       return set_arrow_error("Arrow schema copy failed", borrowed.status());
     }
+    auto registered = register_storage_extensions(&(*borrowed)->schema);
+    if (!registered.ok()) return set_arrow_error("extension registration", registered);
     auto field = arrow::ImportField(&(*borrowed)->schema);
     if (!field.ok()) {
       return set_arrow_error("Arrow schema import failed", field.status());

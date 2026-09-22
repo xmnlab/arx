@@ -35,7 +35,7 @@ from llvmlite import ir
 
 from irx.analysis.ownership import resource_ownership
 from irx.analysis.resolved_nodes import ResourceKind
-from irx.analysis.types import common_numeric_type, is_string_type
+from irx.analysis.types import common_numeric_type
 from irx.builder.core import (
     VisitorCore,
     semantic_assignment_key,
@@ -541,29 +541,31 @@ class BinaryOpVisitorMixin(VisitorMixinBase):
         llvm_rhs = cast(Any, self)._retain_copied_resource_value(
             node.rhs,
             llvm_rhs,
+            target_type=self._resolved_ast_type(node),
         )
 
         llvm_lhs = self._lvalue_address(var_lhs)
+        ownership = resource_ownership(node)
         if isinstance(self._resolved_ast_type(node), astx.ListType):
             self._destroy_replaced_list(
                 node,
                 llvm_lhs,
                 target_name=lhs_name,
             )
-        elif is_string_type(self._resolved_ast_type(node)) and isinstance(
-            var_lhs,
-            astx.Identifier,
+        elif (
+            ownership is not None
+            and ownership.resource_kind is ResourceKind.STRING
         ):
             self._destroy_replaced_string(
                 node,
                 llvm_lhs,
                 target_name=lhs_name,
             )
-        ownership = resource_ownership(node)
         incoming_slot: ir.Value | None = None
-        if ownership is not None and ownership.resource_kind not in (
-            ResourceKind.LIST,
-            ResourceKind.STRING,
+        if ownership is not None and (
+            ownership.nullable_aggregate
+            or ownership.resource_kind
+            not in (ResourceKind.LIST, ResourceKind.STRING)
         ):
             incoming_slot = self._llvm.ir_builder.alloca(
                 llvm_rhs.type,

@@ -16,6 +16,7 @@ from irx.analysis.ownership import arrow_resource_ownership
 from irx.analysis.resolved_nodes import OwnershipKind, ResourceKind
 from irx.analysis.types import is_float_type, is_unsigned_type
 from irx.builder.core import VisitorCore, semantic_symbol_key
+from irx.builder.lowering.tabular import TabularLoweringMixin
 from irx.builder.protocols import VisitorMixinBase
 from irx.builder.runtime import safe_pop
 from irx.builder.runtime.arrow.lowering import call_arrow_runtime
@@ -443,113 +444,7 @@ class DataFrameVisitorMixin(VisitorMixinBase):
           node:
             type: astx.DataFrameLiteral
         """
-        if node.type_.columns is None:
-            raise Exception("dataframe literal lowering requires a schema")
-
-        literal_by_name = {column.name: column for column in node.columns}
-        table_new = self.require_runtime_symbol(
-            "dataframe",
-            "irx_arrow_table_new_from_arrays",
-        )
-
-        array_handles: list[ir.Value] = []
-        name_pointers: list[ir.Value] = []
-        for schema_column in node.type_.columns:
-            literal_column = literal_by_name.get(schema_column.name)
-            if literal_column is None:
-                raise Exception("dataframe literal is missing a column")
-            array_handles.append(
-                self._build_arrow_array_from_column(
-                    schema_column.name,
-                    schema_column.type_,
-                    literal_column.values,
-                )
-            )
-            name_pointers.append(
-                cast(Any, self)._constant_c_string_pointer(
-                    schema_column.name,
-                    name_hint=f"dataframe_column_{schema_column.name}",
-                )
-            )
-
-        column_count = len(array_handles)
-        names_array_type = ir.ArrayType(
-            self._llvm.ASCII_STRING_TYPE,
-            column_count,
-        )
-        arrays_array_type = ir.ArrayType(
-            self._llvm.ARRAY_HANDLE_TYPE,
-            column_count,
-        )
-        names_array = self._llvm.ir_builder.alloca(
-            names_array_type,
-            name="dataframe_names",
-        )
-        arrays_array = self._llvm.ir_builder.alloca(
-            arrays_array_type,
-            name="dataframe_arrays",
-        )
-
-        for index, (name_pointer, array_handle) in enumerate(
-            zip(name_pointers, array_handles, strict=True)
-        ):
-            indices = [
-                ir.Constant(self._llvm.INT32_TYPE, 0),
-                ir.Constant(self._llvm.INT32_TYPE, index),
-            ]
-            name_slot = self._llvm.ir_builder.gep(names_array, indices)
-            array_slot = self._llvm.ir_builder.gep(arrays_array, indices)
-            self._llvm.ir_builder.store(name_pointer, name_slot)
-            self._llvm.ir_builder.store(array_handle, array_slot)
-
-        names_ptr = self._llvm.ir_builder.gep(
-            names_array,
-            [
-                ir.Constant(self._llvm.INT32_TYPE, 0),
-                ir.Constant(self._llvm.INT32_TYPE, 0),
-            ],
-        )
-        arrays_ptr = self._llvm.ir_builder.gep(
-            arrays_array,
-            [
-                ir.Constant(self._llvm.INT32_TYPE, 0),
-                ir.Constant(self._llvm.INT32_TYPE, 0),
-            ],
-        )
-        table_slot = self._llvm.ir_builder.alloca(
-            self._llvm.TABLE_HANDLE_TYPE,
-            name="dataframe_table_slot",
-        )
-        self._llvm.ir_builder.store(
-            ir.Constant(self._llvm.TABLE_HANDLE_TYPE, None),
-            table_slot,
-        )
-        status, error_slot = call_arrow_runtime(
-            self,
-            table_new,
-            [
-                ir.Constant(self._llvm.INT64_TYPE, column_count),
-                names_ptr,
-                arrays_ptr,
-                table_slot,
-            ],
-            "dataframe_table_new",
-        )
-        self._check_arrow_status(
-            status,
-            error_slot,
-            "dataframe_table_new",
-        )
-        table_handle = self._llvm.ir_builder.load(
-            table_slot,
-            "dataframe_table",
-        )
-
-        cast(Any, self)._register_owned_resource_temporary(
-            node,
-            table_handle,
-        )
-        self.result_stack.append(table_handle)
+        cast(TabularLoweringMixin, self).lower_tabular_literal(node)
 
     @VisitorCore.visit.dispatch
     def visit(self, node: astx.DataFrameColumnAccess) -> None:

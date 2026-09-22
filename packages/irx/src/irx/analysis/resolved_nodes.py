@@ -86,6 +86,7 @@ class ResourceKind(str, Enum):
     FIELD = "field"
     SCHEMA = "schema"
     SCALAR = "scalar"
+    C_DATA = "c_data"
     ARRAY_BUILDER = "array_builder"
     ARRAY = "array"
     CHUNKED_ARRAY = "chunked_array"
@@ -121,11 +122,12 @@ class ResourceSharingKind(str, Enum):
     title: Runtime resource sharing capabilities.
     summary: >-
       Distinguish retainable shared handles from unique affine resources that
-      can only be moved.
+      can only be moved, and independently cloned immutable values.
     """
 
     SHARED = "shared"
     UNIQUE = "unique"
+    COPYABLE = "copyable"
 
 
 @public
@@ -239,6 +241,8 @@ class ResourceOwnership:
         type: ResourceViewKind
       view_parent_symbol_id:
         type: str | None
+      nullable_aggregate:
+        type: bool
     """
 
     resource_kind: ResourceKind
@@ -254,6 +258,7 @@ class ResourceOwnership:
     escape_kind: OwnershipEscapeKind = OwnershipEscapeKind.NONE
     view_kind: ResourceViewKind = ResourceViewKind.NONE
     view_parent_symbol_id: str | None = None
+    nullable_aggregate: bool = False
 
 
 @public
@@ -1881,6 +1886,8 @@ class SemanticInfo:
         type: ResolvedIteration | None
       resolved_collection_method:
         type: ResolvedCollectionMethod | None
+      resolved_subscript:
+        type: astx.TensorIndex | None
       resource_ownership:
         type: ResourceOwnership | None
       semantic_flags:
@@ -1925,6 +1932,7 @@ class SemanticInfo:
     resolved_yield: ResolvedYield | None = None
     resolved_iteration: ResolvedIteration | None = None
     resolved_collection_method: ResolvedCollectionMethod | None = None
+    resolved_subscript: astx.TensorIndex | None = None
     resource_ownership: ResourceOwnership | None = None
     semantic_flags: SemanticFlags = field(default_factory=SemanticFlags)
     extras: dict[str, Any] = field(default_factory=dict)

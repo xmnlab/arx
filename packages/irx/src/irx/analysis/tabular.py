@@ -10,6 +10,8 @@ import astx
 
 from public import private, public
 
+from irx.analysis.dataframe_values import legacy_adapter
+from irx.analysis.interchange_values import interchange_signature
 from irx.analysis.schema import canonical_schema
 from irx.analysis.types import is_assignable, is_signed_integer_type, same_type
 from irx.typecheck import typechecked
@@ -221,6 +223,9 @@ def resolve_tabular_query(
         astx.TabularOperation.REPLACE: 3,
         astx.TabularOperation.REMOVE: 2,
         astx.TabularOperation.TAKE: 2,
+        astx.TabularOperation.IMPORT_C_DATA: 2,
+        astx.TabularOperation.WITH_VALIDITY: 3,
+        astx.TabularOperation.FROM_BUFFERS: 5,
     }.get(op, 1)
     variadic = op in {
         astx.TabularOperation.SELECT,
@@ -233,6 +238,27 @@ def resolve_tabular_query(
     ):
         raise ValueError(f"{op.value} has invalid argument count")
     owner = types[0]
+    interchange = interchange_signature(node, types)
+    if interchange is not None:
+        symbol, result_type = interchange
+        return ResolvedTabular(
+            symbol,
+            result_type,
+            args,
+            feature="array",
+            required_version=0x00010600,
+            required_features=("core", "array"),
+        )
+    adapter = legacy_adapter(op, owner)
+    if adapter is not None:
+        symbol, result_type, feature = adapter
+        return ResolvedTabular(
+            symbol,
+            result_type,
+            args,
+            feature=feature,
+            required_version=0x00010000,
+        )
     if not isinstance(owner, TABULAR_TYPES):
         raise ValueError(f"{op.value} requires a table or record_batch")
     prefix = "batch" if isinstance(owner, astx.RecordBatchType) else "table"

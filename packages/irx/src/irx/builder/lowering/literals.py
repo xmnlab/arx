@@ -131,6 +131,7 @@ class LiteralVisitorMixin(VisitorMixinBase):
                 astx.TableType,
                 astx.RecordBatchType,
                 astx.SchemaType,
+                astx.CDataType,
                 astx.FieldType,
                 astx.TypeDescriptorType,
                 astx.StructType,
@@ -264,6 +265,9 @@ class LiteralVisitorMixin(VisitorMixinBase):
                 field.member.type_,
                 name_hint=f"{class_.name}_{field.member.name}_zero",
             )
+            if isinstance(field.member.type_, astx.String):
+                # Partial-object destruction must never free a static default.
+                initial_value = ir.Constant(initial_value.type, None)
             self._llvm.ir_builder.store(initial_value, field_addr)
 
         object_slot = self.create_entry_block_alloca(
@@ -301,6 +305,8 @@ class LiteralVisitorMixin(VisitorMixinBase):
                     field.member.type_,
                     name_hint=f"{class_.name}_{field.member.name}",
                 )
+                if isinstance(field.member.type_, astx.String):
+                    field_value = self._copy_string_to_heap(node, field_value)
             else:
                 self.visit_child(initializer.value)
                 raw_value = safe_pop(self.result_stack)
@@ -312,6 +318,7 @@ class LiteralVisitorMixin(VisitorMixinBase):
                 field_value = cast(Any, self)._retain_copied_resource_value(
                     initializer.value,
                     field_value,
+                    target_type=field.member.type_,
                 )
             self._llvm.ir_builder.store(field_value, field_addr)
 
@@ -777,6 +784,12 @@ class LiteralVisitorMixin(VisitorMixinBase):
           node:
             type: astx.SubscriptExpr
         """
+        specialized = getattr(
+            getattr(node, "semantic", None), "resolved_subscript", None
+        )
+        if specialized is not None:
+            self.visit_child(specialized)
+            return
         if isinstance(self._resolved_ast_type(node.value), astx.ListType):
             cast(Any, self)._lower_list_subscript(
                 base=node.value,

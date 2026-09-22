@@ -246,6 +246,7 @@ from astx.scalar_expr import ScalarLiteral, ScalarOperation, ScalarQuery
 from astx.schema import (
     ArrayBuilderType,
     ArrayType,
+    CDataType,
     ChunkedArrayType,
     FieldType,
     LogicalKind,
@@ -424,6 +425,7 @@ __all__ = [
     "BufferViewStore",
     "BufferViewType",
     "BufferViewWrite",
+    "CDataType",
     "CaseStmt",
     "Cast",
     "CatchHandlerStmt",

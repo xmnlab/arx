@@ -161,3 +161,12 @@ irx_arrow_scalar_bytes
 irx_arrow_batch_take
 irx_arrow_table_take
 irx_arrow_array_from_buffer
+irx_arrow_c_data_retain
+irx_arrow_c_data_release
+irx_arrow_c_data_from_array
+irx_arrow_c_data_import_move
+irx_arrow_c_data_export
+irx_arrow_array_from_c_data
+irx_arrow_array_with_validity
+irx_arrow_array_from_buffers
+irx_arrow_scalar_storage

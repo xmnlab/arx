@@ -314,3 +314,22 @@ def test_repeated_unicode_literals_have_unique_llvm_globals() -> None:
     module = Parser().parse(Lexer().lex())
     output = ArxBuilder().translate(module)
     llvm.parse_assembly(output).verify()
+
+
+def test_nullable_list_payload_mutation_preserves_validity() -> None:
+    """
+    title: Refined list mutation lowers through the aggregate payload slot.
+    """
+    ArxIO.string_to_buffer(
+        "fn empty() -> list[i32]:\n  var values: list[i32]\n"
+        "  return values\nfn main() -> i32:\n"
+        "  var values: list[i32] | none = empty()\n"
+        "  if is_valid(values):\n    values.append(7)\n"
+        "    assert values[0] == 7\n  return 0\n"
+    )
+    module = Parser().parse(Lexer().lex())
+    text = ArxBuilder().translate(module)
+    llvm.parse_assembly(text).verify()
+    assert "irx_list_append" in text
+    assert "irx_list_destroy" in text
+    assert "ARX-RUNTIME-LIST-003" in text

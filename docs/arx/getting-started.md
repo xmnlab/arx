@@ -169,13 +169,29 @@ Constructors take an explicit row count, then arrays (batch) or chunked arrays
 [built-in types](built-in-types.md#record-batches-and-tables) and
 `examples/columnar_tables.x`. Nullable primitive casts, compound validity
 proofs, optional unique builders and nullable instance fields are also
-supported. Variable-width/nested source values and source buffer/C Data
-constructors remain pending; legacy DataFrame/Series behavior is unchanged.
+supported. Logical values, checked buffer/C Data constructors and explicit
+legacy DataFrame/Series adapters are described below.
 
 Logical columnar values are also native builtins: `scalar[T]`, typed arrays,
 reusable builders, chunks, batches and tables need no Arrow import. See
 [built-in types](built-in-types.md#logical-scalars-and-nested-values) for
 strings, binary, temporal, decimal and nested construction, checked nullable
-extraction, `array_from_buffer`, and explicit `take_rows` selection. Legacy
-DataFrame/Series adapters and raw external C Data constructors remain
-unfinished.
+extraction, `array_from_buffer`, and explicit `take_rows` selection. Checked
+buffer/C Data constructors and explicit legacy DataFrame/Series adapters are
+also supported.
+
+## Try the checked ownership boundaries
+
+```bash
+arx --run examples/dataframe_adapters.x
+arx --run examples/columnar_interchange.x
+arx --run examples/extension_values.x
+arx --run examples/nullable_strings.x
+arx --run examples/nullable_collections.x
+```
+
+These examples cover explicit legacy adapters, packed validity buffers, owned C
+Data interchange, extension storage, nullable string/class-field copies, and
+optional list/tensor owners. They use builtin names without importing Arrow.
+Nested nullable collection elements and managed by-value struct destruction
+remain unfinished.

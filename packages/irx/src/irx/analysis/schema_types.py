@@ -16,7 +16,9 @@ from astx.schema import LogicalKind, LogicalType, ParameterKind, TimeUnit
 from public import private, public
 
 from irx.analysis.array_values import array_storage
+from irx.analysis.dataframe_values import dataframe_element, dataframe_schema
 from irx.analysis.nullability import (
+    aggregate_nullable,
     managed_nullable,
     normalize_nullable,
     nullable_diagnostic,
@@ -290,7 +292,12 @@ def columnar_type_diagnostic(
     if isinstance(normalized, astx.NullableType):
         if depth:
             return "nullable container elements are not implemented yet"
-        if managed_nullable(normalized):
+        if isinstance(normalized.payload_type, astx.ListType) and any(
+            isinstance(child, astx.ListType)
+            for child in normalized.payload_type.element_types
+        ):
+            return "nested list owners require recursive element destruction"
+        if managed_nullable(normalized) or aggregate_nullable(normalized):
             return columnar_type_diagnostic(normalized.payload_type, depth)
         return nullable_diagnostic(normalized)
     if isinstance(type_, astx.UnionType) and any(
@@ -298,6 +305,14 @@ def columnar_type_diagnostic(
     ):
         return "nullable unions require one distinct non-none payload type"
     try:
+        if isinstance(type_, (astx.DataFrameType, astx.SeriesType)):
+            if depth:
+                return "legacy columnar owners cannot be nested in containers"
+            if isinstance(type_, astx.DataFrameType):
+                dataframe_schema(type_)
+            elif type_.element_type is not None:
+                dataframe_element(type_.element_type, type_.nullable)
+            return None
         if isinstance(type_, astx.LogicalValueType):
             canonical_logical_type(type_.element_type)
             if isinstance(type_, astx.ScalarType) and type_.nullable:
@@ -335,7 +350,13 @@ def columnar_type_diagnostic(
                         return "tabular values require primitive columns"
                 return None
         elif isinstance(
-            type_, (astx.SchemaType, astx.FieldType, astx.TypeDescriptorType)
+            type_,
+            (
+                astx.SchemaType,
+                astx.FieldType,
+                astx.TypeDescriptorType,
+                astx.CDataType,
+            ),
         ):
             if depth:
                 return (
@@ -349,7 +370,7 @@ def columnar_type_diagnostic(
                 if error is not None:
                     return error
             return None
-    except SchemaError as error:
+    except (SchemaError, ValueError) as error:
         return f"invalid columnar descriptor: {error}"
     return (
         f"{type(type_).__name__} is modeled for schema interoperability; "

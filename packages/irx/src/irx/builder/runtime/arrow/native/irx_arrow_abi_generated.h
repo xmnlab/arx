@@ -29,7 +29,7 @@ extern "C" {
 #endif
 
 #define IRX_ARROW_ABI_VERSION_MAJOR UINT32_C(1)
-#define IRX_ARROW_ABI_VERSION_MINOR UINT32_C(5)
+#define IRX_ARROW_ABI_VERSION_MINOR UINT32_C(6)
 #define IRX_ARROW_ABI_VERSION_PATCH UINT32_C(0)
 #define IRX_ARROW_ABI_VERSION \
   ((IRX_ARROW_ABI_VERSION_MAJOR << 16) | \
@@ -99,7 +99,7 @@ enum irx_arrow_runtime_feature_id_code {
    IRX_ARROW_RUNTIME_FEATURE_CORE_CONTRACT_VERSION_PATCH)
 
 #define IRX_ARROW_RUNTIME_FEATURE_ARRAY_CONTRACT_VERSION_MAJOR UINT32_C(1)
-#define IRX_ARROW_RUNTIME_FEATURE_ARRAY_CONTRACT_VERSION_MINOR UINT32_C(5)
+#define IRX_ARROW_RUNTIME_FEATURE_ARRAY_CONTRACT_VERSION_MINOR UINT32_C(6)
 #define IRX_ARROW_RUNTIME_FEATURE_ARRAY_CONTRACT_VERSION_PATCH UINT32_C(0)
 #define IRX_ARROW_RUNTIME_FEATURE_ARRAY_CONTRACT_VERSION \
   ((IRX_ARROW_RUNTIME_FEATURE_ARRAY_CONTRACT_VERSION_MAJOR << 16) | \
@@ -145,6 +145,7 @@ typedef struct irx_arrow_stream_handle irx_arrow_stream_handle;
 typedef struct irx_arrow_dataset_handle irx_arrow_dataset_handle;
 typedef struct irx_arrow_execution_plan_handle irx_arrow_execution_plan_handle;
 typedef struct irx_arrow_field_handle irx_arrow_field_handle;
+typedef struct irx_arrow_c_data_handle irx_arrow_c_data_handle;
 
 typedef int32_t irx_arrow_handle_kind;
 
@@ -165,6 +166,7 @@ enum irx_arrow_handle_kind_code {
   IRX_ARROW_HANDLE_KIND_DATASET = 13,
   IRX_ARROW_HANDLE_KIND_EXECUTION_PLAN = 14,
   IRX_ARROW_HANDLE_KIND_FIELD = 15,
+  IRX_ARROW_HANDLE_KIND_C_DATA = 16,
 };
 
 typedef int32_t irx_arrow_handle_ownership;
@@ -1085,6 +1087,59 @@ IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_array_from_buffer(
     int32_t type_id,
     irx_buffer_view* view,
     irx_arrow_array_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_c_data_retain(
+    const irx_arrow_c_data_handle* value,
+    irx_arrow_c_data_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_c_data_release(
+    irx_arrow_c_data_handle** value,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_c_data_from_array(
+    const irx_arrow_array_handle* value,
+    irx_arrow_c_data_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_c_data_import_move(
+    struct ArrowArray* array,
+    struct ArrowSchema* schema,
+    irx_arrow_c_data_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_c_data_export(
+    const irx_arrow_c_data_handle* value,
+    struct ArrowArray* array,
+    struct ArrowSchema* schema,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_array_from_c_data(
+    const irx_arrow_c_data_handle* value,
+    const irx_arrow_field_handle* field,
+    irx_arrow_array_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_array_with_validity(
+    const irx_arrow_array_handle* value,
+    const irx_arrow_array_handle* bitmap,
+    int64_t offset,
+    irx_arrow_array_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_array_from_buffers(
+    const irx_arrow_field_handle* field,
+    const irx_arrow_array_handle* data,
+    const irx_arrow_array_handle* bitmap,
+    int64_t length,
+    int64_t offset,
+    irx_arrow_array_handle** output,
+    irx_arrow_error_handle** out_failure);
+
+IRX_ARROW_EXPORT irx_arrow_status IRX_ARROW_CALL irx_arrow_scalar_storage(
+    const irx_arrow_scalar_handle* value,
+    irx_arrow_scalar_handle** output,
     irx_arrow_error_handle** out_failure);
 
 #ifdef __cplusplus

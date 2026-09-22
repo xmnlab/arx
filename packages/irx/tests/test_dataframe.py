@@ -236,7 +236,7 @@ def test_dataframe_literal_lowers_through_arrow_table_runtime() -> None:
 
     ir_text = Builder().translate(module)
 
-    assert '@"irx_arrow_table_new_from_arrays"' in ir_text
+    assert '@"irx_arrow_table_new_typed"' in ir_text
     assert '@"irx_arrow_table_num_rows"' in ir_text
     assert '@"irx_arrow_array_builder_new"' in ir_text
     assert_ir_parses(ir_text)

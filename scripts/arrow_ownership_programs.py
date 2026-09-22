@@ -7,7 +7,13 @@ summary: >-
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import astx
+
+from arx.io import ArxIO
+from arx.lexer import Lexer
+from arx.parser import Parser
 
 
 def block(*nodes: astx.AST) -> astx.Block:
@@ -603,6 +609,20 @@ def scalar_owners_program(*, fail: bool) -> astx.Module:
     return module
 
 
+def source_ownership_program(name: str) -> astx.Module:
+    """
+    title: Parse a committed source example for the native lifecycle gate.
+    parameters:
+      name:
+        type: str
+    returns:
+      type: astx.Module
+    """
+    path = Path(__file__).resolve().parents[1] / "examples" / f"{name}.x"
+    ArxIO.string_to_buffer(path.read_text())
+    return Parser().parse(Lexer().lex())
+
+
 def ownership_programs() -> tuple[tuple[str, astx.Module, int], ...]:
     """
     title: Return independent generated programs and expected exit statuses.
@@ -610,6 +630,16 @@ def ownership_programs() -> tuple[tuple[str, astx.Module, int], ...]:
       type: tuple[tuple[str, astx.Module, int], Ellipsis]
     """
     return (
+        *(
+            (name, source_ownership_program(name), 0)
+            for name in (
+                "nullable_strings",
+                "nullable_collections",
+                "extension_values",
+                "columnar_interchange",
+                "dataframe_adapters",
+            )
+        ),
         ("scalar_owners", scalar_owners_program(fail=False), 0),
         ("scalar_failure", scalar_owners_program(fail=True), 1),
         ("tabular_owners", tabular_owners_program(fail=False), 0),

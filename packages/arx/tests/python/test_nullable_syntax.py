@@ -82,7 +82,7 @@ def test_nullable_builtin_arity_errors(expression: str) -> None:
 @pytest.mark.parametrize(
     "body,message",
     [
-        ("var x: string | none = none", "primitive numeric or Boolean"),
+        ("var x: list[list[i32]] | none = none", "nested list owners"),
         ("var x: i32 | f32 | none = none", "one distinct non-none"),
         ("var x: list[i32 | none]", "nullable container elements"),
         ("assert is_null(none)", "typed nullable"),

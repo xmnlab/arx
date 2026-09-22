@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import ctypes
 
+from dataclasses import replace
 from typing import Any, cast
 
 import astx
@@ -33,7 +34,7 @@ from irx.analysis.module_symbols import (
     qualified_class_name,
     qualified_struct_name,
 )
-from irx.analysis.nullability import managed_nullable
+from irx.analysis.nullability import aggregate_nullable, managed_nullable
 from irx.analysis.ownership import resource_ownership
 from irx.analysis.resolved_nodes import (
     FunctionSignature,
@@ -595,38 +596,12 @@ class VisitorCore(BuilderVisitor):
           owner_symbol_id:
             type: str | None
         """
-        release_fn = self.require_runtime_symbol_by_name(
-            ownership.cleanup_intrinsic
-        )
 
         def release_resource() -> None:
             """
             title: Release the captured native resource slot.
             """
-            if self._llvm.ir_builder.block.is_terminated:
-                return
-            if ownership.resource_kind is ResourceKind.BUFFER_VIEW:
-                self._llvm.ir_builder.call(release_fn, [slot])
-                return
-            error_slot = self._llvm.ir_builder.alloca(
-                self._llvm.OPAQUE_POINTER_TYPE,
-                name="resource_cleanup_error_slot",
-            )
-            self._llvm.ir_builder.store(
-                ir.Constant(self._llvm.OPAQUE_POINTER_TYPE, None),
-                error_slot,
-            )
-            release_slot = slot
-            if ownership.resource_kind is ResourceKind.CLASS_INSTANCE:
-                release_slot = self._llvm.ir_builder.bitcast(
-                    slot,
-                    self._llvm.OPAQUE_POINTER_TYPE.as_pointer(),
-                    name="class_release_slot",
-                )
-            self._llvm.ir_builder.call(
-                release_fn,
-                [release_slot, error_slot],
-            )
+            self.release_resource_slot(ownership, slot)
 
         self.cleanup_stack.append(
             CleanupAction(
@@ -634,6 +609,60 @@ class VisitorCore(BuilderVisitor):
                 owner_symbol_id=owner_symbol_id,
             )
         )
+
+    def release_resource_slot(
+        self, ownership: ResourceOwnership, slot: ir.Value
+    ) -> None:
+        """
+        title: Release one owner using its resolved payload cleanup shape.
+        parameters:
+          ownership:
+            type: ResourceOwnership
+          slot:
+            type: ir.Value
+        """
+        builder = self._llvm.ir_builder
+        if builder.block.is_terminated:
+            return
+        if ownership.nullable_aggregate:
+            valid = builder.extract_value(builder.load(slot), 0)
+            with builder.if_then(valid):
+                payload = builder.gep(
+                    slot,
+                    [
+                        ir.Constant(ir.IntType(32), 0),
+                        ir.Constant(ir.IntType(32), 1),
+                    ],
+                )
+                self.release_resource_slot(
+                    replace(ownership, nullable_aggregate=False), payload
+                )
+            builder.store(ir.Constant(slot.type.pointee, None), slot)
+            return
+        release_fn = self.require_runtime_symbol_by_name(
+            ownership.cleanup_intrinsic
+        )
+        if ownership.resource_kind is ResourceKind.STRING:
+            value = builder.load(slot)
+            builder.call(release_fn, [value])
+            builder.store(ir.Constant(value.type, None), slot)
+            return
+        if ownership.resource_kind in (
+            ResourceKind.BUFFER_VIEW,
+            ResourceKind.LIST,
+        ):
+            builder.call(release_fn, [slot])
+            return
+        error_slot = builder.alloca(self._llvm.OPAQUE_POINTER_TYPE)
+        builder.store(
+            ir.Constant(self._llvm.OPAQUE_POINTER_TYPE, None), error_slot
+        )
+        release_slot = slot
+        if ownership.resource_kind is ResourceKind.CLASS_INSTANCE:
+            release_slot = builder.bitcast(
+                slot, self._llvm.OPAQUE_POINTER_TYPE.as_pointer()
+            )
+        builder.call(release_fn, [release_slot, error_slot])
 
     def _register_owned_resource_temporary(
         self,
@@ -656,7 +685,10 @@ class VisitorCore(BuilderVisitor):
             or ownership.escape_kind is OwnershipEscapeKind.RETURN
         ):
             return
-        if ownership.resource_kind is ResourceKind.LIST:
+        if (
+            ownership.resource_kind is ResourceKind.LIST
+            and not ownership.nullable_aggregate
+        ):
             self._register_owned_list_temporary(node, value)
             return
         if ownership.resource_kind is ResourceKind.STRING:
@@ -680,6 +712,8 @@ class VisitorCore(BuilderVisitor):
         self,
         node: astx.AST,
         value: ir.Value,
+        *,
+        target_type: astx.DataType | None = None,
     ) -> ir.Value:
         """
         title: Materialize the retained token required by a semantic copy.
@@ -688,6 +722,8 @@ class VisitorCore(BuilderVisitor):
             type: astx.AST
           value:
             type: ir.Value
+          target_type:
+            type: astx.DataType | None
         returns:
           type: ir.Value
         """
@@ -697,9 +733,47 @@ class VisitorCore(BuilderVisitor):
             or ownership.transfer_kind is not OwnershipTransferKind.COPY
         ):
             return value
-        if managed_nullable(self._resolved_ast_type(node)):
+        target_type = target_type or self._resolved_ast_type(node)
+        if aggregate_nullable(target_type):
+            return self.retain_nullable_aggregate(node, value, ownership)
+        if managed_nullable(target_type):
             return self.retain_nullable_resource(node, value, ownership)
         return self._retain_resource_value(node, value, ownership)
+
+    def retain_nullable_aggregate(
+        self, node: astx.AST, value: ir.Value, ownership: ResourceOwnership
+    ) -> ir.Value:
+        """
+        title: Retain a present by-value payload without reading absent data.
+        parameters:
+          node:
+            type: astx.AST
+          value:
+            type: ir.Value
+          ownership:
+            type: ResourceOwnership
+        returns:
+          type: ir.Value
+        """
+        builder = self._llvm.ir_builder
+        valid = builder.extract_value(value, 0)
+        origin = builder.block
+        retain = builder.function.append_basic_block(
+            "nullable.aggregate.retain"
+        )
+        merge = builder.function.append_basic_block("nullable.aggregate.end")
+        builder.cbranch(valid, retain, merge)
+        builder.position_at_end(retain)
+        payload = builder.extract_value(value, 1)
+        copied = self._retain_resource_value(node, payload, ownership)
+        result = builder.insert_value(value, copied, 1)
+        incoming = builder.block
+        builder.branch(merge)
+        builder.position_at_end(merge)
+        phi = builder.phi(value.type)
+        phi.add_incoming(ir.Constant(value.type, None), origin)
+        phi.add_incoming(result, incoming)
+        return phi
 
     def retain_nullable_resource(
         self, node: astx.AST, value: ir.Value, ownership: ResourceOwnership
@@ -751,10 +825,9 @@ class VisitorCore(BuilderVisitor):
         returns:
           type: ir.Value
         """
-        if ownership.resource_kind in (
-            ResourceKind.LIST,
-            ResourceKind.STRING,
-        ):
+        if ownership.resource_kind is ResourceKind.STRING:
+            return self._copy_string_to_heap(node, value)
+        if ownership.resource_kind is ResourceKind.LIST:
             return value
         if ownership.retain_intrinsic is None:
             raise_lowering_internal_error(
@@ -1629,6 +1702,7 @@ class VisitorCore(BuilderVisitor):
             type_,
             (
                 astx.SchemaType,
+                astx.CDataType,
                 astx.FieldType,
                 astx.TypeDescriptorType,
                 astx.TableType,
@@ -3055,7 +3129,7 @@ class VisitorCore(BuilderVisitor):
         pointer: ir.Value,
     ) -> ir.Value:
         """
-        title: Copy one static string into caller-owned heap storage.
+        title: Clone one present string into independently owned heap storage.
         parameters:
           node:
             type: astx.AST

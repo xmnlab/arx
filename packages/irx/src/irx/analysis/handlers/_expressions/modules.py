@@ -383,7 +383,7 @@ class ExpressionModuleVisitorMixin(SemanticVisitorMixinBase):
                 self._set_resource_ownership(
                     node,
                     typed_resource_ownership(
-                        symbol.type_,
+                        self._expr_type(node) or symbol.type_,
                         OwnershipKind.BORROWED,
                         owner_symbol_id=(
                             declaration_ownership.owner_symbol_id

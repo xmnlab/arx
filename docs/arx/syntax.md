@@ -190,8 +190,9 @@ dataframe[...]
 series[T]
 ```
 
-The literal `...` is accepted only in the runtime-layout parameter forms
-described by the type reference.
+The literal `...` denotes runtime-shaped tensor parameters or runtime-schema
+DataFrame owners. DataFrame locals, returns and instance fields also accept
+runtime schemas; tensor restrictions are unchanged.
 
 ## Builtin lexical names
 
@@ -248,13 +249,21 @@ Constructors take an explicit row count, then arrays (batch) or chunked arrays
 [built-in types](built-in-types.md#record-batches-and-tables) and
 `examples/columnar_tables.x`. Nullable primitive casts, compound validity
 proofs, optional unique builders and nullable instance fields are also
-supported. Variable-width/nested source values and source buffer/C Data
-constructors remain pending; legacy DataFrame/Series behavior is unchanged.
+supported. Logical values, checked buffer/C Data constructors and explicit
+legacy DataFrame/Series adapters are described below.
 
 Logical columnar values are also native builtins: `scalar[T]`, typed arrays,
 reusable builders, chunks, batches and tables need no Arrow import. See
 [built-in types](built-in-types.md#logical-scalars-and-nested-values) for
 strings, binary, temporal, decimal and nested construction, checked nullable
-extraction, `array_from_buffer`, and explicit `take_rows` selection. Legacy
-DataFrame/Series adapters and raw external C Data constructors remain
-unfinished.
+extraction, `array_from_buffer`, and explicit `take_rows` selection. Checked
+buffer/C Data constructors and explicit legacy DataFrame/Series adapters are
+also supported.
+
+Optional dynamic list and fixed-shape tensor **owners** use existing union
+syntax: `list[i32] | none` and `tensor[i32, 2] | none`. Proven-present mutable
+list locals accept `.append(value)` without discarding their validity proof.
+Lists remain unique; tensor copies retain shared buffers. See
+[optional collection owners](built-in-types.md#optional-list-and-tensor-owners)
+and `examples/nullable_collections.x`. Nullable elements and recursive managed
+language aggregates remain unsupported.

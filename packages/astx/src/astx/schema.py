@@ -510,6 +510,14 @@ class FieldType(AnyType):
 
 @public
 @typechecked
+class CDataType(AnyType):
+    """
+    title: An owned interchange value, never an unchecked pair of raw pointers.
+    """
+
+
+@public
+@typechecked
 class TypeDescriptorType(AnyType):
     """
     title: The type of an immutable runtime logical type descriptor.

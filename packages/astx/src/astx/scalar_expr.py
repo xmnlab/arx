@@ -87,6 +87,7 @@ class ScalarOperation(Enum):
     TEXT = "scalar_text"
     BYTES = "scalar_bytes"
     VALUES = "scalar_values"
+    STORAGE = "scalar_storage"
     FIELD = "scalar_field"
 
 

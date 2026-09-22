@@ -129,5 +129,10 @@ class NullableVisitorMixin(SemanticVisitorMixinBase):
             and ownership is not None
         ):
             self._set_resource_ownership(
-                node, replace(ownership, kind=OwnershipKind.BORROWED)
+                node,
+                replace(
+                    ownership,
+                    kind=OwnershipKind.BORROWED,
+                    nullable_aggregate=False,
+                ),
             )

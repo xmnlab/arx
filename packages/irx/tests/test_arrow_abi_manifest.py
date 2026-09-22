@@ -63,6 +63,7 @@ EXPECTED_HANDLE_NAMES = (
     "dataset",
     "execution_plan",
     "field",
+    "c_data",
 )
 EXPECTED_RUNTIME_FEATURES = {
     "core": 1,
@@ -83,7 +84,7 @@ def _load_handles() -> list[dict[str, object]]:
         dict[str, object],
         json.loads(ABI_MANIFEST_PATH.read_text(encoding="utf-8")),
     )
-    assert manifest["abi_version"] == "1.5.0"
+    assert manifest["abi_version"] == "1.6.0"
     return cast(list[dict[str, object]], manifest["handles"])
 
 
@@ -173,7 +174,7 @@ def test_arrow_abi_manifest_defines_versioned_runtime_features() -> None:
     } == EXPECTED_RUNTIME_FEATURES
     assert all(
         feature["contract_version"]
-        == {"array": "1.5.0", "dataframe": "1.2.0"}.get(
+        == {"array": "1.6.0", "dataframe": "1.2.0"}.get(
             feature["name"], "1.0.0"
         )
         for feature in features
@@ -183,11 +184,11 @@ def test_arrow_abi_manifest_defines_versioned_runtime_features() -> None:
     )
     assert RUNTIME_FEATURE_IDS == EXPECTED_RUNTIME_FEATURES
     assert RUNTIME_FEATURE_VERSIONS == {
-        name: (1, {"array": 5, "dataframe": 2}.get(name, 0), 0)
+        name: (1, {"array": 6, "dataframe": 2}.get(name, 0), 0)
         for name in EXPECTED_RUNTIME_FEATURES
     }
     assert RUNTIME_FEATURE_PACKED_VERSIONS == {
-        name: {"array": 0x00010500, "dataframe": 0x00010200}.get(
+        name: {"array": 0x00010600, "dataframe": 0x00010200}.get(
             name, 0x00010000
         )
         for name in EXPECTED_RUNTIME_FEATURES
@@ -226,6 +227,7 @@ def test_arrow_abi_declaration_sets_have_exact_symbol_parity() -> None:
         "irx_arrow_descriptors.inc",
         "irx_arrow_array_values.inc",
         "irx_arrow_scalar_values.inc",
+        "irx_arrow_interchange.inc",
         "irx_arrow_chunks.inc",
         "irx_arrow_tabular.inc",
     ):

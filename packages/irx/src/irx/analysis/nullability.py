@@ -130,15 +130,32 @@ def nullable_diagnostic(type_: astx.NullableType) -> str | None:
     returns:
       type: str | None
     """
-    if managed_nullable(type_):
+    if managed_nullable(type_) or aggregate_nullable(type_):
         return None
     if type(type_.payload_type) not in PRIMITIVE_PAYLOADS:
         return (
             "nullable values require primitive numeric or Boolean payloads "
-            "or implemented opaque owners; this payload has no native "
+            "or implemented managed owners; this payload has no native "
             "lifetime contract"
         )
     return None
+
+
+@public
+@typechecked
+def aggregate_nullable(type_: astx.DataType | None) -> bool:
+    """
+    title: Identify optional by-value owners requiring separate validity.
+    parameters:
+      type_:
+        type: astx.DataType | None
+    returns:
+      type: bool
+    """
+    return isinstance(type_, astx.NullableType) and isinstance(
+        type_.payload_type,
+        (astx.ListType, astx.TensorType, astx.BufferViewType),
+    )
 
 
 @public
@@ -162,7 +179,11 @@ def managed_nullable(type_: astx.DataType | None) -> bool:
     return isinstance(
         payload,
         (
+            astx.String,
             astx.ClassType,
+            astx.CDataType,
+            astx.DataFrameType,
+            astx.SeriesType,
             astx.ScalarType,
             astx.TableType,
             astx.RecordBatchType,

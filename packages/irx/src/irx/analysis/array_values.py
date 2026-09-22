@@ -64,7 +64,7 @@ class ResolvedArray:
     argument_types: tuple[astx.DataType, ...]
     operation: astx.ArrayOperation | None = None
     required_features: tuple[str, ...] = ("core", "array")
-    required_feature_version: int = 0x00010500
+    required_feature_version: int = 0x00010600
     descriptor: astx.TypeDescriptorLiteral | None = None
     arguments: tuple[astx.Expr, ...] | None = None
 
@@ -82,15 +82,6 @@ def array_storage(
     returns:
       type: tuple[astx.DataType, astx.DataType, int, str] | None
     """
-    pending = [type_.element_type]
-    seen: set[int] = set()
-    while pending:
-        logical = pending.pop()
-        if logical.kind is astx.LogicalKind.EXTENSION:
-            return None
-        if id(logical) not in seen:
-            seen.add(id(logical))
-            pending.extend(field.type_ for field in logical.fields)
     kind = type_.element_type.kind
     scalar = ARRAY_VALUE_TYPES.get(kind)
     if scalar is None:

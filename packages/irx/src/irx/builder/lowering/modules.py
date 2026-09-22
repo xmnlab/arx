@@ -14,7 +14,6 @@ from irx.analysis.ownership import resource_ownership
 from irx.analysis.resolved_nodes import (
     ClassHeaderFieldKind,
     OwnershipKind,
-    ResourceKind,
     ResourceOwnership,
 )
 from irx.builder.core import (
@@ -65,42 +64,7 @@ class ModuleVisitorMixin(VisitorMixinBase):
         """
         if ownership.kind is not OwnershipKind.OWNED:
             return
-        resource_kind = ownership.resource_kind
-        cleanup_intrinsic = ownership.cleanup_intrinsic
-        cleanup = cast(Any, self).require_runtime_symbol_by_name(
-            cleanup_intrinsic
-        )
-        if resource_kind is ResourceKind.LIST:
-            self._llvm.ir_builder.call(cleanup, [slot])
-            return
-        if resource_kind is ResourceKind.STRING:
-            pointer = self._llvm.ir_builder.load(
-                slot,
-                name=f"{field_name}_destroy_value",
-            )
-            self._llvm.ir_builder.call(cleanup, [pointer])
-            self._llvm.ir_builder.store(ir.Constant(pointer.type, None), slot)
-            return
-        if resource_kind is ResourceKind.BUFFER_VIEW:
-            self._llvm.ir_builder.call(cleanup, [slot])
-            return
-
-        error_slot = self._llvm.ir_builder.alloca(
-            self._llvm.OPAQUE_POINTER_TYPE,
-            name=f"{field_name}_destroy_error",
-        )
-        self._llvm.ir_builder.store(
-            ir.Constant(self._llvm.OPAQUE_POINTER_TYPE, None),
-            error_slot,
-        )
-        cleanup_slot = slot
-        if resource_kind is ResourceKind.CLASS_INSTANCE:
-            cleanup_slot = self._llvm.ir_builder.bitcast(
-                slot,
-                self._llvm.OPAQUE_POINTER_TYPE.as_pointer(),
-                name=f"{field_name}_class_destroy_slot",
-            )
-        self._llvm.ir_builder.call(cleanup, [cleanup_slot, error_slot])
+        cast(Any, self).release_resource_slot(ownership, slot)
 
     def _emit_class_destructor(self, node: astx.ClassDefStmt) -> ir.Function:
         """

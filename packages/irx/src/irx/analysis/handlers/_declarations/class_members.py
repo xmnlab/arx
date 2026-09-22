@@ -67,20 +67,6 @@ class DeclarationClassMemberVisitorMixin(DeclarationClassMethodVisitorMixin):
         if contract is None:
             return
         value = attribute.value
-        if contract.resource_kind is ResourceKind.STRING:
-            ownership = None if value is None else resource_ownership(value)
-            if (
-                ownership is not None
-                and ownership.kind is not OwnershipKind.STATIC
-            ):
-                self.context.diagnostics.add(
-                    "string field initialization requires static storage; "
-                    "owned or borrowed field strings need "
-                    "storage-class-aware cleanup",
-                    node=attribute,
-                    code=DiagnosticCodes.SEMANTIC_INVALID_OWNERSHIP,
-                )
-            return
         if value is None or isinstance(value, astx.Undefined):
             self._set_resource_ownership(
                 attribute,
@@ -112,7 +98,7 @@ class DeclarationClassMemberVisitorMixin(DeclarationClassMethodVisitorMixin):
             OwnershipKind.BORROWED,
             OwnershipKind.STATIC,
         ):
-            if contract.sharing_kind is not ResourceSharingKind.SHARED:
+            if contract.sharing_kind is ResourceSharingKind.UNIQUE:
                 self.context.diagnostics.add(
                     f"unique class field '{member.owner_name}."
                     f"{member.name}' requires a freshly owned value",

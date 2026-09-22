@@ -62,11 +62,13 @@
         "packages/arx/tests/python/test_chunked_values.py",
         "packages/arx/tests/python/test_nullable_refinement_casts.py",
         "packages/arx/tests/python/test_nullable_fields.py",
-        "packages/arx/tests/python/test_tabular_values.py"
+        "packages/arx/tests/python/test_tabular_values.py",
+        "packages/arx/tests/python/test_nullable_collections.py",
+        "packages/irx/tests/analysis/test_nullable_aggregate_owners.py"
       ],
       "blocks": ["M2", "M3", "M5"],
-      "baseline": "Primitive nullable operators, proofs and casts; optional shared opaque/class/scalar owners, unique builders and instance fields execute natively. Typed primitive and logical arrays, chunks, batches/tables, nested scalar children and buffer-to-array copying preserve ownership.",
-      "completion": "Complete nullable C strings, managed by-value struct destruction, general nullable language collections, extension value codecs, safe external C Data source constructors and legacy adapters."
+      "baseline": "Primitive nullable operators, proofs and casts; optional shared opaque/class/scalar owners, unique builders and instance fields execute natively. Typed primitive and logical arrays, chunks, batches/tables, nested scalar children and buffer-to-array copying preserve ownership. Nullable strings, explicit DataFrame/Series adapters, extension storage and checked C Data/packed-buffer source constructors execute natively. Optional by-value list and tensor/buffer-view owners have explicit validity, cleanup and affine/shared ownership respectively.",
+      "completion": "Complete managed by-value struct destruction, nested nullable collection elements and recursive managed language aggregates, cyclic class/static managed lifetime policies and fatal cleanup across generated caller frames."
     },
     {
       "id": "FND-003",
@@ -312,7 +314,7 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension storage, checked external C Data/buffer constructors and explicit legacy adapters now execute. Nested nullable collection elements and managed by-value struct destruction remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_schema_interop.py",
@@ -361,7 +363,7 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension storage, checked external C Data/buffer constructors and explicit legacy adapters now execute. Nested nullable collection elements and managed by-value struct destruction remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_schema_interop.py",
@@ -395,7 +397,7 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension storage, checked external C Data/buffer constructors and explicit legacy adapters now execute. Nested nullable collection elements and managed by-value struct destruction remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_schema_interop.py",
@@ -429,7 +431,7 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension storage, checked external C Data/buffer constructors and explicit legacy adapters now execute. Nested nullable collection elements and managed by-value struct destruction remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_schema_interop.py",
@@ -473,7 +475,7 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension storage, checked external C Data/buffer constructors and explicit legacy adapters now execute. Nested nullable collection elements and managed by-value struct destruction remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_schema_interop.py",
@@ -507,7 +509,7 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension storage, checked external C Data/buffer constructors and explicit legacy adapters now execute. Nested nullable collection elements and managed by-value struct destruction remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_schema_interop.py",
@@ -541,7 +543,7 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension storage, checked external C Data/buffer constructors and explicit legacy adapters now execute. Nested nullable collection elements and managed by-value struct destruction remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_schema_interop.py",
@@ -580,7 +582,7 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension storage, checked external C Data/buffer constructors and explicit legacy adapters now execute. Nested nullable collection elements and managed by-value struct destruction remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_schema_interop.py",
@@ -619,7 +621,7 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension storage, checked external C Data/buffer constructors and explicit legacy adapters now execute. Nested nullable collection elements and managed by-value struct destruction remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_schema_interop.py",
@@ -658,7 +660,7 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension storage, checked external C Data/buffer constructors and explicit legacy adapters now execute. Nested nullable collection elements and managed by-value struct destruction remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_schema_interop.py",
@@ -692,7 +694,7 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension storage, checked external C Data/buffer constructors and explicit legacy adapters now execute. Nested nullable collection elements and managed by-value struct destruction remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_schema_interop.py",
@@ -726,7 +728,7 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension storage, checked external C Data/buffer constructors and explicit legacy adapters now execute. Nested nullable collection elements and managed by-value struct destruction remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_schema_interop.py",
@@ -749,28 +751,33 @@
       "id": "extension-types",
       "category": "Logical types",
       "name": "Extension types",
-      "scope": "preserve_only",
-      "target_milestone": "M3",
+      "scope": "core",
+      "target_milestone": "M4",
       "stages": {
         "native_runtime": "partial",
         "astx_model": "partial",
         "irx_semantics": "partial",
-        "llvm_lowering": "not_started",
-        "arx_surface": "not_started",
+        "llvm_lowering": "partial",
+        "arx_surface": "partial",
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Logical descriptors, validation, C Data and IPC schema interchange are implemented, including recursive metadata. This does not imply native values, builders, Arx syntax or compute support for the entire family.",
+      "notes": "Registered Arrow extension codecs and opaque non-reserved storage codecs preserve exact name, serialized metadata and storage type. Native scalar wrapping/extraction, arrays, builders and copies execute without domain-specific arithmetic. Unregistered reserved arrow.* codecs fail rather than erase type identity; general Compute is separate.",
       "evidence": [
         {
-          "path": "packages/irx/tests/test_schema_interop.py",
-          "symbol": "test_native_schema_copy_preserves_recursive_descriptor",
-          "purpose": "Validates recursive descriptors through native copy, retain, export and release; not container value execution."
+          "path": "packages/irx/tests/test_extension_values.py",
+          "symbol": "test_extension_array_roundtrip",
+          "purpose": "Native C Data, parent release, extension storage and copies across canonical codecs."
         },
         {
-          "path": "packages/irx/tests/test_arrow_capability_matrix.py",
-          "symbol": "test_required_arrow_24_capabilities_are_classified",
-          "purpose": "Tracks preserve-only scope without claiming executable extension semantics."
+          "path": "packages/irx/tests/test_extension_values.py",
+          "symbol": "test_opaque_extension_identity",
+          "purpose": "Opaque extension identity and binary metadata survive native import/export; metadata mismatch fails."
+        },
+        {
+          "path": "packages/arx/tests/python/test_extension_values.py",
+          "symbol": "test_extension_values_example",
+          "purpose": "Builds registered and opaque extension values directly from Arx."
         }
       ]
     },
@@ -789,7 +796,7 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension storage, checked external C Data/buffer constructors and explicit legacy adapters now execute. Nested nullable collection elements and managed by-value struct destruction remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_buffer_view.py",
@@ -823,7 +830,7 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension storage, checked external C Data/buffer constructors and explicit legacy adapters now execute. Nested nullable collection elements and managed by-value struct destruction remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_arrow_runtime.py",
@@ -877,7 +884,7 @@
         "interop": "not_started"
       },
       "overall": "partial",
-      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension storage, checked external C Data/buffer constructors and explicit legacy adapters now execute. Nested nullable collection elements and managed by-value struct destruction remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_dataframe.py",
@@ -916,7 +923,7 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension storage, checked external C Data/buffer constructors and explicit legacy adapters now execute. Nested nullable collection elements and managed by-value struct destruction remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_record_batch.py",
@@ -970,7 +977,7 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension values, general nullable language collections, external C Data source constructors and legacy adapters remain incomplete; Compute is a separate milestone.",
+      "notes": "Typed scalar/array/builder/chunk and batch/table value paths execute natively, including string/binary, temporal, decimal, interval, list/view, struct, map, dictionary, union and run-end families. Scalar owners, nested child extraction, deep copies, explicit row selection and numeric buffer copying are implemented. Extension storage, checked external C Data/buffer constructors and explicit legacy adapters now execute. Nested nullable collection elements and managed by-value struct destruction remain incomplete; Compute is a separate milestone.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_dataframe.py",
@@ -979,8 +986,8 @@
         },
         {
           "path": "packages/arx/tests/python/test_dataframe.py",
-          "symbol": "test_dataframe_mvp_rejects_string_columns",
-          "purpose": "Documents the current public DataFrame column-type limitation."
+          "symbol": "test_dataframe_and_series_accept_string_columns",
+          "purpose": "Validates accepted string columns through the typed-table semantic plan."
         },
         {
           "path": "packages/arx/tests/python/test_tabular_values.py",
@@ -1072,7 +1079,7 @@
         "interop": "partial"
       },
       "overall": "partial",
-      "notes": "Primitive arrays support import, export, copy, and move; variable-width, nested, dictionary, and other required Arrow types remain unsupported.",
+      "notes": "Primitive arrays support import, export, copy, and move; variable-width, nested, dictionary, and other required Arrow types remain unsupported. Source export_c_data and array_from_c_data use an owned carrier; native moves preserve callbacks before reservation and consume both after import starts.",
       "evidence": [
         {
           "path": "packages/irx/tests/test_arrow_runtime.py",
@@ -1083,6 +1090,11 @@
           "path": "packages/irx/tests/test_arrow_runtime.py",
           "symbol": "test_arrow_runtime_import_move_adopts_offset_arrays",
           "purpose": "Checks move import of an offset Array and adopted release callback."
+        },
+        {
+          "path": "packages/irx/tests/test_interchange_values.py",
+          "symbol": "test_external_c_data_owner",
+          "purpose": "Checks producer consumption, independent owners, nested values and metadata preservation."
         }
       ]
     },
@@ -1994,11 +2006,11 @@
     {
       "id": "extension",
       "upstream": "arrow/extension",
-      "classification": "preserve_only",
+      "classification": "core_language",
       "public_module": "ambient",
-      "runtime_feature": "core",
+      "runtime_feature": "array",
       "capabilities": ["extension-types"],
-      "rationale": "Arx preserves registered extension identity and metadata but executes only extensions with explicit typed registrations."
+      "rationale": "Registered extension validation and opaque storage execution preserve identity without assuming domain-specific compute semantics."
     },
     {
       "id": "c-data-stream",

@@ -53,6 +53,19 @@ parse_logical_scalar(const std::shared_ptr<arrow::DataType> &type,
     return arrow::Scalar::Parse(type, text);
   }
 }
+arrow::Result<std::shared_ptr<arrow::Scalar>>
+extract_logical_scalar(const arrow::Array &array, int64_t index) {
+  if (array.type_id() != arrow::Type::EXTENSION)
+    return array.GetScalar(index);
+  // Arrow's extension extraction can derive validity from the parent bitmap,
+  // which is absent for union/run-end storage. Preserve storage validity
+  // instead.
+  const auto &extension = static_cast<const arrow::ExtensionArray &>(array);
+  ARROW_ASSIGN_OR_RAISE(auto storage,
+                        extract_logical_scalar(*extension.storage(), index));
+  return std::make_shared<arrow::ExtensionScalar>(storage, array.type(),
+                                                  storage->is_valid);
+}
 irx_arrow_status validate_scalar(const irx_arrow_scalar_handle *value) {
   auto status = validate_handle(value, IRX_ARROW_HANDLE_KIND_SCALAR, "scalar");
   if (status != kArrowOk)
@@ -303,6 +316,16 @@ irx_arrow_status irx_arrow_scalar_wrap(const irx_arrow_type_handle *type,
     if (status != kArrowOk)
       return status;
     auto target = type->field->type();
+    if (target->id() == arrow::Type::EXTENSION) {
+      const auto &extension =
+          static_cast<const arrow::ExtensionType &>(*target);
+      if (!extension.storage_type()->Equals(value->scalar->type, true))
+        return set_error(IRX_ARROW_STATUS_TYPE_MISMATCH,
+                         "extension storage mismatch");
+      return publish_scalar(
+          std::make_shared<arrow::ExtensionScalar>(value->scalar, target),
+          output);
+    }
     if (target->id() != arrow::Type::RUN_END_ENCODED ||
         !target->field(1)->type()->Equals(value->scalar->type, true))
       return set_error(IRX_ARROW_STATUS_TYPE_MISMATCH,
@@ -310,6 +333,29 @@ irx_arrow_status irx_arrow_scalar_wrap(const irx_arrow_type_handle *type,
     return publish_scalar(
         std::make_shared<arrow::RunEndEncodedScalar>(value->scalar, target),
         output);
+  });
+}
+
+irx_arrow_status irx_arrow_scalar_storage(const irx_arrow_scalar_handle *value,
+                                          irx_arrow_scalar_handle **output) {
+  if (output)
+    *output = nullptr;
+  return array_value_operation("scalar_storage", [&]() -> irx_arrow_status {
+    if (!output)
+      return set_error(IRX_ARROW_STATUS_NULL_POINTER, "missing output");
+    auto status = validate_scalar(value);
+    if (status != kArrowOk)
+      return status;
+    if (value->scalar->type->id() == arrow::Type::EXTENSION)
+      return publish_scalar(
+          static_cast<const arrow::ExtensionScalar &>(*value->scalar).value,
+          output);
+    if (value->scalar->type->id() == arrow::Type::RUN_END_ENCODED)
+      return publish_scalar(
+          static_cast<const arrow::RunEndEncodedScalar &>(*value->scalar).value,
+          output);
+    return set_error(IRX_ARROW_STATUS_TYPE_MISMATCH,
+                     "expected extension or run-end scalar");
   });
 }
 irx_arrow_status irx_arrow_scalar_union(const irx_arrow_type_handle *type,
@@ -493,7 +539,7 @@ irx_arrow_status irx_arrow_array_get_scalar(const irx_arrow_array_handle *value,
     if (index < 0 || index >= value->array->length())
       return set_error(IRX_ARROW_STATUS_INDEX_OUT_OF_BOUNDS,
                        "array scalar index out of bounds");
-    auto result = value->array->GetScalar(index);
+    auto result = extract_logical_scalar(*value->array, index);
     if (!result.ok())
       return set_arrow_error("array scalar", result.status());
     return publish_scalar(*result, output);
@@ -516,10 +562,17 @@ irx_arrow_chunked_get_scalar(const irx_arrow_chunked_array_handle *value,
     if (index < 0 || index >= value->column->length())
       return set_error(IRX_ARROW_STATUS_INDEX_OUT_OF_BOUNDS,
                        "chunked scalar index out of bounds");
-    auto result = value->column->GetScalar(index);
-    if (!result.ok())
-      return set_arrow_error("chunked scalar", result.status());
-    return publish_scalar(*result, output);
+    for (const auto &chunk : value->column->chunks()) {
+      if (index >= chunk->length()) {
+        index -= chunk->length();
+        continue;
+      }
+      auto result = extract_logical_scalar(*chunk, index);
+      if (!result.ok())
+        return set_arrow_error("chunked scalar", result.status());
+      return publish_scalar(*result, output);
+    }
+    return set_error(IRX_ARROW_STATUS_INVALID_STATE, "missing scalar chunk");
   });
 }
 irx_arrow_status

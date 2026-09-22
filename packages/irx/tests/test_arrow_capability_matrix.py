@@ -93,7 +93,6 @@ EXPECTED_MODULE_CLASSIFICATIONS = frozenset(
         "interoperability",
         "optional",
         "out_of_scope",
-        "preserve_only",
         "standard_library",
     }
 )
@@ -317,7 +316,7 @@ def test_unified_arrow_abi_starts_at_version_one() -> None:
 
 def test_upstream_arrow_modules_have_explicit_product_scope() -> None:
     """
-    title: Arrow 24 module groups cover every approved product scope.
+    title: Arrow 24 module groups have explicit current product scopes.
     """
     modules = load_modules()
     identifiers = [item.get("id") for item in modules]
@@ -332,6 +331,18 @@ def test_upstream_arrow_modules_have_explicit_product_scope() -> None:
         assert "arrow" not in {
             part.lower() for part in public_module.split(".")
         }
+
+
+def test_extension_storage_is_a_core_runtime_module() -> None:
+    """
+    title: Native extension storage is no longer classified as preserve-only.
+    """
+    extension = next(
+        item for item in load_modules() if item["id"] == "extension"
+    )
+    assert extension["classification"] == "core_language"
+    assert extension["runtime_feature"] == "array"
+    assert extension["public_module"] == "ambient"
 
 
 def test_generated_arrow_capability_matrix_is_current() -> None:

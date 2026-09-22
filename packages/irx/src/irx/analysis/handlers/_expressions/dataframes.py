@@ -10,8 +10,11 @@ summary: >-
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import astx
 
+from irx.analysis.dataframe_values import dataframe_literal
 from irx.analysis.handlers.base import (
     SemanticAnalyzerCore,
     SemanticVisitorMixinBase,
@@ -27,14 +30,12 @@ from irx.analysis.resolved_nodes import (
     ResourceKind,
     ResourceViewKind,
 )
-from irx.analysis.validation import validate_assignment
 from irx.builtins.collections.dataframe import (
     DATAFRAME_COLUMN_INDEX_EXTRA,
     DATAFRAME_SCHEMA_EXTRA,
     SERIES_ELEMENT_TYPE_EXTRA,
     SERIES_NULLABLE_EXTRA,
     DataFrameSchema,
-    dataframe_column_type_is_supported,
     schema_from_type,
 )
 from irx.diagnostics import DiagnosticCodes
@@ -163,78 +164,25 @@ class ExpressionDataFrameVisitorMixin(SemanticVisitorMixinBase):
           node:
             type: astx.DataFrameLiteral
         """
-        schema = schema_from_type(node.type_)
-        if schema is None:
+        try:
+            normalized = dataframe_literal(node)
+        except ValueError as error:
             self.context.diagnostics.add(
-                "dataframe literals require an explicit static DataFrame type",
+                str(error),
                 node=node,
                 code=DiagnosticCodes.SEMANTIC_TYPE_MISMATCH,
             )
-        else:
-            declared_names = {column.name for column in schema.columns}
-            literal_names = {column.name for column in node.columns}
-            missing = sorted(declared_names - literal_names)
-            extra = sorted(literal_names - declared_names)
-            if missing:
-                self.context.diagnostics.add(
-                    "dataframe literal is missing columns: "
-                    + ", ".join(missing),
-                    node=node,
-                    code=DiagnosticCodes.SEMANTIC_TYPE_MISMATCH,
-                )
-            if extra:
-                self.context.diagnostics.add(
-                    "dataframe literal has undeclared columns: "
-                    + ", ".join(extra),
-                    node=node,
-                    code=DiagnosticCodes.SEMANTIC_TYPE_MISMATCH,
-                )
-            for column in schema.columns:
-                if not dataframe_column_type_is_supported(column.type_):
-                    self.context.diagnostics.add(
-                        "dataframe columns currently support only "
-                        "fixed-width numeric and bool types",
-                        node=node,
-                        code=DiagnosticCodes.SEMANTIC_TYPE_MISMATCH,
-                    )
-
-        seen_names: set[str] = set()
-        row_count: int | None = None
-        for literal_column in node.columns:
-            if literal_column.name in seen_names:
-                self.context.diagnostics.add(
-                    f"duplicate dataframe column '{literal_column.name}'",
-                    node=node,
-                    code=DiagnosticCodes.SEMANTIC_TYPE_MISMATCH,
-                )
-            seen_names.add(literal_column.name)
-
-            if row_count is None:
-                row_count = len(literal_column.values)
-            elif len(literal_column.values) != row_count:
-                self.context.diagnostics.add(
-                    "dataframe literal columns must have the same length",
-                    node=node,
-                    code=DiagnosticCodes.SEMANTIC_TYPE_MISMATCH,
-                )
-
-            declared_column = (
-                None if schema is None else schema.column(literal_column.name)
-            )
-            for value in literal_column.values:
-                self.visit(value)
-                if declared_column is not None:
-                    validate_assignment(
-                        self.context.diagnostics,
-                        target_name=(
-                            f"dataframe column '{literal_column.name}'"
-                        ),
-                        target_type=declared_column.type_,
-                        value_type=self._expr_type(value),
-                        node=value,
-                    )
-
-        self._set_dataframe_schema(node, schema)
+            self._set_type(node, None)
+            return
+        self.visit(normalized)
+        resolved = self._semantic(normalized).resolved_tabular
+        if resolved is None:
+            self._set_type(node, None)
+            return
+        self._semantic(node).resolved_tabular = replace(
+            resolved, result_type=node.type_
+        )
+        self._set_dataframe_schema(node, schema_from_type(node.type_))
         self._set_type(node, node.type_)
         self._set_resource_ownership(
             node,

@@ -63,7 +63,10 @@ class DeclarationBlockVisitorMixin(SemanticVisitorMixinBase):
         contract = resource_contract_for_type(node.type_)
         if contract is None:
             return
-        if is_string_type(node.type_):
+        if (
+            is_string_type(node.type_)
+            and self.context.current_function is None
+        ):
             self._resolve_local_string_ownership(node, symbol)
             return
         if not isinstance(node.type_, astx.ListType):
@@ -216,7 +219,10 @@ class DeclarationBlockVisitorMixin(SemanticVisitorMixinBase):
                 code=DiagnosticCodes.SEMANTIC_INVALID_OWNERSHIP,
             )
             return
-        if initializer_ownership.kind is OwnershipKind.STATIC:
+        if (
+            initializer_ownership.kind is OwnershipKind.STATIC
+            and contract.resource_kind is not ResourceKind.STRING
+        ):
             self._set_resource_ownership(
                 node,
                 typed_resource_ownership(
@@ -256,8 +262,11 @@ class DeclarationBlockVisitorMixin(SemanticVisitorMixinBase):
             return
 
         transfer_kind = OwnershipTransferKind.MOVE
-        if initializer_ownership.kind is OwnershipKind.BORROWED:
-            if contract.sharing_kind is not ResourceSharingKind.SHARED:
+        if initializer_ownership.kind in (
+            OwnershipKind.BORROWED,
+            OwnershipKind.STATIC,
+        ):
+            if contract.sharing_kind is ResourceSharingKind.UNIQUE:
                 self.context.diagnostics.add(
                     f"unique resource '{node.name}' cannot be copied from a "
                     "borrowed value",

@@ -27,7 +27,7 @@ from arx.docstrings import validate_docstring
 from arx.exceptions import ParserException
 from arx.lexer import Token, TokenKind
 from arx.parser.base import ParserMixinBase
-from arx.parser.state import TypeUseContext
+from arx.parser.state import TypeUseContext, list_annotation
 from arx.tensor import (
     TensorBinding,
     binding_from_type,
@@ -301,7 +301,7 @@ class ControlFlowParserMixin(ParserMixinBase):
         self._consume_operator(";")
 
         declared_lists: tuple[str, ...] = ()
-        if isinstance(initializer.type_, astx.ListType):
+        if list_annotation(initializer.type_):
             declared_lists = (initializer.name,)
 
         declared_tensors: dict[str, TensorBinding | None] = {}
@@ -465,7 +465,7 @@ class ControlFlowParserMixin(ParserMixinBase):
                 name,
                 dataframe_binding_from_type(var_type),
             )
-        if isinstance(var_type, astx.ListType):
+        if list_annotation(var_type):
             self._declare_list_name(name)
         return declaration
 

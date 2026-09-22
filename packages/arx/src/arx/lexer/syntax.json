@@ -1,5 +1,5 @@
 {
-  "syntax_pack_version": "0.8.0",
+  "syntax_pack_version": "0.9.0",
   "language": "arx",
   "status": "draft",
   "source_of_truth": "Canonical lexical source for editor tooling and lexer tables.",
@@ -224,7 +224,8 @@
       "chunked_array",
       "table",
       "record_batch",
-      "scalar"
+      "scalar",
+      "c_data"
     ],
     "functions": [
       "cast",
@@ -288,7 +289,15 @@
       "scalar_field",
       "scalar_bytes",
       "take_rows",
-      "array_from_buffer"
+      "array_from_buffer",
+      "to_dataframe",
+      "to_series",
+      "to_chunked",
+      "export_c_data",
+      "array_from_c_data",
+      "array_with_validity",
+      "array_from_buffers",
+      "scalar_storage"
     ]
   },
   "descriptor_syntax": {
@@ -304,19 +313,22 @@
   },
   "nullable_syntax": {
     "type": "T | none",
-    "payloads": "Primitive numeric/Boolean values; shared scalar, array, chunked_array, datatype, field, schema, table, record_batch and class owners; unique builders",
+    "payloads": "Primitive numeric/Boolean values; shared scalar, array, chunked_array, datatype, field, schema, table, record_batch, dataframe, series and class owners; unique builders; independently copied str and shared c_data carriers",
     "queries": ["is_null(value)", "is_valid(value)", "expect_valid(value)"],
     "operators": "primitive arithmetic and comparisons propagate null; Boolean and/or use short-circuit Kleene logic",
     "casts": "cast(value, T | none) preserves validity for primitive payloads; expect_valid is required to unwrap",
-    "fields": "nullable instance fields and primitive IRx struct fields; no nullable strings or static fields"
+    "fields": "nullable instance fields and primitive IRx struct fields; no managed by-value struct destruction or static nullable fields",
+    "aggregate_owners": "list[T] | none and fixed-shape tensor[T, ...] | none use explicit aggregate validity; lists remain unique and tensors retain shared buffer owners",
+    "legacy_owners": "dataframe[...] and typed series[T] support locals, calls, returns and instance fields, including nullable owners; runtime schema columns require checked to_table projection"
   },
   "array_syntax": {
     "type": "array[T] or array[T | none]",
     "literal": "array[T](values...)",
-    "types": "Primitive, binary/string, temporal, decimal, interval and recursive logical values; extension values are rejected.",
+    "types": "Primitive, binary/string, temporal, decimal, interval and recursive logical values, including registered and opaque extension storage.",
     "iteration": "explicit indexed scalar access with array_at; no implicit iteration",
     "builders": "array_builder[T]() owns a reusable unique builder; builder_finish resets it.",
-    "chunks": "chunked_array[T](array[T], ...) has explicit chunk_at and combine_chunks."
+    "chunks": "chunked_array[T](array[T], ...) has explicit chunk_at and combine_chunks.",
+    "interchange": "export_c_data and array_from_c_data use owned carriers; array_with_validity and array_from_buffers copy checked packed buffers."
   },
   "tabular_syntax": {
     "types": [
@@ -329,7 +341,8 @@
     "projection": "column(value, literal_name) requires a static schema; column_as(value, index, field[...]) checks a runtime field exactly.",
     "runtime_schema": "Explicitly erase static schema facts while retaining an independent owner.",
     "iteration": "Explicit indexed column, row-slice, chunk and scalar operations; no implicit iteration axis.",
-    "value_coverage": "Primitive and non-extension logical columns, including nullable, half-float and recursive nested values."
+    "value_coverage": "Primitive and logical columns including nullable, half-float, nested and extension values.",
+    "legacy_adapters": "to_dataframe/to_table erase static schema facts, not runtime metadata; to_series/to_chunked preserve element types."
   },
   "scalar_syntax": {
     "constructor": "scalar[logical_type](values...)",
@@ -339,7 +352,8 @@
       "scalar_text",
       "scalar_values",
       "scalar_field",
-      "scalar_bytes"
+      "scalar_bytes",
+      "scalar_storage"
     ]
   }
 }

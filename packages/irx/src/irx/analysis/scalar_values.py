@@ -45,6 +45,8 @@ class ResolvedScalar:
         type: tuple[astx.DataType, Ellipsis]
       vector:
         type: astx.DataType | None
+      required_feature_version:
+        type: int
     """
 
     symbol: str
@@ -52,6 +54,7 @@ class ResolvedScalar:
     arguments: tuple[astx.Expr, ...]
     argument_types: tuple[astx.DataType, ...]
     vector: astx.DataType | None = None
+    required_feature_version: int = 0x00010600
 
 
 @public
@@ -208,6 +211,15 @@ def scalar_query(
         if logical.kind not in BINARY_KINDS:
             raise ValueError("scalar_bytes requires a binary or string scalar")
         result = astx.ArrayType(astx.LogicalType(astx.LogicalKind.UINT8))
+    elif operation is astx.ScalarOperation.STORAGE:
+        if logical.kind not in {
+            astx.LogicalKind.EXTENSION,
+            astx.LogicalKind.RUN_END_ENCODED,
+        }:
+            raise ValueError(
+                "scalar_storage requires an extension or run-end scalar"
+            )
+        result = astx.ScalarType(logical.fields[-1].type_)
     elif operation is astx.ScalarOperation.VALUES:
         if logical.kind not in LIST_KINDS | {astx.LogicalKind.MAP}:
             raise ValueError("scalar_values requires a list or map scalar")

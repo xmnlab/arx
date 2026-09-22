@@ -15,7 +15,7 @@ import astx
 
 from public import public
 
-from irx.analysis.nullability import managed_nullable
+from irx.analysis.nullability import aggregate_nullable, managed_nullable
 from irx.analysis.resolved_nodes import (
     OwnershipEscapeKind,
     OwnershipKind,
@@ -34,6 +34,13 @@ from irx.typecheck import typechecked
 ARROW_RESOURCE_CONTRACTS: Mapping[ResourceKind, ResourceContract] = (
     MappingProxyType(
         {
+            ResourceKind.C_DATA: ResourceContract(
+                ResourceKind.C_DATA,
+                ResourceSharingKind.SHARED,
+                ResourceMutability.IMMUTABLE,
+                "irx_arrow_c_data_release",
+                "irx_arrow_c_data_retain",
+            ),
             ResourceKind.ERROR: ResourceContract(
                 ResourceKind.ERROR,
                 ResourceSharingKind.SHARED,
@@ -152,7 +159,7 @@ LIST_RESOURCE_CONTRACT = ResourceContract(
 )
 STRING_RESOURCE_CONTRACT = ResourceContract(
     ResourceKind.STRING,
-    ResourceSharingKind.UNIQUE,
+    ResourceSharingKind.COPYABLE,
     ResourceMutability.IMMUTABLE,
     "free",
     None,
@@ -367,7 +374,9 @@ def resource_contract_for_type(
     """
     if type_ is None:
         return None
-    if managed_nullable(type_):
+    if isinstance(type_, astx.CDataType):
+        return arrow_resource_contract(ResourceKind.C_DATA)
+    if managed_nullable(type_) or aggregate_nullable(type_):
         assert isinstance(type_, astx.NullableType)
         return resource_contract_for_type(type_.payload_type)
     if isinstance(type_, astx.ScalarType):
@@ -448,7 +457,7 @@ def typed_resource_ownership(
         raise ValueError(
             f"type '{type(type_).__name__}' is not runtime-managed"
         )
-    return build_resource_ownership(
+    ownership = build_resource_ownership(
         contract,
         kind,
         owner_symbol_id=owner_symbol_id,
@@ -459,6 +468,7 @@ def typed_resource_ownership(
         view_kind=view_kind,
         view_parent_symbol_id=view_parent_symbol_id,
     )
+    return replace(ownership, nullable_aggregate=aggregate_nullable(type_))
 
 
 @public

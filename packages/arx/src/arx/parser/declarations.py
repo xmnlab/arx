@@ -40,6 +40,7 @@ from arx.parser.state import (
     ParsedAnnotation,
     ParsedDeclarationPrefixes,
     TypeUseContext,
+    list_annotation,
 )
 from arx.tensor import (
     TensorBinding,
@@ -1169,5 +1170,5 @@ class DeclarationParserMixin(ParserMixinBase):
         return tuple(
             argument.name
             for argument in arguments
-            if isinstance(argument.type_, astx.ListType)
+            if list_annotation(argument.type_)
         )

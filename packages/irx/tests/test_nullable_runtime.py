@@ -110,7 +110,6 @@ def test_nullable_widening_is_lossless_and_one_way() -> None:
 @pytest.mark.parametrize(
     "payload",
     [
-        astx.String(),
         astx.NullableType(astx.Int32()),
     ],
 )

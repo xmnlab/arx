@@ -31,7 +31,7 @@ means the spelling is recognized but must not be advertised as usable.
 | Literal and dynamic lists                    | Complete                                                   | Owner/borrow/move/return rules enforced               | Checked append/index plus lexical cleanup                    | Partial; scalar elements and move-only values                                      |
 | Fixed-shape numeric tensors                  | Complete                                                   | Complete                                              | Complete for tested readonly paths                           | Experimental candidate                                                             |
 | Runtime-shaped tensor parameters             | Complete for documented syntax                             | Partial                                               | Partial                                                      | No general dynamic indexing/return ownership                                       |
-| Static-schema DataFrame/Series               | Complete                                                   | Complete for numeric/Boolean columns                  | Complete for tested paths                                    | Experimental candidate                                                             |
+| Static-schema DataFrame/Series               | Complete                                                   | Primitive and executable logical columns              | Native typed columns and explicit adapters                   | Experimental candidate                                                             |
 | Runtime-schema DataFrame named access        | Partial modeling                                           | Incomplete                                            | Incomplete                                                   | Not supported                                                                      |
 | Arrow-core type/field/schema descriptors     | Builtin literals and closed queries                        | Canonical validation, physical and ownership sidecars | Native Arrow C++ construction, projection and exact identity | Experimental; descriptor support is not full container support                     |
 | RecordBatch/PyArrow Python API               | Not Arx syntax                                             | Python validation                                     | Native Arrow C++ bridge                                      | Experimental Python API                                                            |
@@ -55,5 +55,9 @@ See [the builtin reference](built-in-types.md#primitive-nullable-scalars).
 Primitive nullable operators, direct predicate narrowing and first-class
 primitive arrays now have native execution paths. Reusable primitive builders,
 chunked arrays and nullable shared array/descriptor owners also execute
-natively. String/unique nullable payloads, nested values and full batch/table
-APIs remain pending; M4 container support is not complete.
+natively. Nullable strings and unique builders, nested logical values, typed
+batch/table operations, explicit legacy adapters, extension storage and checked
+C Data/buffer construction also execute natively. General nullable language
+collections and managed by-value struct destruction remain pending; M4 is not
+complete. Fatal cleanup currently covers the active generated function, not
+owned caller frames.

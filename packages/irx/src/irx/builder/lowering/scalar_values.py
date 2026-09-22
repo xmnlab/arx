@@ -50,7 +50,7 @@ class ScalarValueLoweringMixin(VisitorMixinBase):
         for feature in ("core", "array"):
             core.activate_runtime_feature(feature)
         cast(DescriptorLoweringMixin, self).guard_descriptor_contract(
-            node, 0x00010500
+            node, resolved.required_feature_version
         )
         args: list[ir.Value] = []
         for expr, target in zip(

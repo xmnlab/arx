@@ -4,7 +4,7 @@ NOTE: DON'T TRACK THIS BY GIT, IT SHOULD BE KEPT IGNORED BY .gitignore
 
 **Status:** active implementation roadmap
 
-**Repository snapshot:** 2026-09-18
+**Repository snapshot:** 2026-09-22
 
 **Target:** make Apache Arrow C++ a complete, native, first-class data runtime
 for the Arx language.
@@ -144,6 +144,12 @@ re-scoped; do not defer status updates until the end of a milestone.
 | 2026-09-18 | M3-003/005     | IN PROGRESS -> DONE        | Builtin descriptor construction, closed inspection and compile-time conversion classification lower from resolved sidecars to native Arrow C++. |
 | 2026-09-18 | M3-006         | IN PROGRESS -> PARTIAL     | Dedicated type/field ABI and lifecycle paths implemented; combined Gate B and complete sanitizer/fault coverage remain open.                    |
 | 2026-09-21 | M4-002/003/004 | PARTIAL -> PARTIAL         | Logical scalars, nested values, optional classes, buffer copies and row selection implemented; external/legacy/general-nullable gaps remain.    |
+
+Latest 2026-09-22 closure: M4-003 and M4-004 are **DONE** (C1–C3); M4-002
+remains **PARTIAL**, with nullable strings and legacy DataFrame/Series owners
+now implemented (C4/C6). Nullable by-value list/tensor owner cleanup is also
+implemented (C7). Remaining aggregate and M2/M3 verification gaps are recorded
+at the end of this plan.
 
 ### Verification — 2026-09-16
 
@@ -1439,7 +1445,7 @@ of semantic analysis.
 
 | ID     | Item                                                               | Status      | Evidence or blocker                                                                                                                                                                                    |
 | ------ | ------------------------------------------------------------------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| M2-001 | Extend semantic resource descriptors for every Arrow handle        | **DONE**    | 14 ABI contracts with manifest-parity tests                                                                                                                                                            |
+| M2-001 | Extend semantic resource descriptors for every Arrow handle        | **DONE**    | All current ABI handle contracts with manifest-parity tests                                                                                                                                            |
 | M2-002 | Attach ownership metadata at every expression and binding site     | **DONE**    | All currently accepted managed types and sites are covered; modeled-only M3 value types fail closed                                                                                                    |
 | M2-003 | Define table-column ownership and parent/child release ordering    | **DONE**    | Retained child; both release orders pass                                                                                                                                                               |
 | M2-004 | Emit cleanup across every non-terminating control-flow exit        | **DONE**    | Generic slot cleanup covers current types                                                                                                                                                              |
@@ -1447,11 +1453,11 @@ of semantic analysis.
 | M2-006 | Add class-field and generator-frame ownership cleanup              | **DONE**    | Aggregate destructors and frame close implemented                                                                                                                                                      |
 | M2-007 | Model retained and borrowed view owners explicitly                 | **DONE**    | Views carry parent/root and retain policy                                                                                                                                                              |
 | M2-008 | Harden Python wrappers for deterministic close and use-after-close | **DONE**    | Context-manager and fail-closed tests                                                                                                                                                                  |
-| M2-009 | Run ownership programs under ASan, LSan, and UBSan                 | **PARTIAL** | Native harness and four ASan-instrumented generated ownership programs pass with native UBSan; LSan is blocked locally by ptrace and its CI result is unobserved                                       |
-| M2-010 | Add allocator-fault injection across native Arrow operations       | **PARTIAL** | 53 real allocator regressions cover primitive append/growth/finish, copy import and Tensor creation/finish; move import, legacy IPC and remaining native operations still need full failure sweeps     |
+| M2-009 | Run ownership programs under ASan, LSan, and UBSan                 | **PARTIAL** | Native harness and all 20 generated ownership programs passed ASan/UBSan serially; LSan retry remains ptrace-blocked (exit 23)                                                                         |
+| M2-010 | Add allocator-fault injection across native Arrow operations       | **PARTIAL** | Primitive builder/Tensor regressions and current-frame list/class/comprehension malloc/realloc accounting pass; move import, legacy IPC and remaining native operations still need full failure sweeps |
 | M2-011 | Add bounded-memory loops and release-order property tests          | **DONE**    | 256 native lifecycle iterations return Arrow-pool bytes to baseline; a generated generator loop has zero remaining malloc/free owners; both release orders pass                                        |
 | M2-012 | Guard aggregate allocation and isolate resume-state cleanup        | **DONE**    | 22 aggregate/generator tests; real malloc-failure class/frame executables report errors; resumed owning locals verify and execute                                                                      |
-| M2-013 | Close remaining aggregate storage-class and cycle gaps             | **PARTIAL** | Unsafe owned-string field initialization and borrowed-string field replacement fail in analysis; owned-string fields, cyclic class graphs and static-managed storage need supported lifecycle policies |
+| M2-013 | Close remaining aggregate storage-class and cycle gaps             | **PARTIAL** | Owned and borrowed string fields now clone/move safely with destructor cleanup; cyclic class graphs and static-managed storage still need supported lifecycle policies                                 |
 
 ### Additional verified M2 slices
 
@@ -1462,11 +1468,11 @@ of semantic analysis.
 
 ### Semantic resource descriptor foundation (M2-001)
 
-`ResourceKind` now covers all 14 opaque handle families in the canonical Arrow
+`ResourceKind` now covers all 16 opaque handle families in the canonical Arrow
 ABI: error, type, schema, scalar, array builder, array, chunked array,
-RecordBatch, table, tensor builder, tensor, stream, dataset, and execution plan.
-Manifest-parity tests fail if a handle is added, removed, or renamed without a
-matching semantic resource contract.
+RecordBatch, table, tensor builder, tensor, stream, dataset, execution plan,
+field, and C Data carrier. Manifest-parity tests fail if a handle is added,
+removed, or renamed without a matching semantic resource contract.
 
 Every `ResourceOwnership` sidecar now carries the resource's sharing class,
 mutability, cleanup intrinsic, optional retain intrinsic, immediate owner, root
@@ -1585,14 +1591,14 @@ allocation-failure tests in the same vertical slice.
 
 ### Milestone 3 work items
 
-| ID     | Item                                                                                         | Status      | Evidence or blocker                                                                                                                                          |
-| ------ | -------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| M3-001 | Reusable recursive logical types, fields, schemas and container types in ASTx                | **DONE**    | 45 logical kinds, immutable recursive descriptors, runtime collection checks, ASTx tests                                                                     |
-| M3-002 | Canonical schema validation and lossless conversion rules in IRx                             | **DONE**    | Field paths, metadata identity, parameter validation and conversion-domain tests                                                                             |
-| M3-003 | Central scalar/storage mapping and physical type resolution                                  | **DONE**    | All 45 families resolve to immutable C Data sidecars consumed by verified native LLVM lowering; no PyArrow serialization in compilation                      |
-| M3-004 | Descriptor/schema, C Data and IPC metadata round trips                                       | **DONE**    | 45 families round-trip through PyArrow C Data, IPC schemas and native recursive field handles; synthetic-child restrictions documented                       |
-| M3-005 | Builtin source syntax and typed descriptor construction/inspection/conversion classification | **DONE**    | Arx literals and nine closed queries, ASTx nodes, IRx validation and native execution; conversion_kind classifies literals, not value casts                  |
-| M3-006 | Native descriptor ABI, ownership, failure paths and milestone gate                           | **PARTIAL** | ABI 1.1 and array contract 1.2 implemented; import allocator sweeps and owner tests added; combined Gate B and complete sanitizer/fault coverage remain open |
+| ID     | Item                                                                                         | Status      | Evidence or blocker                                                                                                                                                           |
+| ------ | -------------------------------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M3-001 | Reusable recursive logical types, fields, schemas and container types in ASTx                | **DONE**    | 45 logical kinds, immutable recursive descriptors, runtime collection checks, ASTx tests                                                                                      |
+| M3-002 | Canonical schema validation and lossless conversion rules in IRx                             | **DONE**    | Field paths, metadata identity, parameter validation and conversion-domain tests                                                                                              |
+| M3-003 | Central scalar/storage mapping and physical type resolution                                  | **DONE**    | All 45 families resolve to immutable C Data sidecars consumed by verified native LLVM lowering; no PyArrow serialization in compilation                                       |
+| M3-004 | Descriptor/schema, C Data and IPC metadata round trips                                       | **DONE**    | 45 families round-trip through PyArrow C Data, IPC schemas and native recursive field handles; synthetic-child restrictions documented                                        |
+| M3-005 | Builtin source syntax and typed descriptor construction/inspection/conversion classification | **DONE**    | Arx literals and nine closed queries, ASTx nodes, IRx validation and native execution; conversion_kind classifies literals, not value casts                                   |
+| M3-006 | Native descriptor ABI, ownership, failure paths and milestone gate                           | **PARTIAL** | ABI and array contract 1.6 implemented, including extension storage and owned C Data; import/owner regressions pass; combined Gate B and full leak/fault coverage remain open |
 
 ### Implemented descriptor execution (2026-09-18)
 
@@ -1610,9 +1616,10 @@ of values remain M4/M6 work. Managed class fields and suspended descriptor
 locals use the existing ownership machinery. Unmanaged structs and yielding or
 wrapping descriptors remain rejected. Primitive nullable scalar storage first
 landed in M4-001; later M4 continuations add variable-width and recursive nested
-value paths. Gate B still requires complete nullable semantics, extension value
-execution and safe external-buffer/bitmap construction; its completion must not
-be inferred from descriptor support.
+value paths. The 2026-09-21 closure adds extension value execution and checked
+external-buffer/bitmap construction. Gate B still requires complete nullable
+aggregate semantics and the remaining ownership/fault verification; its
+completion must not be inferred from descriptor support.
 
 ### ASTx
 
@@ -1661,12 +1668,12 @@ language path works.
 
 ### Milestone 4 work items
 
-| ID     | Item                                                               | Status      | Evidence or blocker                                                                                                                                                                                                                |
-| ------ | ------------------------------------------------------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M4-001 | Primitive nullable scalar storage and explicit validity operations | **DONE**    | Normalized nullable types, independent validity, local/call/return conversion, checked unwrap, native execution and sanitizer cleanup coverage                                                                                     |
-| M4-002 | Nullable operators, predicate flow narrowing and managed payloads  | **PARTIAL** | Operators, compound proofs, numeric casts, optional scalar/class/shared/unique owners and instance fields implemented; nullable C strings, general language aggregates/collections and managed by-value struct destruction pending |
-| M4-003 | First-class primitive arrays and nullable scalar extraction        | **PARTIAL** | Primitive/logical arrays, reusable builders, half-floats, chunks and copying from rank-one numeric tensor/buffer views implemented; source external C Data/bitmap constructors pending                                             |
-| M4-004 | Variable-width and nested containers, batches and tables           | **PARTIAL** | Logical scalar/array/batch/table construction, nested child access, deep copies and noncontiguous row selection implemented; extension value codecs and legacy DataFrame/Series adapters pending                                   |
+| ID     | Item                                                               | Status      | Evidence or blocker                                                                                                                                                                                                                                                                                       |
+| ------ | ------------------------------------------------------------------ | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M4-001 | Primitive nullable scalar storage and explicit validity operations | **DONE**    | Normalized nullable types, independent validity, local/call/return conversion, checked unwrap, native execution and sanitizer cleanup coverage                                                                                                                                                            |
+| M4-002 | Nullable operators, predicate flow narrowing and managed payloads  | **PARTIAL** | Operators, compound proofs, numeric casts, optional scalar/class/shared/unique owners and instance fields implemented; nullable strings and by-value list/tensor owners execute with explicit retain/drop; nested nullable elements, recursive managed aggregates and by-value struct destruction pending |
+| M4-003 | First-class primitive arrays and nullable scalar extraction        | **DONE**    | Primitive/logical arrays, reusable builders, half-floats, chunks and copying from rank-one numeric tensor/buffer views implemented; checked source C Data owners and packed-buffer/bitmap constructors verified (C2)                                                                                      |
+| M4-004 | Variable-width and nested containers, batches and tables           | **DONE**    | Logical scalar/array/batch/table construction, nested child access, deep copies and noncontiguous row selection implemented; registered/opaque extension storage codecs and explicit legacy DataFrame/Series adapters verified (C1/C3)                                                                    |
 
 ### Arrays and scalars
 
@@ -2819,28 +2826,29 @@ M4 remains **PARTIAL**, not complete. This continuation implements the major
 non-primitive value paths; it does not redefine the milestone exit criteria or
 count schema descriptors as executable extension values.
 
-| Subitem                                                                       | Status          | Implementation / remaining boundary                                                                                                                             |
-| ----------------------------------------------------------------------------- | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Typed owned logical scalars                                                   | **DONE**        | `scalar[T]`, nullable scalar owners, checked text/byte constructors, equality, owned child/byte/string results                                                  |
-| Variable-width, temporal, decimal and interval values                         | **DONE**        | Native construction and array/chunk/table storage; exact decimal scale/precision and UTF-8 validation                                                           |
-| Recursive list/view, struct, map, dictionary, union and run-end values        | **DONE**        | Typed scalar children, recursive arrays/builders, independent child owners and deep copies; no arbitrary kernel dispatch                                        |
-| Optional managed class values                                                 | **DONE**        | Null-pointer niche with class-specific pointer type, copy/return retains and replacement cleanup                                                                |
-| Rank-one numeric source buffer construction                                   | **DONE**        | `array_from_buffer(tensor)` and IRx typed buffer views copy independently, validate rank/dtype/overflow and handle offsets/negative strides/empty views         |
-| Explicit noncontiguous row selection                                          | **DONE**        | `take_rows` accepts nonnullable `array[i64]`, supports reorder/repetition/empty results and preserves zero-column row counts                                    |
-| External C Data adoption and explicit validity-buffer source constructors     | **NOT STARTED** | Existing native C Data export/import tests are not a safe source-level external-pointer contract                                                                |
-| Nullable C strings, general language collections and managed by-value structs | **PARTIAL**     | Arrow string/struct/list scalars and optional class owners work; nullable C strings, arbitrary language aggregates and recursive by-value drops remain rejected |
-| Extension value codecs and legacy DataFrame/Series adapters                   | **NOT STARTED** | Extension descriptors remain preserve-only; typed tables/chunks are not aliases of the legacy types                                                             |
+| Subitem                                                                       | Status      | Implementation / remaining boundary                                                                                                                     |
+| ----------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Typed owned logical scalars                                                   | **DONE**    | `scalar[T]`, nullable scalar owners, checked text/byte constructors, equality, owned child/byte/string results                                          |
+| Variable-width, temporal, decimal and interval values                         | **DONE**    | Native construction and array/chunk/table storage; exact decimal scale/precision and UTF-8 validation                                                   |
+| Recursive list/view, struct, map, dictionary, union and run-end values        | **DONE**    | Typed scalar children, recursive arrays/builders, independent child owners and deep copies; no arbitrary kernel dispatch                                |
+| Optional managed class values                                                 | **DONE**    | Null-pointer niche with class-specific pointer type, copy/return retains and replacement cleanup                                                        |
+| Rank-one numeric source buffer construction                                   | **DONE**    | `array_from_buffer(tensor)` and IRx typed buffer views copy independently, validate rank/dtype/overflow and handle offsets/negative strides/empty views |
+| Explicit noncontiguous row selection                                          | **DONE**    | `take_rows` accepts nonnullable `array[i64]`, supports reorder/repetition/empty results and preserves zero-column row counts                            |
+| External C Data adoption and explicit validity-buffer source constructors     | **DONE**    | Completed in C2: owned C Data carriers and checked packed-buffer/bitmap construction                                                                    |
+| Nullable C strings, general language collections and managed by-value structs | **PARTIAL** | C4/C6 add owned nullable strings and legacy DataFrame/Series owners; arbitrary language aggregates and recursive by-value drops remain rejected         |
+| Extension value codecs and legacy DataFrame/Series adapters                   | **DONE**    | Completed in C1/C3: native registered/opaque storage codecs and explicit retaining adapters                                                             |
 
-**Implementation contracts.** ABI **1.5.0**, Array feature **1.5.0**, DataFrame
-feature **1.2.0**. Existing ABI signatures and the 1.0 compatibility baseline
-are preserved. New objects stay behind opaque handles. Semantic sidecars contain
-normalized scalar arguments and array descriptors; LLVM does not infer schemas
-or select logical conversions. Native operations clear outputs first and publish
-only after successful validation. Nested field metadata participates in native
-type equality. Union/run-end null counts inspect logical children; dictionary
-validity follows its index, matching scalar extraction. The current source
-failure policy remains fatal diagnostics; native builders remain available for
-retry after failures.
+**Implementation contracts at this slice's landing.** ABI **1.5.0**, Array
+feature **1.5.0**, DataFrame feature **1.2.0**; the closure below advances the
+ABI and Array feature to **1.6.0**. Existing ABI signatures and the 1.0
+compatibility baseline are preserved. New objects stay behind opaque handles.
+Semantic sidecars contain normalized scalar arguments and array descriptors;
+LLVM does not infer schemas or select logical conversions. Native operations
+clear outputs first and publish only after successful validation. Nested field
+metadata participates in native type equality. Union/run-end null counts inspect
+logical children; dictionary validity follows its index, matching scalar
+extraction. The current source failure policy remains fatal diagnostics; native
+builders remain available for retry after failures.
 
 **Decisions and assumptions (each with the top three alternatives):**
 
@@ -2964,3 +2972,301 @@ and the complete 447-test target set above then passed.
 Not run: full repository CI, Quarto build, Python 3.10–3.13, non-Linux
 toolchains, leak detection, or an isolated fresh dependency installation. M4
 remains **PARTIAL** with the explicit implementation gaps listed above.
+
+### M2–M4 closure continuation (2026-09-21)
+
+Implementation order (statuses updated as each slice is verified):
+
+| Slice | Milestone items    | Status      | Scope                                                                                             |
+| ----- | ------------------ | ----------- | ------------------------------------------------------------------------------------------------- |
+| C1    | M4-004             | **DONE**    | Explicit DataFrame/Series adapters and logical DataFrame literals                                 |
+| C2    | M4-003             | **DONE**    | Safe C Data owner boundary and explicit packed-buffer construction                                |
+| C3    | M3-006, M4-004     | **DONE**    | Registered extension storage/value execution                                                      |
+| C4    | M2-013, M4-002     | **PARTIAL** | Nullable string/collection and aggregate lifecycle policies                                       |
+| C5    | M2-009/010, M3-006 | **PARTIAL** | Allocator-failure and ownership verification; 19-program ASan/UBSan passed, LSan ptrace-blocked   |
+| C6    | M4-002             | **DONE**    | Nullable DataFrame/Series owners and runtime-schema declaration contexts; 37 focused tests passed |
+
+These slices do not mark the earlier milestones complete before their exit
+criteria and verification gates are satisfied.
+
+C1 verification: DataFrame/adapter frontend, analysis, translate and native
+execution regressions: **22 passed**. DataFrame literal lowering now consumes
+the same resolved typed-table plan rather than rebuilding schema facts. Dynamic
+DataFrame values cannot claim static columns without checked projection.
+
+C1 decision: conversions retain independent owners; legacy DataFrame erases
+static schema facts, not runtime metadata. Alternatives: (1) extend the legacy
+type with a second schema model; (2) alias DataFrame to Table; (3) silently
+discard metadata during conversion. Explicit checked projection is preferred.
+
+C2 implementation: owned `c_data` carriers bridge checked arrays and native
+producer callbacks. `array_from_buffers` validates packed/fixed-width extents;
+`array_with_validity` supports every executable logical array without ever
+reviving an existing null. Native interchange/extent tests: **6 passed**; source
+checks passed in the ABI regression run. The stale C ABI version expectations
+were corrected and their targeted rerun passed. C Data producers must provide
+readable standard-compliant storage; source programs never manufacture or
+dereference raw Arrow pointers.
+
+C2 decision: import moves both callbacks after preflight and owner reservation;
+failures before that point preserve both producer callbacks, later failures
+consume both exactly once. Alternatives: (1) deep-copy only imports; (2) opaque
+IPC serialization; (3) raw address casts in Arx. Independent C Data owners
+retain field metadata; conversion to array values carries datatype/validity
+rather than a top-level field name. Packed buffer constructors copy bounded
+storage.
+
+C3 verification: native extension/interchange tests **16 passed**; the pure-Arx
+extension example passed. Registered codecs retain their identity and
+validation; unknown non-reserved extensions use an opaque storage codec. Tests
+include metadata mismatch, binary metadata, storage-type mismatch, parent
+release, callback-consumption failures and allocator rollback. Additional
+canonical extension coverage and broad regressions passed as recorded below.
+
+C3 decision: native storage execution is independent of domain-specific Compute.
+Alternatives: (1) preserve-only unknown extensions; (2) erase extensions to
+their storage type; (3) require Python callbacks for every extension. Native
+codecs avoid a Python execution dependency; unknown reserved `arrow.*` names
+fail closed.
+
+C4 verified string slice: **61 focused regressions passed**, followed by **3
+nullable-string/accounting tests passed**. Local and instance-field `str` values
+own independently cloned storage; `str | none` uses the null-pointer niche and
+keeps empty text distinct from absence. Allocation accounting covers normal
+cross-call execution and 32 failpoint positions inside one generated function.
+It does **not** establish cross-frame fatal unwinding: an exploratory cross-call
+OOM sweep reproduced the already tracked M2-015 caller-owner gap.
+
+C4 decision: add an explicit COPYABLE ownership capability for immutable
+strings, not a fictional pointer retain. Alternatives: (1) refcounted string
+headers with a changed C-string ABI; (2) borrow-checker-only string lifetimes;
+(3) require manual cloning everywhere. Static strings remain available at
+unmanaged boundaries; nullable collections and managed by-value aggregates
+remain pending.
+
+C5 gate: LeakSanitizer was retried and failed before the generated programs with
+its explicit ptrace incompatibility (exit 23). This is a **blocked verification
+gate**, not a pass. ASan/UBSan without leak detection passed all 19 generated
+programs and the native harness. General operation-wide allocator sweeps,
+cyclic/static aggregate policies and cross-frame fatal cleanup must not be
+marked complete on the strength of the new bounded regressions.
+
+### Closure verification and remaining work
+
+- The serial Arx regression set passed **727 tests**. Exact targets:
+  `test_logical_scalar_values.py`, `test_nullable*.py`, `test_array_values.py`,
+  `test_chunked_values.py`, `test_tabular_values.py`,
+  `test_codegen_ast_output.py`, `test_parser*.py`, `test_lexer*.py`,
+  `test_dataframe*.py`, `test_columnar_interchange.py`, and
+  `test_extension_values.py` under `packages/arx/tests/python/`.
+- IRx analysis, nullable runtime and extension/interchange targets passed **353
+  tests**. Generator/extension/interchange regressions then passed **35 tests**
+  after fixing extension logical validity over run-end storage. These sets
+  overlap; do not add their counts as unique tests.
+- The new generator checks cover both absent and present nullable string
+  captures. Captures guard null before cloning/retaining; extension scalar
+  extraction and null counts consult storage validity rather than assume a
+  parent bitmap. Additional chunk/mask assertions passed in the broad IRx run.
+- Strict mypy passed for all six packages (ASTx 59, IRx 162, Arx 31, ArxPy 5,
+  ArxJIT 10, AIX 21 source files); IRx was rerun after the generator fix.
+- ASTx/IRx/Arx sdists and wheels were rebuilt and the artifact audit passed.
+  Installed-wheel execution passed using
+  `scripts/test_wheels.py --current-environment`, including all four new
+  examples. This uses existing third-party dependencies, not fresh dependency
+  resolution. The concurrent broad test/sanitizer attempts were interrupted
+  under memory pressure; their partial dots are **not** successful test reports.
+
+M4 is still **PARTIAL**. Remaining implementation scope is not an environment
+blocker: general nullable language collections/aggregates, managed by-value
+struct retain/drop, cyclic class ownership and static-managed lifetime policy,
+cross-frame fatal unwinding, and the remaining native/legacy-IPC allocation
+sweeps. LSan, separately, remains blocked by this sandbox's ptrace restriction.
+M4-003 and M4-004 are complete slices, not completion of M4-002 or Gate B.
+
+Additional extension assumption: opaque codecs are registered by name in Arrow's
+process-wide registry; existing codecs and concurrent registration winners are
+honored. This is not a per-session registry or automatic domain-codec upgrade.
+Alternatives: (1) require explicit codec registration and preserve unknowns
+only; (2) implement an import-scoped registry/bridge; (3) require host
+callbacks.
+
+Unmanaged language list/tuple storage does not gain implicit string destruction.
+Owned/borrowed dynamic strings are rejected at insertion/construction until
+recursive element drop exists; static literals remain valid. This avoids
+dangling pointers when newly owned local or class strings escape into an
+unmanaged aggregate. Alternatives: (1) recursive item retain/drop functions; (2)
+explicit lifetime-checked borrows; (3) copy strings into an aggregate-owned
+arena. The current conservative boundary is not completion of M4-002.
+
+Final broad IRx run: **732 passed, 1 failed** across `analysis/`,
+`test_logical_scalar_runtime.py`, `test_array_value_runtime.py`,
+`test_chunked_value_runtime.py`, `test_tabular_runtime.py`,
+`test_nullable_runtime.py`, `test_arrow_abi_manifest.py`,
+`test_arrow_abi_conformance.py`, `test_descriptor_execution.py`,
+`test_schema_interop.py`, `test_arrow_runtime.py`, `test_string.py`,
+`test_aggregate_ownership.py`, `test_dataframe.py`, `test_extension_values.py`,
+`test_interchange_values.py`, and `test_generators.py`. The only failure was the
+C harness still asserting ABI minor 5 and using 1.6 as a future requirement;
+these expectations were corrected to minor 6/future 1.7; the targeted
+`test_arrow_runtime_reports_stable_abi_and_feature_versions` rerun passed **1
+test**. The full 733-test set was not rerun after that expectation fix. The
+broad run verifies all seven canonical extension storage families, opaque binary
+metadata, run-end extension nulls, chunk extraction and masking.
+
+Follow-up checks after the unmanaged-string guard and unique default-string LLVM
+global fix: **18 IRx aggregate/list tests passed** and **10 Arx
+nullable-string/adapter tests passed**. The latter includes the new negative
+legacy scalar-nullability check and same-named default locals in two functions.
+
+ASTx schema, schema-expression, scalar, tabular, nullable and array modeling
+targets passed **68 tests**. Ruff checks/formatting passed for all changed
+Python files; Douki was idempotent (**0 updated, 56 unchanged** before C6).
+
+C6 decision: optional legacy DataFrame/Series values reuse their existing
+immutable table/chunked-array owners and reserved null-pointer niche. Runtime
+DataFrame schemas are no longer parameter-only: locals, returns and instance
+fields have the same safe opaque representation. Nullable Series element
+annotations and the ASTx `nullable` flag compare using one canonical column
+storage contract; owner absence remains separate from element nullability.
+Alternatives: (1) require conversion to nullable table/chunked_array everywhere;
+(2) add boxed nullable legacy wrappers with extra allocation; (3) replace legacy
+types with public aliases, losing their distinct surface contract. General
+language lists/tuples/structs are not opaque pointers and still require separate
+aggregate validity and recursive retain/drop; they are not enabled by this
+change.
+
+C6 focused verification: **37 passed** across the Arx DataFrame/adapters tests
+and IRx analysis DataFrame/ownership tests. Coverage includes absent/default
+owners, present empty DataFrames, borrowed returns, copies after parent field
+replacement, self-assignment, class destruction, flow refinement, null unwrap
+failure and rejection of dynamic-to-static schema claims. General collection and
+by-value aggregate work remains open rather than treated as an environment
+blocker.
+
+#### Final closure verification after C6
+
+- **944 tests passed:** `packages/irx/tests/analysis/`, Arx
+  `test_parser*.py`/`test_lexer*.py`, and the six ASTx modeling files listed
+  above. This overlaps earlier reported sets; counts are not additive.
+- **20 tests passed:** `test_arrow_capability_matrix.py` and
+  `test_arrow_abi_manifest.py`. The inventory now classifies executable
+  extension storage as core/array rather than preserve-only. Its validator
+  permits transitional classifications to become empty without inventing a
+  placeholder module, while still validating every entry's classification.
+- The updated `dataframe_adapters.x` program passed instrumented ASan/UBSan
+  execution after C6. This supplements the earlier full 19-program/native
+  harness pass. An explicit `clang++` override failed native compilation in this
+  environment; the rerun using the repository's default `c++` compiler
+  succeeded. Leak detection remained disabled; the separate LSan retry was
+  ptrace-blocked, not passed.
+- Strict `mypy src` passed again in all six packages. Owning-config Ruff
+  check/format and idempotent Douki checks passed for changed Python files.
+- ASTx/IRx/Arx sdists and wheels were rebuilt after C6;
+  `python scripts/test_wheels.py --current-environment` passed the artifact
+  audit and installed-wheel compilation/execution, including the updated
+  optional DataFrame/Series example and the other three new source examples.
+- ABI/capability generator freshness, `makim arx.check-syntax`, and
+  `git diff --check` passed. Markdown/JSON formatting was checked with the
+  repository's cached Prettier version.
+
+Not run: full repository CI, Quarto documentation build, Python 3.10–3.13,
+non-Linux verification, or isolated fresh dependency resolution. **This is not
+completion of M4 or all previous milestones**: the remaining implementation and
+verification tasks above stay PARTIAL rather than being hidden by the new
+passing slices.
+
+### 2026-09-22 — Remaining aggregate ownership work
+
+| Slice | Milestones     | Status   | Scope                                                                                           |
+| ----- | -------------- | -------- | ----------------------------------------------------------------------------------------------- |
+| C7    | M4-002, M2-006 | **DONE** | Nullable by-value list and tensor/buffer-view owners with explicit validity and payload cleanup |
+
+C7 assumption: nullable aggregates cannot use the opaque-pointer null niche. Use
+a validity bit plus a payload and carry aggregate cleanup shape in semantic
+ownership metadata. Unique lists remain affine; shared tensor/buffer views
+retain independent owners. Alternatives: (1) heap-box all nullable aggregates;
+(2) change all collection ABIs to opaque handles; (3) add a borrow-checker-only
+representation. Existing nested-element and by-value struct destruction limits
+remain explicit until their own lifecycle implementation is verified.
+
+C7 implementation decisions:
+
+- Aggregate validity is explicit even when a list has no backing allocation.
+  Semantic ownership records carry the nullable cleanup shape through moves,
+  class fields and suspended frames; payload extraction clears that wrapper
+  shape. Copies of shared tensor views retain only present payloads.
+- Appending to a proven-present list changes its contents, not the owner or its
+  validity. Replacement still invalidates the proof. Loop proof invalidation
+  remains conservative; recheck validity within a loop body when needed.
+- Refined tensor single-index expressions are resolved to existing ASTx tensor
+  indexing in IRx analysis. The declared shape proves rank/extents; lowering
+  reads actual runtime strides and never invents a contiguous layout.
+- Failed list growth and indexing clean the current generated frame before
+  reporting structured `ARX-RUNTIME-LIST-*` diagnostics. IRx comprehensions
+  register partial output ownership before the first allocation, including
+  outputs that transfer ownership on successful construction. This does not
+  claim Arx source comprehension syntax or cross-frame exception unwinding.
+
+For cleanup, the top three alternatives are (1) propagate statuses through a new
+generated-function ABI, enabling cross-frame cleanup; (2) register runtime
+cleanup frames and unwind them on fatal errors; (3) use a process-wide arena
+with bulk teardown. This slice uses existing local cleanup metadata to avoid an
+unverified calling-convention change; cross-frame cleanup remains pending.
+
+C7 preserves the existing tensor indexing policy: static out-of-bounds indices
+are rejected, but dynamic tensor bounds checks remain M5 work. Owner validity is
+not a proof that a runtime index is in bounds. No Arrow ABI or C++ object layout
+is changed by the language-owned nullable aggregate representation.
+
+#### C7 verification — 2026-09-22
+
+- **30 passed**: Arx nullable collection and translate-path regressions plus the
+  IRx partial-comprehension allocation-accounting regression. Covers empty
+  versus absent lists, borrowed tensor returns and copies, field replacement,
+  unique-list copy rejection, guarded indexing/append, absent unwrap, scope
+  cleanup, and current-frame failure cleanup. GNU wrapping accounts for
+  `malloc`, `realloc` and `free`: four class/list allocation-failure positions
+  and six partial-comprehension allocation-failure positions return to zero live
+  owners. Comprehension tests construct ASTx directly, not unsupported Arx
+  source syntax.
+- **899 passed**: IRx analysis, Arx parser/lexer, Arrow capability matrix and
+  ABI manifest tests, after the tensor-shape refinement fix.
+- **275 passed**: IRx nullable runtime, dynamic/list-struct/literal-list,
+  collection methods, aggregate ownership, generators, strings, buffer indexing,
+  buffer views, tensors, iterables and list-failure cleanup, plus all Arx
+  `test_nullable*.py` tests. The first broad run had three stale LLVM-text
+  expectations for native fail-fast calls/whole-function destroy counts; updated
+  tests check cleanup-aware errors and distinguish fatal blocks from
+  moved-return paths. The complete set was rerun successfully.
+- Strict `mypy src` passed in all six packages. Changed Python files passed
+  owning-config Ruff checks/formatting; Douki was idempotent (72 unchanged,
+  followed by the three list-test files unchanged). ABI/capability generator
+  freshness, `makim arx.check-syntax`, Markdown/JSON formatting and
+  `git diff --check` passed. Test counts overlap and are not additive.
+- ASTx, IRx and Arx wheel/sdist builds passed. The native ownership harness and
+  **all 20 generated programs passed ASan/UBSan** using `c++` and `clang`,
+  including nullable collections. Leak detection was explicitly disabled; the
+  previously recorded local ptrace/LSan limitation is not a passing LSan result.
+  `python scripts/test_wheels.py --current-environment` also passed the artifact
+  audit and installed-wheel smoke, including nullable collections. This uses
+  current installed dependencies, not fresh dependency resolution.
+
+- **1,494 passed:** the complete `packages/irx/tests` suite, rerun after all C7
+  implementation changes and the nullable diagnostic wording update (**686.89
+  seconds**). This includes the previously corrected ABI-version harness, all
+  current runtime/interop tests and the expanded list cleanup tests. It
+  supersedes the earlier incomplete 733-test runtime verification for the
+  current working tree, without substituting for unimplemented lifecycle
+  policies or the remaining LSan/fault-sweep gates.
+
+Remaining work is not marked complete by C7:
+
+1. **M4-002:** nullable nested language collection elements, recursive managed
+   aggregates and by-value struct destruction.
+2. **M2-013:** supported cyclic-class and static-managed lifetime policies.
+3. **M2 / M3 Gate B:** cross-frame fatal cleanup, complete allocator-failure
+   sweeps and an actual passing LSan run.
+
+Full repository CI, the Quarto build, Python 3.10–3.13 and non-Linux execution
+have not been run for C7. M4 and the earlier partial milestones remain PARTIAL;
+this is a completed ownership slice, not completion of every requested item.

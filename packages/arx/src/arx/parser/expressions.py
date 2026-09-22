@@ -630,16 +630,24 @@ class ExpressionParserMixin(ParserMixinBase):
             self.tokens.get_next_token()
 
             self._consume_operator(":")
-            value = self.parse_expression()
-            if not isinstance(value, astx.LiteralList):
+            if not self._is_operator("["):
                 raise ParserException(
                     "DataFrame constructor column values must be list "
                     "literals."
                 )
+            self._consume_operator("[")
+            values: list[astx.AST] = []
+            if not self._is_operator("]"):
+                while True:
+                    values.append(self.parse_expression())
+                    if not self._is_operator(","):
+                        break
+                    self._consume_operator(",")
+            self._consume_operator("]")
             columns.append(
                 astx.DataFrameLiteralColumn(
                     column_name,
-                    tuple(value.elements),
+                    tuple(values),
                 )
             )
             self._skip_inline_indents()

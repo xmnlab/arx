@@ -520,6 +520,8 @@ class SemanticVisitorMixinTypingBase:
         self,
         node: astx.AST,
         symbol: SemanticSymbol | None,
+        *,
+        replaces_owner: bool = True,
     ) -> None:
         """
         title: Attach one resolved assignment target to a node.
@@ -528,6 +530,8 @@ class SemanticVisitorMixinTypingBase:
             type: astx.AST
           symbol:
             type: SemanticSymbol | None
+          replaces_owner:
+            type: bool
         """
         raise NotImplementedError
 
@@ -1360,7 +1364,11 @@ class SemanticAnalyzerCore(BaseVisitor):
         self._semantic(node).resolved_operator = operator
 
     def _set_assignment(
-        self, node: astx.AST, symbol: SemanticSymbol | None
+        self,
+        node: astx.AST,
+        symbol: SemanticSymbol | None,
+        *,
+        replaces_owner: bool = True,
     ) -> None:
         """
         title: Attach one resolved assignment target to a node.
@@ -1369,13 +1377,16 @@ class SemanticAnalyzerCore(BaseVisitor):
             type: astx.AST
           symbol:
             type: SemanticSymbol | None
+          replaces_owner:
+            type: bool
         """
         info = self._semantic(node)
         if symbol is None:
             info.resolved_assignment = None
             return
         info.resolved_assignment = ResolvedAssignment(symbol)
-        self.context.valid_nullable_symbols.discard(symbol.symbol_id)
+        if replaces_owner:
+            self.context.valid_nullable_symbols.discard(symbol.symbol_id)
 
     def _set_field_access(
         self,

@@ -151,13 +151,12 @@ class TabularLoweringMixin(VisitorMixinBase):
         core._register_owned_resource_temporary(node, value)
         self.result_stack.append(value)
 
-    @VisitorCore.visit.dispatch
-    def visit(self, node: astx.TabularLiteral) -> None:
+    def lower_tabular_literal(self, node: astx.DataType) -> None:
         """
         title: Build from a resolved schema and borrowed ordered columns.
         parameters:
           node:
-            type: astx.TabularLiteral
+            type: astx.DataType
         """
         resolved = self.tabular_resolution(node)
         arguments = self.tabular_arguments(resolved)
@@ -174,6 +173,16 @@ class TabularLoweringMixin(VisitorMixinBase):
                 arguments[1],
             ],
         )
+
+    @VisitorCore.visit.dispatch
+    def visit(self, node: astx.TabularLiteral) -> None:
+        """
+        title: Lower a checked schema-first container literal.
+        parameters:
+          node:
+            type: astx.TabularLiteral
+        """
+        self.lower_tabular_literal(node)
 
     @VisitorCore.visit.dispatch
     def visit(self, node: astx.TabularQuery) -> None:

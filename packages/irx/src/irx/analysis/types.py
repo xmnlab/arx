@@ -13,6 +13,7 @@ import astx
 
 from public import public
 
+from irx.analysis.dataframe_values import same_series_elements
 from irx.analysis.nullability import normalize_nullable
 from irx.analysis.schema_types import same_columnar_type
 from irx.typecheck import typechecked
@@ -166,6 +167,8 @@ def _metadata_assignment_compatible(
         value,
         astx.DataFrameType,
     ):
+        if target.columns is not None and value.columns is None:
+            return False
         return _target_accepts_known_size(target.row_count, value.row_count)
     return True
 
@@ -621,11 +624,7 @@ def same_type(lhs: astx.DataType | None, rhs: astx.DataType | None) -> bool:
     ):
         if not _same_optional_size(lhs.size, rhs.size):
             return False
-        if lhs.element_type is None or rhs.element_type is None:
-            return True
-        return lhs.nullable == rhs.nullable and same_type(
-            lhs.element_type, rhs.element_type
-        )
+        return same_series_elements(lhs, rhs)
     if isinstance(lhs, astx.DataFrameType) and isinstance(
         rhs,
         astx.DataFrameType,
@@ -1176,20 +1175,17 @@ def is_assignable(
     ):
         if not _target_accepts_known_size(target.size, value.size):
             return False
-        if target.element_type is None or value.element_type is None:
-            return True
-        return target.nullable == value.nullable and same_type(
-            target.element_type,
-            value.element_type,
-        )
+        return same_series_elements(target, value)
     if isinstance(target, astx.DataFrameType) and isinstance(
         value,
         astx.DataFrameType,
     ):
         if not _target_accepts_known_size(target.row_count, value.row_count):
             return False
-        if target.columns is None or value.columns is None:
+        if target.columns is None:
             return True
+        if value.columns is None:
+            return False
         if len(target.columns) != len(value.columns):
             return False
         return all(

@@ -5,7 +5,7 @@ summary: Do not edit; regenerate from abi.json.
 
 from __future__ import annotations
 
-ABI_VERSION = (1, 5, 0)
+ABI_VERSION = (1, 6, 0)
 RUNTIME_FEATURE_IDS = {
     "core": 1,
     "array": 2,
@@ -15,14 +15,14 @@ RUNTIME_FEATURE_IDS = {
 }
 RUNTIME_FEATURE_VERSIONS = {
     "core": (1, 0, 0),
-    "array": (1, 5, 0),
+    "array": (1, 6, 0),
     "tensor": (1, 0, 0),
     "dataframe": (1, 2, 0),
     "record_batch": (1, 0, 0),
 }
 RUNTIME_FEATURE_PACKED_VERSIONS = {
     "core": 65536,
-    "array": 66816,
+    "array": 67072,
     "tensor": 65536,
     "dataframe": 66048,
     "record_batch": 65536,
@@ -43,6 +43,7 @@ HANDLE_TYPES = (
     "dataset",
     "execution_plan",
     "field",
+    "c_data",
 )
 CTYPES_SIGNATURES: dict[str, tuple[str, tuple[str, ...]]] = {
     "irx_arrow_abi_version": (
@@ -1417,6 +1418,86 @@ CTYPES_SIGNATURES: dict[str, tuple[str, tuple[str, ...]]] = {
             "error_pointer",
         ),
     ),
+    "irx_arrow_c_data_retain": (
+        "status",
+        (
+            "const_c_data",
+            "c_data_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_c_data_release": (
+        "status",
+        (
+            "c_data_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_c_data_from_array": (
+        "status",
+        (
+            "const_array",
+            "c_data_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_c_data_import_move": (
+        "status",
+        (
+            "arrow_array",
+            "arrow_schema",
+            "c_data_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_c_data_export": (
+        "status",
+        (
+            "const_c_data",
+            "arrow_array",
+            "arrow_schema",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_array_from_c_data": (
+        "status",
+        (
+            "const_c_data",
+            "const_field",
+            "array_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_array_with_validity": (
+        "status",
+        (
+            "const_array",
+            "const_array",
+            "int64",
+            "array_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_array_from_buffers": (
+        "status",
+        (
+            "const_field",
+            "const_array",
+            "const_array",
+            "int64",
+            "int64",
+            "array_pointer",
+            "error_pointer",
+        ),
+    ),
+    "irx_arrow_scalar_storage": (
+        "status",
+        (
+            "const_scalar",
+            "scalar_pointer",
+            "error_pointer",
+        ),
+    ),
 }
 FEATURE_SYMBOLS: dict[str, tuple[str, ...]] = {
     "core": (
@@ -1530,6 +1611,15 @@ FEATURE_SYMBOLS: dict[str, tuple[str, ...]] = {
         "irx_arrow_scalar_from_bytes",
         "irx_arrow_scalar_bytes",
         "irx_arrow_array_from_buffer",
+        "irx_arrow_c_data_retain",
+        "irx_arrow_c_data_release",
+        "irx_arrow_c_data_from_array",
+        "irx_arrow_c_data_import_move",
+        "irx_arrow_c_data_export",
+        "irx_arrow_array_from_c_data",
+        "irx_arrow_array_with_validity",
+        "irx_arrow_array_from_buffers",
+        "irx_arrow_scalar_storage",
     ),
     "tensor": (
         "irx_arrow_tensor_builder_new",
@@ -1753,6 +1843,15 @@ FALLIBLE_SYMBOLS = (
     "irx_arrow_batch_take",
     "irx_arrow_table_take",
     "irx_arrow_array_from_buffer",
+    "irx_arrow_c_data_retain",
+    "irx_arrow_c_data_release",
+    "irx_arrow_c_data_from_array",
+    "irx_arrow_c_data_import_move",
+    "irx_arrow_c_data_export",
+    "irx_arrow_array_from_c_data",
+    "irx_arrow_array_with_validity",
+    "irx_arrow_array_from_buffers",
+    "irx_arrow_scalar_storage",
 )
 VALUE_RESULTS: dict[str, str] = {
     "irx_arrow_error_code": "status",

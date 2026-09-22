@@ -16,11 +16,12 @@ from pathlib import Path
 import astx
 import pytest
 
-from irx.analysis import SemanticError, analyze, resource_ownership
+from irx.analysis import analyze, resource_ownership
 from irx.analysis.resolved_nodes import OwnershipKind, ResourceKind
 from irx.builder import Builder
 from irx.builder.runtime.features import NativeArtifact
 from irx.builder.runtime.linking import link_executable
+from irx.diagnostics import SemanticError
 from llvmlite import binding as llvm
 
 from .conftest import assert_build_succeeds, assert_ir_parses, make_module
@@ -240,11 +241,9 @@ def test_class_reference_copy_uses_retain_and_release() -> None:
     assert_ir_parses(ir_text)
 
 
-def test_owned_string_field_initializer_fails_before_unmanaged_storage() -> (
-    None
-):
+def test_owned_string_field_initializer_has_destructor() -> None:
     """
-    title: A heap string cannot silently become an unmanaged class field.
+    title: A heap string field receives an owning destructor contract.
     """
     field = astx.VariableDeclaration(
         "text",
@@ -256,8 +255,9 @@ def test_owned_string_field_initializer_fails_before_unmanaged_storage() -> (
     module = make_module(
         "main", astx.ClassDefStmt(name="Text", attributes=[field])
     )
-    with pytest.raises(SemanticError, match="string field initialization"):
-        analyze(module)
+    text = Builder().translate(module)
+    assert 'call void @"free"' in text
+    assert_ir_parses(text)
 
 
 @pytest.mark.skipif(
@@ -328,10 +328,11 @@ def test_aggregate_allocation_failure_reports_instead_of_dereferencing_null(
     assert "allocation failed" in result.stderr
 
 
-def test_string_field_cannot_borrow_a_short_lived_local() -> None:
+def test_string_field_copies_a_short_lived_local() -> None:
     """
     title: >-
-      A field assignment cannot retain an unowned pointer into a local string.
+      A field assignment clones borrowed local storage before replacing its
+      owner.
     """
     field = astx.VariableDeclaration(
         "text",
@@ -373,8 +374,7 @@ def test_string_field_cannot_borrow_a_short_lived_local() -> None:
     module = make_module(
         "main", astx.ClassDefStmt(name="Box", attributes=[field]), main
     )
-    with pytest.raises(SemanticError, match="cannot assign borrowed string"):
-        analyze(module)
+    assert_ir_parses(Builder().translate(module))
 
 
 @pytest.mark.skipif(
@@ -490,3 +490,43 @@ def test_generator_loop_locals_release_each_heap_allocation(
         [str(executable)], capture_output=True, text=True, check=False
     )
     assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize("borrowed", [False, True])
+def test_unmanaged_list_rejects_dynamic_string_elements(
+    borrowed: bool,
+) -> None:
+    """
+    title: List buffers cannot retain string pointers without element cleanup.
+    parameters:
+      borrowed:
+        type: bool
+    """
+    body = astx.Block()
+    body.append(
+        astx.VariableDeclaration(
+            "text", astx.String(), value=astx.LiteralString("local")
+        )
+    )
+    body.append(
+        astx.VariableDeclaration(
+            "items",
+            astx.ListType([astx.String()]),
+            value=astx.ListCreate(astx.String()),
+            mutability=astx.MutabilityKind.mutable,
+        )
+    )
+    value = (
+        astx.Identifier("text")
+        if borrowed
+        else astx.BinaryOp(
+            "+", astx.LiteralString("owned"), astx.LiteralString(" item")
+        )
+    )
+    body.append(astx.ListAppend(astx.Identifier("items"), value))
+    body.append(astx.FunctionReturn(astx.LiteralInt32(0)))
+    function = astx.FunctionDef(
+        astx.FunctionPrototype("main", astx.Arguments(), astx.Int32()), body
+    )
+    with pytest.raises(SemanticError, match="element destruction"):
+        analyze(make_module("main", function))

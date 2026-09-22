@@ -47,6 +47,8 @@ irx_arrow_status irx_arrow_type_import_copy(const ArrowSchema* schema,
     auto borrowed = borrow_schema_tree(schema);
     if (!borrowed.ok())
       return set_arrow_error("descriptor copy", borrowed.status());
+    auto registered = register_storage_extensions(&(*borrowed)->schema);
+    if (!registered.ok()) return set_arrow_error("extension registration", registered);
     auto field = arrow::ImportField(&(*borrowed)->schema);
     if (!field.ok())
       return set_arrow_error("descriptor import", field.status());
@@ -93,6 +95,8 @@ irx_arrow_status irx_arrow_field_import_copy(
     auto borrowed = borrow_schema_tree(schema);
     if (!borrowed.ok())
       return set_arrow_error("descriptor copy", borrowed.status());
+    auto registered = register_storage_extensions(&(*borrowed)->schema);
+    if (!registered.ok()) return set_arrow_error("extension registration", registered);
     auto field = arrow::ImportField(&(*borrowed)->schema);
     if (!field.ok())
       return set_arrow_error("descriptor import", field.status());

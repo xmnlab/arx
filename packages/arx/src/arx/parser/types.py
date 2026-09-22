@@ -34,6 +34,7 @@ from arx.tensor import (
 )
 
 _BUILTIN_TYPE_MAP: dict[str, astx.DataType] = {
+    "c_data": astx.CDataType(),
     "datatype": astx.TypeDescriptorType(),
     "field": astx.FieldType(),
     "schema": astx.SchemaType(),
@@ -407,10 +408,6 @@ class TypeParserMixin(ParserMixinBase):
                 if self._is_operator("."):
                     self._consume_runtime_shape_marker()
                     self._consume_operator("]")
-                    self._ensure_runtime_layout_allowed(
-                        "dataframe",
-                        type_context,
-                    )
                     type_ = runtime_dataframe_type()
                 else:
                     columns: list[astx.DataFrameColumn] = []

@@ -28,7 +28,7 @@ their canonical spellings, accepted aliases, and current surface syntax.
 | `tensor[T, d0, d1, ..., dN]` | —                | collection | `var grid: tensor[i32, 2, 2] = [[1, 2], [3, 4]]`      | Fixed-shape multidimensional tensor      |
 | `tensor[T, ...]`             | —                | collection | `fn sink(values: tensor[i32, ...]) -> none:`          | Runtime-shaped tensor parameter          |
 | `dataframe[name: T, ...]`    | —                | collection | `var rows: dataframe[id: i32] = dataframe({id: [1]})` | Static-schema DataFrame                  |
-| `dataframe[...]`             | —                | collection | `fn sink(rows: dataframe[...]) -> none:`              | Runtime-schema DataFrame parameter       |
+| `dataframe[...]`             | —                | collection | `fn sink(rows: dataframe[...]) -> none:`              | Runtime-schema DataFrame owner           |
 | `series[T]`                  | —                | collection | `var ids: series[i32] = rows["id"]`                   | Typed DataFrame column                   |
 
 ## Numeric Types
@@ -106,12 +106,12 @@ Arx exposes the following public collection type families:
 - `tensor[T, d0, d1, ..., dN]` for fixed-shape multidimensional tensors
 - `tensor[T, ...]` for runtime-shaped tensor parameters
 - `dataframe[name: T, ...]` for static-schema named-column DataFrames
-- `dataframe[...]` for runtime-schema DataFrame parameters
+- `dataframe[...]` for runtime-schema DataFrame owners
 - `series[T]` for typed DataFrame columns
 
 In the fixed-shape form, `...` is documentation prose for additional integer
 dimensions. The literal `...` marker is reserved for runtime-shaped tensor
-parameters and runtime-schema DataFrame parameters.
+parameters and runtime-schema DataFrame owners.
 
 The naming is intentional: Arx uses `Tensor` for homogeneous N-dimensional data,
 aligning with common data-science terminology and IRx's Arrow C++ backed
@@ -147,10 +147,8 @@ Current tensor rules in this phase:
 
 Current DataFrame rules in this phase:
 
-- column types are fixed-width numeric types (`i8`, `i16`, `i32`, `i64`, `f32`,
-  `f64`) or `bool`
-- string, nullable, nested, temporal, and user-defined columns are not part of
-  the MVP yet
+- column types include primitive numeric/Boolean values, `str`, nullable values,
+  and executable logical `scalar[T]` values (including nested types)
 - static-schema values use `dataframe[name: T, ...]` annotations and the
   column-oriented `dataframe({...})` constructor
 - constructor columns must be list literals, use declared column names, and have
@@ -160,8 +158,10 @@ Current DataFrame rules in this phase:
 - column access and metadata methods currently work on DataFrame identifiers and
   literals whose schema is known while parsing, not on arbitrary
   DataFrame-returning expressions
-- `dataframe[...]` is accepted only in function and extern parameter annotations
-  for now; column access on runtime-schema parameters is not available yet
+- `dataframe[...]` is an owned runtime-schema value in locals, calls, returns
+  and instance fields; checked column access uses
+  `column_as(to_table(rows), index, field[name: T])` rather than unchecked
+  legacy field access
 
 ```arx
 fn dataframe_demo() -> i32:
@@ -296,8 +296,13 @@ an absent primitive value. Use `expect_valid` to remove nullability before
 casting to a non-nullable type. Narrowing follows existing primitive cast rules,
 not a new checked Arrow Compute cast policy.
 
-Nullable strings, general nullable collection elements, managed struct fields
-and C FFI nullable signatures remain unsupported and fail before lowering.
+`str | none`, `dataframe[...] | none`, and `series[T] | none` support guarded
+access, copies, returns and managed instance fields. Present empty text or empty
+containers are distinct from absence. Strings clone owned storage; columnar
+containers retain independent handles. These owner operations do not imply
+nullable arithmetic on strings or containers. General nullable language
+collection elements, managed by-value struct fields and C FFI nullable
+signatures remain unsupported and fail before lowering.
 
 ## First-class arrays
 
@@ -341,7 +346,8 @@ views, rejects byte-packed Boolean/half storage and bitmap-bearing views, and
 checks dimensions and arithmetic overflow before reading. IRx hosts can also
 supply typed `BufferViewType` values. The caller of the low-level native ABI
 must supply readable buffer storage; the view has no allocation-size field. Raw
-external C Data pointer/adoption constructors are not yet Arx builtins.
+external C Data pointers stay native; the owned `c_data` boundary described
+below exposes checked source-level import/export.
 
 ## Reusable builders and chunked arrays
 
@@ -399,8 +405,14 @@ are absent, assignment releases a replaced owner, and class destruction cleans
 up remaining owners. Mutable field predicates do not refine subsequent reads;
 use `expect_valid` on the field. Static nullable fields are rejected. IRx also
 supports by-value primitive nullable struct fields; this does not introduce Arx
-`struct` syntax or managed struct destruction. Nullable C-string `str` remains
-unsupported; nullable Arrow text uses `scalar[string] | none` instead.
+`struct` syntax or managed struct destruction. Nullable C-string `str | none`
+uses a null pointer for absence: a present empty string is distinct from `none`.
+Local and instance-field strings own heap storage. Copying static or borrowed
+text duplicates its bytes; returns and replacements never retain dangling
+pointers. `scalar[string] | none` remains the Arrow text alternative, including
+embedded NUL through its byte operations. Unmanaged language list/tuple elements
+still cannot store dynamic strings without element destruction; use
+`array[string]` for owned columnar text.
 
 ## Record batches and tables
 
@@ -457,11 +469,14 @@ implicit iteration axis.
 
 `table` is **not** a new spelling for legacy `dataframe`, nor is `chunked_array`
 a new spelling for `series`. Existing DataFrame/Series syntax is unchanged;
-compatibility adapters and expansion of the legacy DataFrame/Series APIs remain
-pending. Logical columns and noncontiguous row selection are available through
-the typed batch/table APIs. Table selection shares immutable row slices; batch
-selection materializes columns. Neither uses an implicit Compute kernel or
-changes schema metadata.
+`to_dataframe(table)` and `to_table(dataframe)` retain independent owners
+without copying buffers. These adapters deliberately erase static schema facts,
+not runtime field metadata; use `column_as` to recover checked typed columns.
+`to_series(chunked_array)` and `to_chunked(series)` preserve the element type.
+Logical columns and noncontiguous row selection are available through the typed
+batch/table APIs. Table selection shares immutable row slices; batch selection
+materializes columns. Neither uses an implicit Compute kernel or changes schema
+metadata.
 
 See `examples/columnar_tables.x` and `examples/columnar_table_owners.x` for
 executable transformation and lifetime examples.
@@ -510,7 +525,64 @@ and retry safety over a specialized high-throughput nested builder.
 Examples: [`logical_scalar_owners.x`](../../examples/logical_scalar_owners.x),
 [`nested_columnar_values.x`](../../examples/nested_columnar_values.x), and
 [`logical_value_families.x`](../../examples/logical_value_families.x). Extension
-descriptors remain supported, but extension **value** construction requires a
-future registered codec/storage contract and is rejected, including inside
-nested value types. Null arrays use `array[null | none](none, ...)`; there is no
-present `scalar[null]` constructor.
+scalars wrap a scalar of their declared storage type. `scalar_storage(value)`
+returns independently owned storage for extension or run-end encoded scalars.
+Arrow-registered canonical codecs validate storage and metadata. Unregistered
+non-`arrow.*` names use an opaque storage codec that preserves the exact name,
+serialized metadata (including binary bytes), and storage type. This does not
+invent domain-specific arithmetic. Unknown reserved `arrow.*` codecs fail
+explicitly rather than erase identity. Null arrays use
+`array[null | none](none, ...)`; there is no present `scalar[null]` constructor.
+
+## Checked C Data and buffer construction
+
+These are ambient builtins, not `arrow.*` imports:
+
+- `export_c_data(array)` returns a shared immutable `c_data` carrier. Its native
+  C ABI supports producer imports and consumer exports; raw C pointers and Arrow
+  C++ layouts are never exposed in Arx.
+- `array_from_c_data(owner, field[value: T | none])` checks the exact logical
+  type and required validity, then returns an independently owned array. The
+  carrier preserves complete field metadata; an array value itself carries its
+  datatype and validity, not a top-level field name.
+- `array_with_validity(array, bitmap, bit_offset)` applies packed validity bits
+  from nonnullable `array[u8]`. It can remove validity but never revive a null.
+- `array_from_buffers(field[value: T | none], data, bitmap, length, offset)`
+  copies bounded `array[u8]` buffers for fixed-width or packed Boolean storage.
+  An empty bitmap means all-valid. Offset is measured in elements, including
+  bits for Boolean data; the validity offset is also in bits. Invalid extents,
+  overflow, nullability mismatches and unsupported layouts fail explicitly.
+
+A native C Data move preserves producer callbacks on preflight/owner-reservation
+failure. Once import starts, both callbacks are consumed exactly once on success
+or failure. External producers must supply readable, standard-compliant storage;
+this is not a safe decoder for arbitrary addresses. Streams belong to M7.
+
+See [`columnar_interchange.x`](../../examples/columnar_interchange.x),
+[`dataframe_adapters.x`](../../examples/dataframe_adapters.x),
+[`extension_values.x`](../../examples/extension_values.x), and
+[`nullable_strings.x`](../../examples/nullable_strings.x).
+
+## Optional list and tensor owners
+
+`list[T] | none` and fixed-shape `tensor[T, ...] | none` are builtin optional
+owners. They carry an explicit validity bit beside the ordinary collection
+payload: a present empty list is not `none`. `is_valid`, `is_null`, guarded
+identifier refinement and `expect_valid` work without importing Arrow.
+
+- Dynamic lists remain unique: a fresh returned list can initialize an optional
+  owner, but copying or self-assigning a list owner is rejected. Appending
+  through a proven-present mutable local preserves its validity proof. Borrowed
+  parameters and static list literals cannot be grown.
+- Tensor copies and borrowed returns retain independent shared buffer owners.
+  Replacing a source with `none` does not invalidate a retained copy.
+- Local owners, returns and mutable class instance fields release present
+  payloads exactly once, including replacement with `none`. Generated IRx
+  generator captures also retain and release optional tensor/buffer-view owners.
+  Arx source generator syntax is not introduced by this support.
+- Failed list growth cleans up owners in the active generated function before
+  reporting a runtime error. Cross-frame fatal unwinding is not yet supported.
+
+This does not enable nullable list **elements**, recursive managed language
+collections, static managed fields or managed by-value struct destruction. See
+[`nullable_collections.x`](../../examples/nullable_collections.x).

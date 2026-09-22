@@ -69,7 +69,10 @@ class FunctionVisitorMixin(VisitorMixinBase):
         if ownership.resource_kind is ResourceKind.STRING:
             self._register_owned_string_temporary(node, result)
             return
-        if ownership.resource_kind is not ResourceKind.LIST:
+        if (
+            ownership.resource_kind is not ResourceKind.LIST
+            or ownership.nullable_aggregate
+        ):
             cast(Any, self)._register_owned_resource_temporary(node, result)
             return
         current_block = self._llvm.ir_builder.block
@@ -1038,14 +1041,8 @@ class FunctionVisitorMixin(VisitorMixinBase):
         retval = cast(Any, self)._retain_copied_resource_value(
             node.value if node.value is not None else node,
             retval,
+            target_type=return_resolution.expected_type,
         )
-        return_ownership = resource_ownership(node)
-        if (
-            return_ownership is not None
-            and return_ownership.resource_kind is ResourceKind.STRING
-            and return_ownership.transfer_kind is OwnershipTransferKind.COPY
-        ):
-            retval = self._copy_string_to_heap(node, retval)
         fn_return_type = (
             self._llvm.ir_builder.function.function_type.return_type
         )

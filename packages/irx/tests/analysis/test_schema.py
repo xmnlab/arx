@@ -289,7 +289,8 @@ def test_modeled_container_types_have_structural_identity_and_fail_early() -> (
         )
     )
     with pytest.raises(
-        SemanticError, match=r"native value construction|array owners"
+        SemanticError,
+        match=r"native value construction|array owners|column requires",
     ):
         analyze(module)
 
@@ -448,7 +449,8 @@ def test_modeled_only_types_are_rejected_inside_annotations(
         )
     )
     with pytest.raises(
-        SemanticError, match=r"native value construction|array owners"
+        SemanticError,
+        match=r"native value construction|array owners|column requires",
     ):
         analyze(module)
 

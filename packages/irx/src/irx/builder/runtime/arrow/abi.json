@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "abi_version": "1.5.0",
+  "abi_version": "1.6.0",
   "handle_contract": {
     "retain_output": "A successful retain writes one new owner token to an output slot.",
     "release_input": "Release consumes one owner token through a pointer-to-slot and clears that slot.",
@@ -67,7 +67,7 @@
     {
       "id": 2,
       "name": "array",
-      "contract_version": "1.5.0",
+      "contract_version": "1.6.0",
       "availability": "implemented"
     },
     {
@@ -239,6 +239,16 @@
       "availability": "implemented",
       "retain": "irx_arrow_field_retain",
       "release": "irx_arrow_field_release"
+    },
+    {
+      "id": 16,
+      "name": "c_data",
+      "c_type": "irx_arrow_c_data_handle",
+      "ownership": "shared",
+      "thread_safety": "immutable_shared",
+      "availability": "implemented",
+      "retain": "irx_arrow_c_data_retain",
+      "release": "irx_arrow_c_data_release"
     }
   ],
   "functions": [
@@ -1712,6 +1722,93 @@
         ["int32", "type_id"],
         ["buffer_view", "view"],
         ["array_pointer", "output"]
+      ]
+    },
+    {
+      "name": "irx_arrow_c_data_retain",
+      "features": ["array"],
+      "parameters": [
+        ["const_c_data", "value"],
+        ["c_data_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_c_data_release",
+      "features": ["array"],
+      "parameters": [["c_data_pointer", "value"]],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_c_data_from_array",
+      "features": ["array"],
+      "parameters": [
+        ["const_array", "value"],
+        ["c_data_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_c_data_import_move",
+      "features": ["array"],
+      "parameters": [
+        ["arrow_array", "array"],
+        ["arrow_schema", "schema"],
+        ["c_data_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_c_data_export",
+      "features": ["array"],
+      "parameters": [
+        ["const_c_data", "value"],
+        ["arrow_array", "array"],
+        ["arrow_schema", "schema"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_array_from_c_data",
+      "features": ["array"],
+      "parameters": [
+        ["const_c_data", "value"],
+        ["const_field", "field"],
+        ["array_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_array_with_validity",
+      "features": ["array"],
+      "parameters": [
+        ["const_array", "value"],
+        ["const_array", "bitmap"],
+        ["int64", "offset"],
+        ["array_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_array_from_buffers",
+      "features": ["array"],
+      "parameters": [
+        ["const_field", "field"],
+        ["const_array", "data"],
+        ["const_array", "bitmap"],
+        ["int64", "length"],
+        ["int64", "offset"],
+        ["array_pointer", "output"]
+      ],
+      "return": "status"
+    },
+    {
+      "name": "irx_arrow_scalar_storage",
+      "features": ["array"],
+      "return": "status",
+      "parameters": [
+        ["const_scalar", "value"],
+        ["scalar_pointer", "output"]
       ]
     }
   ]
